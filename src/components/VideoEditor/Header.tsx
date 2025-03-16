@@ -1,9 +1,45 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
-import { Download, Save, Undo, Redo, Layout } from "lucide-react";
+import { Download, Save, Undo, Redo, Layout, Edit2 } from "lucide-react";
+import { Input } from "@/components/ui/input";
 
-const Header: React.FC = () => {
+interface HeaderProps {
+  projectName: string;
+  onRename: (name: string) => void;
+  onSave: () => void;
+  onExport: () => void;
+}
+
+const Header: React.FC<HeaderProps> = ({ 
+  projectName, 
+  onRename, 
+  onSave, 
+  onExport 
+}) => {
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedName, setEditedName] = useState(projectName);
+
+  const handleStartEditing = () => {
+    setEditedName(projectName);
+    setIsEditing(true);
+  };
+
+  const handleSaveName = () => {
+    if (editedName.trim()) {
+      onRename(editedName);
+    }
+    setIsEditing(false);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleSaveName();
+    } else if (e.key === 'Escape') {
+      setIsEditing(false);
+    }
+  };
+
   return (
     <div className="flex items-center justify-between w-full h-14 px-4 bg-editor-bg border-b border-white/10 animate-fade-in">
       <div className="flex items-center space-x-2">
@@ -19,7 +55,30 @@ const Header: React.FC = () => {
       </div>
       
       <div className="flex items-center">
-        <h1 className="text-xl font-medium text-white">Untitled Project</h1>
+        {isEditing ? (
+          <div className="flex items-center">
+            <Input
+              value={editedName}
+              onChange={(e) => setEditedName(e.target.value)}
+              onBlur={handleSaveName}
+              onKeyDown={handleKeyDown}
+              autoFocus
+              className="bg-editor-panel border-editor-accent text-white max-w-[200px]"
+            />
+          </div>
+        ) : (
+          <div className="flex items-center gap-2">
+            <h1 className="text-xl font-medium text-white">{projectName}</h1>
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="text-white/50 hover:text-white"
+              onClick={handleStartEditing}
+            >
+              <Edit2 size={14} />
+            </Button>
+          </div>
+        )}
       </div>
       
       <div className="flex items-center space-x-2">
@@ -29,10 +88,18 @@ const Header: React.FC = () => {
         <Button variant="ghost" size="icon" className="text-white/70 hover:text-white">
           <Redo size={18} />
         </Button>
-        <Button variant="ghost" size="icon" className="text-white/70 hover:text-white">
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          className="text-white/70 hover:text-white"
+          onClick={onSave}
+        >
           <Save size={18} />
         </Button>
-        <Button className="bg-editor-accent hover:bg-editor-accent-hover text-white flex items-center gap-2 rounded-full transition-all duration-300">
+        <Button 
+          className="bg-editor-accent hover:bg-editor-accent-hover text-white flex items-center gap-2 rounded-full transition-all duration-300"
+          onClick={onExport}
+        >
           <Download size={16} />
           Export
         </Button>
