@@ -6,6 +6,7 @@ import { TimelineItem } from './VideoEditor';
 
 // Mock data for media items
 const MEDIA_ITEMS = [
+  // Video samples
   { 
     id: '1', 
     type: 'video', 
@@ -32,6 +33,23 @@ const MEDIA_ITEMS = [
   },
   { 
     id: '4', 
+    type: 'video', 
+    name: 'Waterfall Scene', 
+    duration: '00:12', 
+    thumbnail: 'https://images.unsplash.com/photo-1518982700659-8e75be7141b8?w=800&auto=format&fit=crop',
+    src: 'https://storage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4'
+  },
+  { 
+    id: '5', 
+    type: 'video', 
+    name: 'Mountain Drive', 
+    duration: '00:20', 
+    thumbnail: 'https://images.unsplash.com/photo-1519681393784-d120267933ba?w=800&auto=format&fit=crop',
+    src: 'https://storage.googleapis.com/gtv-videos-bucket/sample/SubaruOutbackOnStreetAndDirt.mp4'
+  },
+  // Audio samples
+  { 
+    id: '6', 
     type: 'audio', 
     name: 'Engine sound', 
     duration: '00:13', 
@@ -39,12 +57,36 @@ const MEDIA_ITEMS = [
     src: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3'
   },
   { 
-    id: '5', 
+    id: '7', 
     type: 'audio', 
     name: 'Crowd cheer', 
     duration: '00:07', 
     thumbnail: '',
     src: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3'
+  },
+  { 
+    id: '8', 
+    type: 'audio', 
+    name: 'Background music', 
+    duration: '00:15', 
+    thumbnail: '',
+    src: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3'
+  },
+  { 
+    id: '9', 
+    type: 'audio', 
+    name: 'Electronic beat', 
+    duration: '00:08', 
+    thumbnail: '',
+    src: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3'
+  },
+  { 
+    id: '10', 
+    type: 'audio', 
+    name: 'Voiceover sample', 
+    duration: '00:05', 
+    thumbnail: '',
+    src: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3'
   },
 ];
 
@@ -108,16 +150,26 @@ const MediaLibrary: React.FC<MediaLibraryProps> = ({ onAddToTimeline }) => {
   const handleDoubleClick = (item: typeof MEDIA_ITEMS[number]) => {
     const durationInSeconds = parseInt(item.duration.split(':')[1]);
     
+    // Determine which track to add to based on media type
+    let trackId = 'track1'; // Default to first video track
+    let color = 'bg-yellow-400/70';
+    
+    if (item.type === 'audio') {
+      trackId = 'track3'; // Default to first audio track
+      color = 'bg-blue-400/70';
+    }
+    
     const newItem: TimelineItem = {
       id: `timeline-${Date.now()}`,
-      trackId: item.type === 'video' ? 'track1' : 'track2',
+      trackId,
       start: 0,
       duration: durationInSeconds,
       type: item.type as 'video' | 'audio',
       name: item.name,
-      color: item.type === 'video' ? 'bg-yellow-400/70' : 'bg-blue-400/70',
+      color,
       src: item.src,
-      thumbnail: item.thumbnail
+      thumbnail: item.thumbnail,
+      volume: 1.0 // Default volume
     };
     
     onAddToTimeline(newItem);

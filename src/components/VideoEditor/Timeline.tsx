@@ -3,6 +3,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Play, Pause, Volume2, Scissors, Plus, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { TimelineItem } from './VideoEditor';
+import { Slider } from '@/components/ui/slider';
 
 interface TimelineProps {
   currentTime: number;
@@ -12,6 +13,7 @@ interface TimelineProps {
   onSeek: (time: number) => void;
   items: TimelineItem[];
   onRemoveItem: (id: string) => void;
+  onUpdateItem?: (item: TimelineItem) => void;
 }
 
 const SCALE = 80; // pixels per second
@@ -23,13 +25,15 @@ const Timeline: React.FC<TimelineProps> = ({
   onPlayPause,
   onSeek,
   items,
-  onRemoveItem
+  onRemoveItem,
+  onUpdateItem
 }) => {
   const timelineRef = useRef<HTMLDivElement>(null);
   const playheadRef = useRef<HTMLDivElement>(null);
-  const [tracks] = useState(['Video', 'Audio 1', 'Audio 2']);
+  const [tracks] = useState(['Video 1', 'Video 2', 'Audio 1', 'Audio 2', 'Voiceover']);
   const [isDragging, setIsDragging] = useState(false);
   const [draggedItem, setDraggedItem] = useState<TimelineItem | null>(null);
+  const [showVolumeControl, setShowVolumeControl] = useState<string | null>(null);
   
   // Calculate timeline width based on duration
   const timelineWidth = Math.max(duration * SCALE, 1000);
@@ -90,6 +94,25 @@ const Timeline: React.FC<TimelineProps> = ({
         
         // If the item is from the media library (has src property)
         if (droppedItem.src) {
+          // Choose color based on track type and media type
+          let color = 'bg-yellow-400/70'; // default for video
+          let type = droppedItem.type;
+          
+          // Assign colors and confirm types based on track
+          if (trackId === 'track1' || trackId === 'track2') {
+            // Force type to video for video tracks
+            type = 'video';
+            color = 'bg-yellow-400/70';
+          } else if (trackId === 'track3' || trackId === 'track4') {
+            // Force type to audio for audio tracks
+            type = 'audio';
+            color = 'bg-blue-400/70';
+          } else if (trackId === 'track5') {
+            // Force type to audio for voiceover track
+            type = 'audio';
+            color = 'bg-green-400/70';
+          }
+          
           const durationInSeconds = parseInt(droppedItem.duration.split(':')[1]) || 5;
           
           const newItem: TimelineItem = {
@@ -97,11 +120,12 @@ const Timeline: React.FC<TimelineProps> = ({
             trackId,
             start: Math.max(0, dropTime),
             duration: durationInSeconds,
-            type: droppedItem.type,
+            type,
             name: droppedItem.name,
-            color: droppedItem.type === 'video' ? 'bg-yellow-400/70' : 'bg-blue-400/70',
+            color,
             src: droppedItem.src,
-            thumbnail: droppedItem.thumbnail
+            thumbnail: droppedItem.thumbnail,
+            volume: 1.0, // Default volume
           };
           
           // This will trigger the parent component to add the item
@@ -138,6 +162,22 @@ const Timeline: React.FC<TimelineProps> = ({
     onRemoveItem(id);
   };
   
+  // Handle volume change for individual audio clip
+  const handleVolumeChange = (id: string, newVolume: number) => {
+    const item = items.find(i => i.id === id);
+    if (item && onUpdateItem) {
+      onUpdateItem({
+        ...item,
+        volume: newVolume
+      });
+    }
+  };
+  
+  // Toggle volume control for an item
+  const toggleVolumeControl = (id: string) => {
+    setShowVolumeControl(prev => prev === id ? null : id);
+  };
+  
   // Update playhead position when currentTime changes
   useEffect(() => {
     if (playheadRef.current) {
@@ -160,6 +200,9 @@ const Timeline: React.FC<TimelineProps> = ({
       document.removeEventListener('timeline-item-add', handleTimelineItemAdd as EventListener);
     };
   }, []);
+  
+  // Get track identifier
+  const getTrackId = (index: number) => `track${index + 1}`;
   
   return (
     <div className="flex flex-col h-full">
@@ -243,9 +286,9 @@ const Timeline: React.FC<TimelineProps> = ({
               <div 
                 key={`track-${index}`}
                 className="timeline-track"
-                onDragOver={(e) => handleTrackDragOver(e, `track${index + 1}`)}
+                onDragOver={(e) => handleTrackDragOver(e, getTrackId(index))}
                 onDragLeave={handleTrackDragLeave}
-                onDrop={(e) => handleTrackDrop(e, `track${index + 1}`)}
+                onDrop={(e) => handleTrackDrop(e, getTrackId(index))}
               />
             ))}
             
@@ -256,7 +299,7 @@ const Timeline: React.FC<TimelineProps> = ({
                 <div
                   key={item.id}
                   className={cn(
-                    "absolute timeline-item h-12 flex items-center px-2 text-white z-10",
+                    "absolute timeline-item h-12 flex flex-col justify-center px-2 text-white z-10",
                     item.color,
                     draggedItem?.id === item.id && "opacity-50"
                   )}
@@ -270,13 +313,37 @@ const Timeline: React.FC<TimelineProps> = ({
                 >
                   <div className="flex justify-between items-center w-full">
                     <p className="text-xs font-medium truncate">{item.name}</p>
-                    <button 
-                      onClick={() => handleItemDelete(item.id)}
-                      className="opacity-0 group-hover:opacity-100 text-white/70 hover:text-white"
-                    >
-                      <Trash2 size={12} />
-                    </button>
+                    <div className="flex items-center gap-1">
+                      {item.type === 'audio' && (
+                        <button 
+                          onClick={() => toggleVolumeControl(item.id)}
+                          className="text-white/70 hover:text-white mr-1"
+                        >
+                          <Volume2 size={12} />
+                        </button>
+                      )}
+                      <button 
+                        onClick={() => handleItemDelete(item.id)}
+                        className="text-white/70 hover:text-white"
+                      >
+                        <Trash2 size={12} />
+                      </button>
+                    </div>
                   </div>
+                  
+                  {/* Individual volume control */}
+                  {item.type === 'audio' && showVolumeControl === item.id && (
+                    <div className="mt-1 px-1">
+                      <Slider
+                        value={[item.volume || 1]}
+                        min={0}
+                        max={1}
+                        step={0.1}
+                        onValueChange={(value) => handleVolumeChange(item.id, value[0])}
+                        className="h-1"
+                      />
+                    </div>
+                  )}
                 </div>
               );
             })}
@@ -284,12 +351,9 @@ const Timeline: React.FC<TimelineProps> = ({
         </div>
       </div>
       
-      {/* Add track button */}
+      {/* Add track button (disabled since we have a fixed track structure) */}
       <div className="h-12 bg-editor-panel border-t border-white/10 flex items-center px-4">
-        <button className="button-icon ml-16 flex items-center gap-1 px-3">
-          <Plus size={14} />
-          <span className="text-xs">Add Track</span>
-        </button>
+        <div className="ml-16 text-xs text-white/50">5 tracks available</div>
       </div>
     </div>
   );

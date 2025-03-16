@@ -3,6 +3,7 @@ import React, { useRef, useEffect, useState } from 'react';
 import { Maximize, MinusCircle, PlusCircle, Volume2, VolumeX } from 'lucide-react';
 import { toast } from 'sonner';
 import { TimelineItem } from './VideoEditor';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface PreviewProps {
   currentTime: number;
@@ -26,22 +27,25 @@ const Preview: React.FC<PreviewProps> = ({
   onVolumeChange
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const audioRef = useRef<HTMLAudioElement>(null);
+  const audioRefs = useRef<Map<string, HTMLAudioElement>>(new Map());
   const [zoom, setZoom] = useState(1);
   const [loaded, setLoaded] = useState(false);
   
   // Get active media based on current time
-  const activeVideo = timelineItems.find(item => 
+  const activeVideos = timelineItems.filter(item => 
     item.type === 'video' && 
     currentTime >= item.start && 
     currentTime < (item.start + item.duration)
   );
   
-  const activeAudio = timelineItems.find(item => 
+  const activeAudios = timelineItems.filter(item => 
     item.type === 'audio' && 
     currentTime >= item.start && 
     currentTime < (item.start + item.duration)
   );
+  
+  // Use the last added video as the active one (highest z-index)
+  const activeVideo = activeVideos.length > 0 ? activeVideos[activeVideos.length - 1] : null;
   
   // Handle zoom
   const handleZoomIn = () => {
@@ -60,9 +64,9 @@ const Preview: React.FC<PreviewProps> = ({
   
   // Sync video with timeline
   useEffect(() => {
-    if (videoRef.current && loaded) {
-      if (Math.abs(videoRef.current.currentTime - currentTime) > 0.5) {
-        videoRef.current.currentTime = currentTime;
+    if (videoRef.current && loaded && activeVideo) {
+      if (Math.abs(videoRef.current.currentTime - (currentTime - activeVideo.start)) > 0.5) {
+        videoRef.current.currentTime = Math.max(0, currentTime - activeVideo.start);
       }
       
       // Set volume
@@ -75,43 +79,54 @@ const Preview: React.FC<PreviewProps> = ({
       } else if (!isPlaying && !videoRef.current.paused) {
         videoRef.current.pause();
       }
+    } else if (videoRef.current && !activeVideo) {
+      // No active video, pause if playing
+      if (!videoRef.current.paused) {
+        videoRef.current.pause();
+      }
     }
-  }, [currentTime, isPlaying, loaded, volume, muted]);
+  }, [activeVideo, currentTime, isPlaying, loaded, volume, muted]);
   
   // Sync audio with timeline
   useEffect(() => {
-    if (audioRef.current) {
-      if (activeAudio) {
-        // Set audio source if needed
-        if (audioRef.current.src !== activeAudio.src) {
-          audioRef.current.src = activeAudio.src || '';
-          audioRef.current.load();
-        }
-        
-        // Calculate relative position in the audio clip
-        const relativePosition = currentTime - activeAudio.start;
-        if (Math.abs(audioRef.current.currentTime - relativePosition) > 0.5) {
-          audioRef.current.currentTime = relativePosition;
-        }
-        
-        // Set volume
-        audioRef.current.volume = muted ? 0 : volume;
-        
-        if (isPlaying && audioRef.current.paused) {
-          audioRef.current.play().catch(err => {
-            console.error('Failed to play audio:', err);
-          });
-        } else if (!isPlaying && !audioRef.current.paused) {
-          audioRef.current.pause();
-        }
-      } else {
-        // No active audio, pause if playing
-        if (!audioRef.current.paused) {
-          audioRef.current.pause();
+    // Process active audio items
+    activeAudios.forEach(audio => {
+      let audioElement = audioRefs.current.get(audio.id);
+      
+      if (!audioElement) {
+        // Create a new audio element if it doesn't exist
+        audioElement = new Audio(audio.src);
+        audioRefs.current.set(audio.id, audioElement);
+      }
+      
+      // Calculate relative position in the audio clip
+      const relativePosition = currentTime - audio.start;
+      if (Math.abs(audioElement.currentTime - relativePosition) > 0.5) {
+        audioElement.currentTime = Math.max(0, relativePosition);
+      }
+      
+      // Set individual volume for this audio track (multiply by master volume)
+      const clipVolume = (audio.volume || 1) * (muted ? 0 : volume);
+      audioElement.volume = clipVolume;
+      
+      if (isPlaying && audioElement.paused) {
+        audioElement.play().catch(err => {
+          console.error('Failed to play audio:', err);
+        });
+      } else if (!isPlaying && !audioElement.paused) {
+        audioElement.pause();
+      }
+    });
+    
+    // Pause any audio elements that are no longer active
+    audioRefs.current.forEach((audioElement, id) => {
+      if (!activeAudios.some(audio => audio.id === id)) {
+        if (!audioElement.paused) {
+          audioElement.pause();
         }
       }
-    }
-  }, [activeAudio, currentTime, isPlaying, volume, muted]);
+    });
+  }, [activeAudios, currentTime, isPlaying, volume, muted]);
   
   // Set video source based on active item
   useEffect(() => {
@@ -123,6 +138,17 @@ const Preview: React.FC<PreviewProps> = ({
       }
     }
   }, [activeVideo]);
+  
+  // Cleanup audio elements when component unmounts
+  useEffect(() => {
+    return () => {
+      audioRefs.current.forEach((audio) => {
+        audio.pause();
+        audio.src = '';
+      });
+      audioRefs.current.clear();
+    };
+  }, []);
   
   return (
     <div className="flex-1 bg-editor-bg flex flex-col overflow-hidden animate-fade-in">
@@ -140,12 +166,6 @@ const Preview: React.FC<PreviewProps> = ({
                 description: 'Could not load the video. Please try a different file.',
               });
             }}
-          />
-          
-          {/* Hidden audio element for audio tracks */}
-          <audio 
-            ref={audioRef} 
-            src={activeAudio?.src}
           />
           
           <div className="absolute bottom-4 right-4 flex space-x-2">
@@ -185,6 +205,30 @@ const Preview: React.FC<PreviewProps> = ({
             />
           </div>
         </div>
+      </div>
+      
+      {/* Current media info */}
+      <div className="p-2 bg-editor-panel/70 border-t border-white/10">
+        <ScrollArea className="h-16">
+          <div className="space-y-2 p-2">
+            <h3 className="text-xs font-medium text-white/70">Active Media:</h3>
+            <div className="flex flex-wrap gap-2">
+              {activeVideos.map(video => (
+                <div key={video.id} className="text-xs bg-yellow-400/20 px-2 py-1 rounded text-white/90">
+                  📹 {video.name}
+                </div>
+              ))}
+              {activeAudios.map(audio => (
+                <div key={audio.id} className="text-xs bg-blue-400/20 px-2 py-1 rounded text-white/90">
+                  🔊 {audio.name} ({Math.round(audio.volume! * 100)}%)
+                </div>
+              ))}
+              {activeVideos.length === 0 && activeAudios.length === 0 && (
+                <div className="text-xs text-white/50">No active media at current position</div>
+              )}
+            </div>
+          </div>
+        </ScrollArea>
       </div>
     </div>
   );
