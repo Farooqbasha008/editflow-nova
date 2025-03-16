@@ -2,16 +2,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Play, Pause, Volume2, Scissors, Plus, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-
-interface TimelineItem {
-  id: string;
-  trackId: string;
-  start: number;
-  duration: number;
-  type: 'video' | 'audio' | 'image';
-  name: string;
-  color: string;
-}
+import { TimelineItem } from './VideoEditor';
 
 interface TimelineProps {
   currentTime: number;
@@ -19,14 +10,9 @@ interface TimelineProps {
   isPlaying: boolean;
   onPlayPause: () => void;
   onSeek: (time: number) => void;
+  items: TimelineItem[];
+  onRemoveItem: (id: string) => void;
 }
-
-const MOCK_TIMELINE_ITEMS: TimelineItem[] = [
-  { id: 't1', trackId: 'track1', start: 0, duration: 5, type: 'video', name: 'Cars accelerating', color: 'bg-yellow-400/70' },
-  { id: 't2', trackId: 'track1', start: 5, duration: 4, type: 'video', name: 'Cars drifting', color: 'bg-yellow-400/70' },
-  { id: 't3', trackId: 'track2', start: 1, duration: 7, type: 'audio', name: 'Engine sound', color: 'bg-blue-400/70' },
-  { id: 't4', trackId: 'track3', start: 2, duration: 6, type: 'audio', name: 'Crowd cheering', color: 'bg-orange-400/70' },
-];
 
 const SCALE = 80; // pixels per second
 
@@ -35,12 +21,13 @@ const Timeline: React.FC<TimelineProps> = ({
   duration,
   isPlaying,
   onPlayPause,
-  onSeek
+  onSeek,
+  items,
+  onRemoveItem
 }) => {
   const timelineRef = useRef<HTMLDivElement>(null);
   const playheadRef = useRef<HTMLDivElement>(null);
   const [tracks] = useState(['Video', 'Audio 1', 'Audio 2']);
-  const [items, setItems] = useState<TimelineItem[]>(MOCK_TIMELINE_ITEMS);
   const [isDragging, setIsDragging] = useState(false);
   const [draggedItem, setDraggedItem] = useState<TimelineItem | null>(null);
   
@@ -101,27 +88,42 @@ const Timeline: React.FC<TimelineProps> = ({
       if (itemData) {
         const droppedItem = JSON.parse(itemData);
         
-        // If the item is from the media library
-        if (droppedItem.thumbnail) {
+        // If the item is from the media library (has src property)
+        if (droppedItem.src) {
+          const durationInSeconds = parseInt(droppedItem.duration.split(':')[1]) || 5;
+          
           const newItem: TimelineItem = {
             id: `timeline-${Date.now()}`,
             trackId,
             start: Math.max(0, dropTime),
-            duration: parseFloat(droppedItem.duration.split(':')[1]) || 5,
+            duration: durationInSeconds,
             type: droppedItem.type,
             name: droppedItem.name,
-            color: droppedItem.type === 'video' ? 'bg-yellow-400/70' : 'bg-blue-400/70'
+            color: droppedItem.type === 'video' ? 'bg-yellow-400/70' : 'bg-blue-400/70',
+            src: droppedItem.src,
+            thumbnail: droppedItem.thumbnail
           };
           
-          setItems(prev => [...prev, newItem]);
+          // This will trigger the parent component to add the item
+          const customEvent = new CustomEvent('timeline-item-add', { 
+            detail: newItem 
+          });
+          document.dispatchEvent(customEvent);
         } 
         // If it's an existing timeline item being moved
         else if (draggedItem) {
-          setItems(prev => prev.map(item => 
-            item.id === draggedItem.id 
-              ? { ...item, trackId, start: Math.max(0, dropTime) }
-              : item
-          ));
+          const updatedItem = { 
+            ...draggedItem,
+            trackId, 
+            start: Math.max(0, dropTime) 
+          };
+          
+          // Remove the old item and add the updated one
+          onRemoveItem(draggedItem.id);
+          const customEvent = new CustomEvent('timeline-item-add', { 
+            detail: updatedItem 
+          });
+          document.dispatchEvent(customEvent);
         }
       }
     } catch (err) {
@@ -131,12 +133,33 @@ const Timeline: React.FC<TimelineProps> = ({
     setDraggedItem(null);
   };
   
+  // Handle item delete
+  const handleItemDelete = (id: string) => {
+    onRemoveItem(id);
+  };
+  
   // Update playhead position when currentTime changes
   useEffect(() => {
     if (playheadRef.current) {
       playheadRef.current.style.transform = `translateX(${currentTime * SCALE}px)`;
     }
   }, [currentTime]);
+  
+  // Listen for timeline-item-add events
+  useEffect(() => {
+    const handleTimelineItemAdd = (e: CustomEvent<TimelineItem>) => {
+      const customEvent = new CustomEvent('add-timeline-item', { 
+        detail: e.detail
+      });
+      window.dispatchEvent(customEvent);
+    };
+    
+    document.addEventListener('timeline-item-add', handleTimelineItemAdd as EventListener);
+    
+    return () => {
+      document.removeEventListener('timeline-item-add', handleTimelineItemAdd as EventListener);
+    };
+  }, []);
   
   return (
     <div className="flex flex-col h-full">
@@ -245,7 +268,15 @@ const Timeline: React.FC<TimelineProps> = ({
                   draggable
                   onDragStart={(e) => handleItemDragStart(e, item)}
                 >
-                  <p className="text-xs font-medium truncate">{item.name}</p>
+                  <div className="flex justify-between items-center w-full">
+                    <p className="text-xs font-medium truncate">{item.name}</p>
+                    <button 
+                      onClick={() => handleItemDelete(item.id)}
+                      className="opacity-0 group-hover:opacity-100 text-white/70 hover:text-white"
+                    >
+                      <Trash2 size={12} />
+                    </button>
+                  </div>
                 </div>
               );
             })}

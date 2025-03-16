@@ -2,27 +2,69 @@
 import React, { useState } from 'react';
 import { Upload, Film, Music, Image as ImageIcon, Mic, Video } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { TimelineItem } from './VideoEditor';
 
 // Mock data for media items
 const MEDIA_ITEMS = [
-  { id: '1', type: 'video', name: 'Cars drifting', duration: '00:15', thumbnail: 'https://images.unsplash.com/photo-1568605117036-5fe5e7bab0b7?w=800&auto=format&fit=crop' },
-  { id: '2', type: 'video', name: 'Turbocharging', duration: '00:08', thumbnail: 'https://images.unsplash.com/photo-1563358955-21ed330539a9?w=800&auto=format&fit=crop' },
-  { id: '3', type: 'video', name: 'Car accelerating', duration: '00:10', thumbnail: 'https://images.unsplash.com/photo-1518563222397-1fc005b5a0e0?w=800&auto=format&fit=crop' },
-  { id: '4', type: 'audio', name: 'Engine sound', duration: '00:13', thumbnail: '' },
-  { id: '5', type: 'audio', name: 'Crowd cheer', duration: '00:07', thumbnail: '' },
+  { 
+    id: '1', 
+    type: 'video', 
+    name: 'Cars drifting', 
+    duration: '00:15', 
+    thumbnail: 'https://images.unsplash.com/photo-1568605117036-5fe5e7bab0b7?w=800&auto=format&fit=crop',
+    src: 'https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4'
+  },
+  { 
+    id: '2', 
+    type: 'video', 
+    name: 'Turbocharging', 
+    duration: '00:08', 
+    thumbnail: 'https://images.unsplash.com/photo-1563358955-21ed330539a9?w=800&auto=format&fit=crop',
+    src: 'https://storage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4'
+  },
+  { 
+    id: '3', 
+    type: 'video', 
+    name: 'Car accelerating', 
+    duration: '00:10', 
+    thumbnail: 'https://images.unsplash.com/photo-1518563222397-1fc005b5a0e0?w=800&auto=format&fit=crop',
+    src: 'https://storage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4'
+  },
+  { 
+    id: '4', 
+    type: 'audio', 
+    name: 'Engine sound', 
+    duration: '00:13', 
+    thumbnail: '',
+    src: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3'
+  },
+  { 
+    id: '5', 
+    type: 'audio', 
+    name: 'Crowd cheer', 
+    duration: '00:07', 
+    thumbnail: '',
+    src: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3'
+  },
 ];
 
 interface MediaItemProps {
   item: typeof MEDIA_ITEMS[number];
   onDragStart: (e: React.DragEvent, item: typeof MEDIA_ITEMS[number]) => void;
+  onDoubleClick: (item: typeof MEDIA_ITEMS[number]) => void;
 }
 
-const MediaItem: React.FC<MediaItemProps> = ({ item, onDragStart }) => {
+interface MediaLibraryProps {
+  onAddToTimeline: (item: TimelineItem) => void;
+}
+
+const MediaItem: React.FC<MediaItemProps> = ({ item, onDragStart, onDoubleClick }) => {
   return (
     <div 
-      className="video-item group"
+      className="video-item group cursor-pointer"
       draggable
       onDragStart={(e) => onDragStart(e, item)}
+      onDoubleClick={() => onDoubleClick(item)}
     >
       {item.type === 'video' ? (
         <div className="relative">
@@ -41,7 +83,7 @@ const MediaItem: React.FC<MediaItemProps> = ({ item, onDragStart }) => {
   );
 };
 
-const MediaLibrary: React.FC = () => {
+const MediaLibrary: React.FC<MediaLibraryProps> = ({ onAddToTimeline }) => {
   const [activeTab, setActiveTab] = useState<'all' | 'video' | 'audio' | 'image'>('all');
   
   const handleDragStart = (e: React.DragEvent, item: typeof MEDIA_ITEMS[number]) => {
@@ -61,6 +103,24 @@ const MediaLibrary: React.FC = () => {
     setTimeout(() => {
       document.body.removeChild(dragImage);
     }, 0);
+  };
+
+  const handleDoubleClick = (item: typeof MEDIA_ITEMS[number]) => {
+    const durationInSeconds = parseInt(item.duration.split(':')[1]);
+    
+    const newItem: TimelineItem = {
+      id: `timeline-${Date.now()}`,
+      trackId: item.type === 'video' ? 'track1' : 'track2',
+      start: 0,
+      duration: durationInSeconds,
+      type: item.type as 'video' | 'audio',
+      name: item.name,
+      color: item.type === 'video' ? 'bg-yellow-400/70' : 'bg-blue-400/70',
+      src: item.src,
+      thumbnail: item.thumbnail
+    };
+    
+    onAddToTimeline(newItem);
   };
 
   const filteredItems = activeTab === 'all' 
@@ -125,6 +185,7 @@ const MediaLibrary: React.FC = () => {
             key={item.id} 
             item={item} 
             onDragStart={handleDragStart}
+            onDoubleClick={handleDoubleClick}
           />
         ))}
       </div>
