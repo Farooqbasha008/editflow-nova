@@ -1,8 +1,9 @@
 
 import React, { useState } from 'react';
-import { Upload, Film, Music, Image as ImageIcon, Mic, Video } from 'lucide-react';
+import { Upload, Film, Music, Image as ImageIcon, Mic, Video, Search } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { TimelineItem } from './VideoEditor';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 // Mock data for media items
 const MEDIA_ITEMS = [
@@ -47,6 +48,23 @@ const MEDIA_ITEMS = [
     thumbnail: 'https://images.unsplash.com/photo-1519681393784-d120267933ba?w=800&auto=format&fit=crop',
     src: 'https://storage.googleapis.com/gtv-videos-bucket/sample/SubaruOutbackOnStreetAndDirt.mp4'
   },
+  // Additional video samples
+  { 
+    id: '11', 
+    type: 'video', 
+    name: 'City Lights', 
+    duration: '00:18', 
+    thumbnail: 'https://images.unsplash.com/photo-1519501025264-65ba15a82390?w=800&auto=format&fit=crop',
+    src: 'https://storage.googleapis.com/gtv-videos-bucket/sample/WeAreGoingOnBullrun.mp4'
+  },
+  { 
+    id: '12', 
+    type: 'video', 
+    name: 'Night Race', 
+    duration: '00:22', 
+    thumbnail: 'https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?w=800&auto=format&fit=crop',
+    src: 'https://storage.googleapis.com/gtv-videos-bucket/sample/WhatCarCanYouGetForAGrand.mp4'
+  },
   // Audio samples
   { 
     id: '6', 
@@ -88,6 +106,31 @@ const MEDIA_ITEMS = [
     thumbnail: '',
     src: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3'
   },
+  // Additional audio samples
+  { 
+    id: '13', 
+    type: 'audio', 
+    name: 'Turbocharging sound', 
+    duration: '00:09', 
+    thumbnail: '',
+    src: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-6.mp3'
+  },
+  { 
+    id: '14', 
+    type: 'audio', 
+    name: 'Car drifting', 
+    duration: '00:11', 
+    thumbnail: '',
+    src: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-7.mp3'
+  },
+  { 
+    id: '15', 
+    type: 'audio', 
+    name: 'Cinematic impact', 
+    duration: '00:04', 
+    thumbnail: '',
+    src: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3'
+  },
 ];
 
 interface MediaItemProps {
@@ -98,35 +141,44 @@ interface MediaItemProps {
 
 interface MediaLibraryProps {
   onAddToTimeline: (item: TimelineItem) => void;
+  mediaType?: 'all' | 'video' | 'audio' | 'image';
 }
 
 const MediaItem: React.FC<MediaItemProps> = ({ item, onDragStart, onDoubleClick }) => {
   return (
     <div 
-      className="video-item group cursor-pointer"
+      className="video-item group cursor-pointer mb-2"
       draggable
       onDragStart={(e) => onDragStart(e, item)}
       onDoubleClick={() => onDoubleClick(item)}
     >
       {item.type === 'video' ? (
         <div className="relative">
-          <img src={item.thumbnail} alt={item.name} className="w-full h-20 object-cover" />
+          <img src={item.thumbnail} alt={item.name} className="w-full h-24 object-cover" />
+          <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 bg-black/50 transition-opacity">
+            <Video size={24} className="text-white" />
+          </div>
           <div className="absolute bottom-0 right-0 bg-black/70 text-white/90 text-[10px] px-1 py-0.5 rounded-tl">
             {item.duration}
           </div>
         </div>
       ) : (
-        <div className="h-14 bg-editor-panel flex items-center justify-center">
-          {item.type === 'audio' && <Music size={20} className="text-white/70" />}
+        <div className="h-16 bg-editor-panel flex items-center justify-center relative">
+          <Music size={24} className="text-white/60 group-hover:text-white/80 transition-colors" />
+          <div className="absolute bottom-0 right-0 bg-black/70 text-white/90 text-[10px] px-1 py-0.5 rounded-tl">
+            {item.duration}
+          </div>
         </div>
       )}
-      <div className="p-2 text-xs text-white/90 truncate">{item.name}</div>
+      <div className="p-2 text-xs text-white/90 truncate bg-editor-panel group-hover:bg-editor-hover transition-colors">
+        {item.name}
+      </div>
     </div>
   );
 };
 
-const MediaLibrary: React.FC<MediaLibraryProps> = ({ onAddToTimeline }) => {
-  const [activeTab, setActiveTab] = useState<'all' | 'video' | 'audio' | 'image'>('all');
+const MediaLibrary: React.FC<MediaLibraryProps> = ({ onAddToTimeline, mediaType = 'all' }) => {
+  const [searchTerm, setSearchTerm] = useState('');
   
   const handleDragStart = (e: React.DragEvent, item: typeof MEDIA_ITEMS[number]) => {
     e.dataTransfer.setData('application/json', JSON.stringify(item));
@@ -175,72 +227,55 @@ const MediaLibrary: React.FC<MediaLibraryProps> = ({ onAddToTimeline }) => {
     onAddToTimeline(newItem);
   };
 
-  const filteredItems = activeTab === 'all' 
-    ? MEDIA_ITEMS 
-    : MEDIA_ITEMS.filter(item => item.type === activeTab);
+  const filteredItems = MEDIA_ITEMS.filter(item => {
+    // Apply media type filter
+    if (mediaType !== 'all' && item.type !== mediaType) {
+      return false;
+    }
+    
+    // Apply search filter if there's a search term
+    if (searchTerm && !item.name.toLowerCase().includes(searchTerm.toLowerCase())) {
+      return false;
+    }
+    
+    return true;
+  });
 
   return (
-    <div className="w-64 bg-editor-panel border-r border-white/10 flex flex-col h-full animate-slide-right">
+    <div className="flex flex-col h-full bg-editor-panel/70">
+      {/* Search bar */}
       <div className="p-3 border-b border-white/10">
-        <h2 className="text-base font-medium text-white/90">Media</h2>
-      </div>
-      
-      <div className="grid grid-cols-4 gap-1 px-2 pt-2">
-        <button 
-          className={cn(
-            "p-1.5 rounded-md text-white/70 hover:text-white transition-colors",
-            activeTab === 'all' && "bg-editor-hover text-white"
-          )}
-          onClick={() => setActiveTab('all')}
-        >
-          <Film size={16} className="mx-auto" />
-        </button>
-        <button 
-          className={cn(
-            "p-1.5 rounded-md text-white/70 hover:text-white transition-colors",
-            activeTab === 'video' && "bg-editor-hover text-white"
-          )}
-          onClick={() => setActiveTab('video')}
-        >
-          <Video size={16} className="mx-auto" />
-        </button>
-        <button 
-          className={cn(
-            "p-1.5 rounded-md text-white/70 hover:text-white transition-colors",
-            activeTab === 'audio' && "bg-editor-hover text-white"
-          )}
-          onClick={() => setActiveTab('audio')}
-        >
-          <Music size={16} className="mx-auto" />
-        </button>
-        <button 
-          className={cn(
-            "p-1.5 rounded-md text-white/70 hover:text-white transition-colors",
-            activeTab === 'image' && "bg-editor-hover text-white"
-          )}
-          onClick={() => setActiveTab('image')}
-        >
-          <ImageIcon size={16} className="mx-auto" />
-        </button>
-      </div>
-      
-      <div className="flex-1 overflow-y-auto p-2 space-y-2">
-        <div 
-          className="video-item border border-dashed border-white/20 h-32 flex flex-col items-center justify-center text-white/60 cursor-pointer hover:border-white/40 hover:text-white/80"
-        >
-          <Upload size={24} className="mb-2" />
-          <span className="text-xs">Upload Media</span>
-        </div>
-        
-        {filteredItems.map(item => (
-          <MediaItem 
-            key={item.id} 
-            item={item} 
-            onDragStart={handleDragStart}
-            onDoubleClick={handleDoubleClick}
+        <div className="relative">
+          <Search size={16} className="absolute left-2 top-1/2 transform -translate-y-1/2 text-white/50" />
+          <input
+            type="text"
+            placeholder="Search media..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full bg-editor-bg/80 border border-white/10 rounded-md pl-8 pr-3 py-1.5 text-sm text-white/90 focus:outline-none focus:ring-1 focus:ring-editor-accent"
           />
-        ))}
+        </div>
       </div>
+      
+      <ScrollArea className="flex-1">
+        <div className="p-3 grid grid-cols-2 gap-2">
+          <div 
+            className="video-item border border-dashed border-white/20 h-32 flex flex-col items-center justify-center text-white/60 cursor-pointer hover:border-white/40 hover:text-white/80 col-span-2"
+          >
+            <Upload size={24} className="mb-2" />
+            <span className="text-xs">Upload Media</span>
+          </div>
+          
+          {filteredItems.map(item => (
+            <MediaItem 
+              key={item.id} 
+              item={item} 
+              onDragStart={handleDragStart}
+              onDoubleClick={handleDoubleClick}
+            />
+          ))}
+        </div>
+      </ScrollArea>
     </div>
   );
 };

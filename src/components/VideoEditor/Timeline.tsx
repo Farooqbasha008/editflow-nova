@@ -1,9 +1,11 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Play, Pause, Volume2, Scissors, Plus, Trash2 } from 'lucide-react';
+import { Play, Pause, Volume2, Scissors, Plus, Trash2, ZoomIn, ZoomOut, Clock, Undo, Redo } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { TimelineItem } from './VideoEditor';
 import { Slider } from '@/components/ui/slider';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { toast } from 'sonner';
 
 interface TimelineProps {
   currentTime: number;
@@ -16,7 +18,7 @@ interface TimelineProps {
   onUpdateItem?: (item: TimelineItem) => void;
 }
 
-const SCALE = 80; // pixels per second
+const INITIAL_SCALE = 80; // pixels per second
 
 const Timeline: React.FC<TimelineProps> = ({
   currentTime,
@@ -34,13 +36,14 @@ const Timeline: React.FC<TimelineProps> = ({
   const [isDragging, setIsDragging] = useState(false);
   const [draggedItem, setDraggedItem] = useState<TimelineItem | null>(null);
   const [showVolumeControl, setShowVolumeControl] = useState<string | null>(null);
+  const [scale, setScale] = useState(INITIAL_SCALE);
   
   // Calculate timeline width based on duration
-  const timelineWidth = Math.max(duration * SCALE, 1000);
+  const timelineWidth = Math.max(duration * scale, 1000);
   
   // Generate time markers
   const timeMarkers = [];
-  const markerInterval = 1; // Seconds
+  const markerInterval = scale <= 40 ? 5 : scale <= 80 ? 2 : 1; // Seconds
   const markerCount = Math.ceil(duration / markerInterval);
   
   for (let i = 0; i <= markerCount; i++) {
@@ -54,9 +57,18 @@ const Timeline: React.FC<TimelineProps> = ({
     
     const rect = timelineRef.current.getBoundingClientRect();
     const offsetX = e.clientX - rect.left;
-    const clickedTime = (offsetX / SCALE);
+    const clickedTime = (offsetX / scale);
     
     onSeek(Math.max(0, Math.min(clickedTime, duration)));
+  };
+  
+  // Handle zoom in/out
+  const handleZoomIn = () => {
+    setScale(prev => Math.min(prev * 1.2, 200));
+  };
+  
+  const handleZoomOut = () => {
+    setScale(prev => Math.max(prev / 1.2, 20));
   };
   
   // Handle item drag start
@@ -85,7 +97,7 @@ const Timeline: React.FC<TimelineProps> = ({
       // Get drop position
       const rect = e.currentTarget.getBoundingClientRect();
       const offsetX = e.clientX - rect.left;
-      const dropTime = offsetX / SCALE;
+      const dropTime = offsetX / scale;
       
       const itemData = e.dataTransfer.getData('application/json');
       
@@ -133,6 +145,10 @@ const Timeline: React.FC<TimelineProps> = ({
             detail: newItem 
           });
           document.dispatchEvent(customEvent);
+          
+          toast.success('Media added to timeline', {
+            description: `${droppedItem.name} added to ${trackId.replace('track', 'Track ')}`
+          });
         } 
         // If it's an existing timeline item being moved
         else if (draggedItem) {
@@ -160,6 +176,7 @@ const Timeline: React.FC<TimelineProps> = ({
   // Handle item delete
   const handleItemDelete = (id: string) => {
     onRemoveItem(id);
+    toast.success('Item removed from timeline');
   };
   
   // Handle volume change for individual audio clip
@@ -169,6 +186,10 @@ const Timeline: React.FC<TimelineProps> = ({
       onUpdateItem({
         ...item,
         volume: newVolume
+      });
+      
+      toast.success('Audio volume updated', {
+        description: `Volume set to ${Math.round(newVolume * 100)}%`
       });
     }
   };
@@ -181,9 +202,9 @@ const Timeline: React.FC<TimelineProps> = ({
   // Update playhead position when currentTime changes
   useEffect(() => {
     if (playheadRef.current) {
-      playheadRef.current.style.transform = `translateX(${currentTime * SCALE}px)`;
+      playheadRef.current.style.transform = `translateX(${currentTime * scale}px)`;
     }
-  }, [currentTime]);
+  }, [currentTime, scale]);
   
   // Listen for timeline-item-add events
   useEffect(() => {
@@ -205,7 +226,7 @@ const Timeline: React.FC<TimelineProps> = ({
   const getTrackId = (index: number) => `track${index + 1}`;
   
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full overflow-hidden bg-editor-timeline">
       {/* Timeline controls */}
       <div className="flex items-center h-12 px-4 border-b border-white/10 bg-editor-panel/70">
         <div className="flex items-center space-x-2">
@@ -223,46 +244,69 @@ const Timeline: React.FC<TimelineProps> = ({
         
         <div className="flex-1" />
         
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center space-x-3">
+          <button className="button-icon" onClick={handleZoomOut}>
+            <ZoomOut size={16} />
+          </button>
+          <button className="button-icon" onClick={handleZoomIn}>
+            <ZoomIn size={16} />
+          </button>
+          <div className="h-4 w-px bg-white/20 mx-1"></div>
+          <button className="button-icon">
+            <Undo size={16} />
+          </button>
+          <button className="button-icon">
+            <Redo size={16} />
+          </button>
+          <div className="h-4 w-px bg-white/20 mx-1"></div>
           <button className="button-icon">
             <Scissors size={16} />
           </button>
           <button className="button-icon">
             <Trash2 size={16} />
           </button>
-          <button className="button-icon">
-            <Volume2 size={16} />
-          </button>
         </div>
       </div>
       
       {/* Timeline ruler */}
       <div className="flex h-8 border-b border-white/10 bg-editor-panel/80 relative overflow-hidden">
-        <div className="w-16 bg-editor-panel border-r border-white/10 shrink-0" />
+        <div className="w-24 bg-editor-panel border-r border-white/10 shrink-0 flex items-center justify-center">
+          <Clock size={14} className="mr-1 text-white/50" />
+          <span className="text-xs text-white/70">Timeline</span>
+        </div>
         <div 
-          className="flex select-none"
+          className="flex select-none overflow-hidden"
           style={{ width: timelineWidth }}
         >
-          {timeMarkers.map(time => (
-            <div 
-              key={time} 
-              className="time-marker" 
-              style={{ width: `${markerInterval * SCALE}px` }}
-            >
-              {`${Math.floor(time / 60).toString().padStart(2, '0')}:${Math.floor(time % 60).toString().padStart(2, '0')}`}
+          <ScrollArea orientation="horizontal">
+            <div style={{ width: timelineWidth, height: '100%' }} className="flex">
+              {timeMarkers.map(time => (
+                <div 
+                  key={time} 
+                  className="time-marker" 
+                  style={{ width: `${markerInterval * scale}px` }}
+                >
+                  {`${Math.floor(time / 60).toString().padStart(2, '0')}:${Math.floor(time % 60).toString().padStart(2, '0')}`}
+                </div>
+              ))}
             </div>
-          ))}
+          </ScrollArea>
         </div>
       </div>
       
       {/* Timeline tracks */}
-      <div className="flex-1 flex flex-row overflow-auto">
+      <div className="flex-1 flex flex-row overflow-hidden">
         {/* Track labels */}
-        <div className="w-16 shrink-0 bg-editor-panel border-r border-white/10">
+        <div className="w-24 shrink-0 bg-editor-panel border-r border-white/10">
           {tracks.map((track, index) => (
             <div 
               key={index} 
-              className="timeline-track flex items-center justify-center text-white/60 text-xs"
+              className={cn(
+                "timeline-track flex items-center justify-start px-3 text-white/70 text-xs",
+                index < 2 ? "bg-yellow-950/30" : // Video tracks
+                index < 4 ? "bg-blue-950/30" : // Audio tracks
+                "bg-green-950/30" // Voiceover track
+              )}
             >
               {track}
             </div>
@@ -270,12 +314,13 @@ const Timeline: React.FC<TimelineProps> = ({
         </div>
         
         {/* Timeline */}
-        <div 
-          ref={timelineRef}
-          className="relative flex-1 overflow-x-auto overflow-y-hidden"
-          onClick={handleTimelineClick}
-        >
-          <div style={{ width: timelineWidth }} className="relative">
+        <ScrollArea orientation="horizontal" className="flex-1">
+          <div 
+            ref={timelineRef}
+            className="relative overflow-y-hidden"
+            style={{ width: timelineWidth, minHeight: '100%' }}
+            onClick={handleTimelineClick}
+          >
             {/* Playhead */}
             <div ref={playheadRef} className="playhead">
               <div className="absolute -top-1 -left-[5px] w-[10px] h-[10px] bg-editor-accent rounded-full" />
@@ -285,10 +330,24 @@ const Timeline: React.FC<TimelineProps> = ({
             {tracks.map((_, index) => (
               <div 
                 key={`track-${index}`}
-                className="timeline-track"
+                className={cn(
+                  "timeline-track",
+                  index < 2 ? "bg-yellow-950/10" : // Video tracks
+                  index < 4 ? "bg-blue-950/10" : // Audio tracks
+                  "bg-green-950/10" // Voiceover track
+                )}
                 onDragOver={(e) => handleTrackDragOver(e, getTrackId(index))}
                 onDragLeave={handleTrackDragLeave}
                 onDrop={(e) => handleTrackDrop(e, getTrackId(index))}
+              />
+            ))}
+            
+            {/* 1-second interval vertical grid lines */}
+            {timeMarkers.map(time => (
+              <div 
+                key={`grid-${time}`}
+                className="absolute top-0 bottom-0 w-px bg-white/5"
+                style={{ left: `${time * scale}px` }}
               />
             ))}
             
@@ -305,8 +364,8 @@ const Timeline: React.FC<TimelineProps> = ({
                   )}
                   style={{
                     top: `${trackIndex * 64}px`,
-                    left: `${item.start * SCALE}px`,
-                    width: `${item.duration * SCALE}px`,
+                    left: `${item.start * scale}px`,
+                    width: `${item.duration * scale}px`,
                   }}
                   draggable
                   onDragStart={(e) => handleItemDragStart(e, item)}
@@ -342,18 +401,16 @@ const Timeline: React.FC<TimelineProps> = ({
                         onValueChange={(value) => handleVolumeChange(item.id, value[0])}
                         className="h-1"
                       />
+                      <div className="text-[10px] text-white/80 text-center mt-0.5">
+                        {Math.round((item.volume || 1) * 100)}%
+                      </div>
                     </div>
                   )}
                 </div>
               );
             })}
           </div>
-        </div>
-      </div>
-      
-      {/* Add track button (disabled since we have a fixed track structure) */}
-      <div className="h-12 bg-editor-panel border-t border-white/10 flex items-center px-4">
-        <div className="ml-16 text-xs text-white/50">5 tracks available</div>
+        </ScrollArea>
       </div>
     </div>
   );

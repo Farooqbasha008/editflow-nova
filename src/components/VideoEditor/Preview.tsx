@@ -1,9 +1,10 @@
 
 import React, { useRef, useEffect, useState } from 'react';
-import { Maximize, MinusCircle, PlusCircle, Volume2, VolumeX } from 'lucide-react';
+import { Maximize, MinusCircle, PlusCircle, Volume2, VolumeX, Undo, Redo, Scissors, Square, RotateCcw, RotateCw, Pause, Play } from 'lucide-react';
 import { toast } from 'sonner';
 import { TimelineItem } from './VideoEditor';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { cn } from '@/lib/utils';
 
 interface PreviewProps {
   currentTime: number;
@@ -30,6 +31,8 @@ const Preview: React.FC<PreviewProps> = ({
   const audioRefs = useRef<Map<string, HTMLAudioElement>>(new Map());
   const [zoom, setZoom] = useState(1);
   const [loaded, setLoaded] = useState(false);
+  const [fullscreen, setFullscreen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
   
   // Get active media based on current time
   const activeVideos = timelineItems.filter(item => 
@@ -60,6 +63,23 @@ const Preview: React.FC<PreviewProps> = ({
   const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newVolume = parseFloat(e.target.value);
     onVolumeChange(newVolume);
+  };
+  
+  // Toggle fullscreen
+  const toggleFullscreen = () => {
+    if (!containerRef.current) return;
+    
+    if (!document.fullscreenElement) {
+      containerRef.current.requestFullscreen().catch(err => {
+        toast.error('Error attempting to enable fullscreen', {
+          description: err.message
+        });
+      });
+      setFullscreen(true);
+    } else {
+      document.exitFullscreen();
+      setFullscreen(false);
+    }
   };
   
   // Sync video with timeline
@@ -151,9 +171,58 @@ const Preview: React.FC<PreviewProps> = ({
   }, []);
   
   return (
-    <div className="flex-1 bg-editor-bg flex flex-col overflow-hidden animate-fade-in">
-      <div className="flex-1 flex items-center justify-center bg-black/50 p-4">
-        <div className="relative w-full max-w-3xl aspect-video bg-black/70 rounded-lg overflow-hidden shadow-2xl border border-white/10">
+    <div ref={containerRef} className="flex-1 bg-editor-bg flex flex-col overflow-hidden animate-fade-in">
+      {/* Preview toolbar */}
+      <div className="flex items-center justify-between p-2 bg-editor-panel/70 border-b border-white/10">
+        <div className="flex items-center space-x-2">
+          <button className="button-icon">
+            <Undo size={16} />
+          </button>
+          <button className="button-icon">
+            <Redo size={16} />
+          </button>
+          <div className="h-4 w-px bg-white/20 mx-1"></div>
+          <button className="button-icon">
+            <Scissors size={16} />
+          </button>
+          <button className="button-icon">
+            <RotateCcw size={16} />
+          </button>
+          <button className="button-icon">
+            <RotateCw size={16} />
+          </button>
+        </div>
+        
+        <div className="text-sm font-medium text-white/70">
+          {isPlaying ? "Playing" : "Paused"}
+        </div>
+        
+        <div className="flex items-center space-x-2">
+          <button 
+            className="button-icon"
+            onClick={onToggleMute}
+          >
+            {muted ? <VolumeX size={16} /> : <Volume2 size={16} />}
+          </button>
+          
+          <input
+            type="range"
+            min="0"
+            max="1"
+            step="0.1"
+            value={volume}
+            onChange={handleVolumeChange}
+            className="w-24 h-1 bg-white/20 rounded-full appearance-none cursor-pointer"
+          />
+        </div>
+      </div>
+      
+      {/* Video preview area */}
+      <div className="flex-1 bg-[#1a1a1a] flex items-center justify-center p-4 relative">
+        <div className={cn(
+          "relative aspect-video bg-black rounded-md overflow-hidden shadow-2xl border border-white/5 transition-all",
+          fullscreen ? "w-full h-full" : "max-w-4xl w-full"
+        )}>
           <video 
             ref={videoRef} 
             className="w-full h-full object-contain transition-transform duration-300"
@@ -168,67 +237,72 @@ const Preview: React.FC<PreviewProps> = ({
             }}
           />
           
-          <div className="absolute bottom-4 right-4 flex space-x-2">
-            <button 
-              className="button-icon bg-black/50 backdrop-blur-md"
-              onClick={handleZoomOut}
-            >
-              <MinusCircle size={16} />
-            </button>
-            <button 
-              className="button-icon bg-black/50 backdrop-blur-md"
-              onClick={handleZoomIn}
-            >
-              <PlusCircle size={16} />
-            </button>
-            <button className="button-icon bg-black/50 backdrop-blur-md">
-              <Maximize size={16} />
-            </button>
-          </div>
-          
-          {/* Volume control */}
-          <div className="absolute bottom-4 left-4 flex items-center space-x-2">
-            <button 
-              className="button-icon bg-black/50 backdrop-blur-md"
-              onClick={onToggleMute}
-            >
-              {muted ? <VolumeX size={16} /> : <Volume2 size={16} />}
-            </button>
-            <input
-              type="range"
-              min="0"
-              max="1"
-              step="0.1"
-              value={volume}
-              onChange={handleVolumeChange}
-              className="w-24 h-1 bg-white/20 rounded-full appearance-none cursor-pointer"
-            />
+          {/* Overlay controls */}
+          <div className="absolute inset-0 opacity-0 hover:opacity-100 transition-opacity duration-300 flex flex-col justify-between p-3">
+            {/* Top controls */}
+            <div className="flex justify-end">
+              <div className="flex space-x-2 bg-black/50 backdrop-blur-sm p-1 rounded-md">
+                <button 
+                  className="p-1 text-white/80 hover:text-white transition-colors"
+                  onClick={handleZoomOut}
+                >
+                  <MinusCircle size={18} />
+                </button>
+                <button 
+                  className="p-1 text-white/80 hover:text-white transition-colors"
+                  onClick={handleZoomIn}
+                >
+                  <PlusCircle size={18} />
+                </button>
+                <button 
+                  className="p-1 text-white/80 hover:text-white transition-colors"
+                  onClick={toggleFullscreen}
+                >
+                  <Maximize size={18} />
+                </button>
+              </div>
+            </div>
+            
+            {/* Center play button */}
+            <div className="flex-1 flex items-center justify-center">
+              <button className="p-4 bg-black/30 hover:bg-black/50 backdrop-blur-sm rounded-full">
+                {isPlaying ? <Pause size={24} /> : <Play size={24} />}
+              </button>
+            </div>
+            
+            {/* Bottom timeline scrubber (for visual only) */}
+            <div className="w-full bg-black/50 backdrop-blur-sm p-2 rounded-md">
+              <div className="w-full h-1 bg-white/20 rounded-full overflow-hidden">
+                <div 
+                  className="h-full bg-editor-accent transition-all"
+                  style={{ width: `${(currentTime / duration) * 100}%` }}
+                ></div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
       
-      {/* Current media info */}
-      <div className="p-2 bg-editor-panel/70 border-t border-white/10">
-        <ScrollArea className="h-16">
-          <div className="space-y-2 p-2">
-            <h3 className="text-xs font-medium text-white/70">Active Media:</h3>
-            <div className="flex flex-wrap gap-2">
-              {activeVideos.map(video => (
-                <div key={video.id} className="text-xs bg-yellow-400/20 px-2 py-1 rounded text-white/90">
-                  📹 {video.name}
-                </div>
-              ))}
-              {activeAudios.map(audio => (
-                <div key={audio.id} className="text-xs bg-blue-400/20 px-2 py-1 rounded text-white/90">
-                  🔊 {audio.name} ({Math.round(audio.volume! * 100)}%)
-                </div>
-              ))}
-              {activeVideos.length === 0 && activeAudios.length === 0 && (
-                <div className="text-xs text-white/50">No active media at current position</div>
-              )}
-            </div>
+      {/* Active media info */}
+      <div className="p-2 bg-editor-panel/70 border-t border-white/10 h-12 overflow-hidden">
+        <div className="flex items-center space-x-4">
+          <div className="text-xs font-medium text-white/70">Active Media:</div>
+          <div className="flex flex-wrap gap-2">
+            {activeVideos.map(video => (
+              <div key={video.id} className="text-xs bg-yellow-400/20 px-2 py-1 rounded text-white/90">
+                📹 {video.name}
+              </div>
+            ))}
+            {activeAudios.map(audio => (
+              <div key={audio.id} className="text-xs bg-blue-400/20 px-2 py-1 rounded text-white/90">
+                🔊 {audio.name} ({Math.round(audio.volume! * 100)}%)
+              </div>
+            ))}
+            {activeVideos.length === 0 && activeAudios.length === 0 && (
+              <div className="text-xs text-white/50">No active media at current position</div>
+            )}
           </div>
-        </ScrollArea>
+        </div>
       </div>
     </div>
   );

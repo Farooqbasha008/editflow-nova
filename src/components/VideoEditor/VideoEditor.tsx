@@ -6,6 +6,8 @@ import Timeline from './Timeline';
 import Preview from './Preview';
 import { toast } from 'sonner';
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Image, Film, Music, Mic, FolderOpen } from 'lucide-react';
 
 export interface TimelineItem {
   id: string;
@@ -28,6 +30,7 @@ const VideoEditor: React.FC = () => {
   const [timelineItems, setTimelineItems] = useState<TimelineItem[]>([]);
   const [volume, setVolume] = useState(1);
   const [muted, setMuted] = useState(false);
+  const [activeTab, setActiveTab] = useState<string>("visuals");
   
   // Simulated playback
   useEffect(() => {
@@ -132,16 +135,45 @@ const VideoEditor: React.FC = () => {
         onExport={handleExport}
       />
       
-      <ResizablePanelGroup direction="horizontal" className="flex-1 overflow-hidden">
-        <ResizablePanel defaultSize={20} minSize={15} maxSize={30}>
-          <MediaLibrary onAddToTimeline={handleAddTimelineItem} />
-        </ResizablePanel>
-        
-        <ResizableHandle withHandle />
-        
-        <ResizablePanel defaultSize={80}>
+      <div className="flex-1 flex overflow-hidden">
+        {/* Left sidebar - Media Library */}
+        <div className="w-72 bg-editor-panel border-r border-white/10 flex flex-col">
+          <Tabs defaultValue="visuals" value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <TabsList className="w-full flex justify-between bg-editor-bg/50 rounded-none border-b border-white/10">
+              <TabsTrigger value="visuals" className="flex-1 py-2 px-3 data-[state=active]:bg-editor-hover">
+                <Film size={16} className="mr-2" />
+                <span className="text-xs">Visuals</span>
+              </TabsTrigger>
+              <TabsTrigger value="audio" className="flex-1 py-2 px-3 data-[state=active]:bg-editor-hover">
+                <Music size={16} className="mr-2" />
+                <span className="text-xs">Audio</span>
+              </TabsTrigger>
+              <TabsTrigger value="voiceover" className="flex-1 py-2 px-3 data-[state=active]:bg-editor-hover">
+                <Mic size={16} className="mr-2" />
+                <span className="text-xs">Voice</span>
+              </TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="visuals" className="p-0 flex-1">
+              <MediaLibrary onAddToTimeline={handleAddTimelineItem} mediaType="video" />
+            </TabsContent>
+            
+            <TabsContent value="audio" className="p-0 flex-1">
+              <MediaLibrary onAddToTimeline={handleAddTimelineItem} mediaType="audio" />
+            </TabsContent>
+            
+            <TabsContent value="voiceover" className="p-0 flex-1">
+              <div className="flex flex-col items-center justify-center h-full p-4 text-white/70">
+                <Mic size={32} className="mb-2" />
+                <p className="text-sm">Record voiceover coming soon</p>
+              </div>
+            </TabsContent>
+          </Tabs>
+        </div>
+      
+        <div className="flex-1 overflow-hidden">
           <ResizablePanelGroup direction="vertical">
-            <ResizablePanel defaultSize={65} minSize={40}>
+            <ResizablePanel defaultSize={70} minSize={40}>
               <Preview 
                 currentTime={currentTime} 
                 isPlaying={isPlaying} 
@@ -155,7 +187,7 @@ const VideoEditor: React.FC = () => {
             
             <ResizableHandle withHandle />
             
-            <ResizablePanel defaultSize={35} minSize={25}>
+            <ResizablePanel defaultSize={30} minSize={20}>
               <Timeline 
                 currentTime={currentTime}
                 duration={duration}
@@ -168,8 +200,8 @@ const VideoEditor: React.FC = () => {
               />
             </ResizablePanel>
           </ResizablePanelGroup>
-        </ResizablePanel>
-      </ResizablePanelGroup>
+        </div>
+      </div>
     </div>
   );
 };

@@ -7,7 +7,7 @@ const Index = () => {
   return (
     <div className="h-screen w-screen overflow-hidden bg-editor-bg">
       <VideoEditor />
-      <Toaster position="top-right" />
+      <Toaster position="top-right" richColors />
     </div>
   );
 };
