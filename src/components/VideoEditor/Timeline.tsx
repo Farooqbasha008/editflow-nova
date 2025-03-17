@@ -5,6 +5,7 @@ import { cn } from '@/lib/utils';
 import { TimelineItem } from './VideoEditor';
 import { Slider } from '@/components/ui/slider';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { ScrollAreaHorizontal } from '@/components/ui/scroll-area-horizontal';
 import { toast } from 'sonner';
 
 interface TimelineProps {
@@ -278,7 +279,7 @@ const Timeline: React.FC<TimelineProps> = ({
           className="flex select-none overflow-hidden"
           style={{ width: timelineWidth }}
         >
-          <ScrollArea orientation="horizontal">
+          <ScrollAreaHorizontal orientation="horizontal">
             <div style={{ width: timelineWidth, height: '100%' }} className="flex">
               {timeMarkers.map(time => (
                 <div 
@@ -290,7 +291,7 @@ const Timeline: React.FC<TimelineProps> = ({
                 </div>
               ))}
             </div>
-          </ScrollArea>
+          </ScrollAreaHorizontal>
         </div>
       </div>
       
@@ -314,7 +315,7 @@ const Timeline: React.FC<TimelineProps> = ({
         </div>
         
         {/* Timeline */}
-        <ScrollArea orientation="horizontal" className="flex-1">
+        <ScrollAreaHorizontal orientation="horizontal" className="flex-1">
           <div 
             ref={timelineRef}
             className="relative overflow-y-hidden"
@@ -410,7 +411,7 @@ const Timeline: React.FC<TimelineProps> = ({
               );
             })}
           </div>
-        </ScrollArea>
+        </ScrollAreaHorizontal>
       </div>
     </div>
   );

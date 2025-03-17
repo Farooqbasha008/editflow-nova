@@ -1,4 +1,3 @@
-
 import React, { useRef, useEffect, useState } from 'react';
 import { Maximize, MinusCircle, PlusCircle, Volume2, VolumeX, Undo, Redo, Scissors, Square, RotateCcw, RotateCw, Pause, Play } from 'lucide-react';
 import { toast } from 'sonner';
@@ -12,6 +11,7 @@ interface PreviewProps {
   timelineItems: TimelineItem[];
   volume: number;
   muted: boolean;
+  duration: number;
   onToggleMute: () => void;
   onVolumeChange: (value: number) => void;
 }
@@ -24,6 +24,7 @@ const Preview: React.FC<PreviewProps> = ({
   timelineItems,
   volume,
   muted,
+  duration,
   onToggleMute,
   onVolumeChange
 }) => {
@@ -34,7 +35,6 @@ const Preview: React.FC<PreviewProps> = ({
   const [fullscreen, setFullscreen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   
-  // Get active media based on current time
   const activeVideos = timelineItems.filter(item => 
     item.type === 'video' && 
     currentTime >= item.start && 
@@ -47,10 +47,8 @@ const Preview: React.FC<PreviewProps> = ({
     currentTime < (item.start + item.duration)
   );
   
-  // Use the last added video as the active one (highest z-index)
   const activeVideo = activeVideos.length > 0 ? activeVideos[activeVideos.length - 1] : null;
   
-  // Handle zoom
   const handleZoomIn = () => {
     setZoom(prev => Math.min(prev + 0.1, 2));
   };
@@ -59,13 +57,11 @@ const Preview: React.FC<PreviewProps> = ({
     setZoom(prev => Math.max(prev - 0.1, 0.5));
   };
   
-  // Handle volume slider
   const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newVolume = parseFloat(e.target.value);
     onVolumeChange(newVolume);
   };
   
-  // Toggle fullscreen
   const toggleFullscreen = () => {
     if (!containerRef.current) return;
     
@@ -82,14 +78,12 @@ const Preview: React.FC<PreviewProps> = ({
     }
   };
   
-  // Sync video with timeline
   useEffect(() => {
     if (videoRef.current && loaded && activeVideo) {
       if (Math.abs(videoRef.current.currentTime - (currentTime - activeVideo.start)) > 0.5) {
         videoRef.current.currentTime = Math.max(0, currentTime - activeVideo.start);
       }
       
-      // Set volume
       videoRef.current.volume = muted ? 0 : volume;
       
       if (isPlaying && videoRef.current.paused) {
@@ -100,32 +94,26 @@ const Preview: React.FC<PreviewProps> = ({
         videoRef.current.pause();
       }
     } else if (videoRef.current && !activeVideo) {
-      // No active video, pause if playing
       if (!videoRef.current.paused) {
         videoRef.current.pause();
       }
     }
   }, [activeVideo, currentTime, isPlaying, loaded, volume, muted]);
   
-  // Sync audio with timeline
   useEffect(() => {
-    // Process active audio items
     activeAudios.forEach(audio => {
       let audioElement = audioRefs.current.get(audio.id);
       
       if (!audioElement) {
-        // Create a new audio element if it doesn't exist
         audioElement = new Audio(audio.src);
         audioRefs.current.set(audio.id, audioElement);
       }
       
-      // Calculate relative position in the audio clip
       const relativePosition = currentTime - audio.start;
       if (Math.abs(audioElement.currentTime - relativePosition) > 0.5) {
         audioElement.currentTime = Math.max(0, relativePosition);
       }
       
-      // Set individual volume for this audio track (multiply by master volume)
       const clipVolume = (audio.volume || 1) * (muted ? 0 : volume);
       audioElement.volume = clipVolume;
       
@@ -138,7 +126,6 @@ const Preview: React.FC<PreviewProps> = ({
       }
     });
     
-    // Pause any audio elements that are no longer active
     audioRefs.current.forEach((audioElement, id) => {
       if (!activeAudios.some(audio => audio.id === id)) {
         if (!audioElement.paused) {
@@ -148,7 +135,6 @@ const Preview: React.FC<PreviewProps> = ({
     });
   }, [activeAudios, currentTime, isPlaying, volume, muted]);
   
-  // Set video source based on active item
   useEffect(() => {
     if (videoRef.current && activeVideo?.src) {
       if (videoRef.current.src !== activeVideo.src) {
@@ -159,7 +145,6 @@ const Preview: React.FC<PreviewProps> = ({
     }
   }, [activeVideo]);
   
-  // Cleanup audio elements when component unmounts
   useEffect(() => {
     return () => {
       audioRefs.current.forEach((audio) => {
@@ -172,7 +157,6 @@ const Preview: React.FC<PreviewProps> = ({
   
   return (
     <div ref={containerRef} className="flex-1 bg-editor-bg flex flex-col overflow-hidden animate-fade-in">
-      {/* Preview toolbar */}
       <div className="flex items-center justify-between p-2 bg-editor-panel/70 border-b border-white/10">
         <div className="flex items-center space-x-2">
           <button className="button-icon">
@@ -217,7 +201,6 @@ const Preview: React.FC<PreviewProps> = ({
         </div>
       </div>
       
-      {/* Video preview area */}
       <div className="flex-1 bg-[#1a1a1a] flex items-center justify-center p-4 relative">
         <div className={cn(
           "relative aspect-video bg-black rounded-md overflow-hidden shadow-2xl border border-white/5 transition-all",
@@ -237,9 +220,7 @@ const Preview: React.FC<PreviewProps> = ({
             }}
           />
           
-          {/* Overlay controls */}
           <div className="absolute inset-0 opacity-0 hover:opacity-100 transition-opacity duration-300 flex flex-col justify-between p-3">
-            {/* Top controls */}
             <div className="flex justify-end">
               <div className="flex space-x-2 bg-black/50 backdrop-blur-sm p-1 rounded-md">
                 <button 
@@ -263,14 +244,12 @@ const Preview: React.FC<PreviewProps> = ({
               </div>
             </div>
             
-            {/* Center play button */}
             <div className="flex-1 flex items-center justify-center">
               <button className="p-4 bg-black/30 hover:bg-black/50 backdrop-blur-sm rounded-full">
                 {isPlaying ? <Pause size={24} /> : <Play size={24} />}
               </button>
             </div>
             
-            {/* Bottom timeline scrubber (for visual only) */}
             <div className="w-full bg-black/50 backdrop-blur-sm p-2 rounded-md">
               <div className="w-full h-1 bg-white/20 rounded-full overflow-hidden">
                 <div 
@@ -283,7 +262,6 @@ const Preview: React.FC<PreviewProps> = ({
         </div>
       </div>
       
-      {/* Active media info */}
       <div className="p-2 bg-editor-panel/70 border-t border-white/10 h-12 overflow-hidden">
         <div className="flex items-center space-x-4">
           <div className="text-xs font-medium text-white/70">Active Media:</div>

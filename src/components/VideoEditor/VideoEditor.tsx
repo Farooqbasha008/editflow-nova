@@ -180,6 +180,7 @@ const VideoEditor: React.FC = () => {
                 timelineItems={timelineItems}
                 volume={volume}
                 muted={muted}
+                duration={duration} // Added the duration prop
                 onToggleMute={handleToggleMute}
                 onVolumeChange={handleVolumeChange}
               />
