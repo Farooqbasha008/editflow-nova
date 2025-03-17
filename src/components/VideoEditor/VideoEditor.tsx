@@ -5,9 +5,8 @@ import MediaLibrary from './MediaLibrary';
 import Timeline from './Timeline';
 import Preview from './Preview';
 import { toast } from 'sonner';
-import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Image, Film, Music, Mic, FolderOpen } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 export interface TimelineItem {
   id: string;
@@ -135,10 +134,10 @@ const VideoEditor: React.FC = () => {
         onExport={handleExport}
       />
       
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex flex-1 overflow-hidden">
         {/* Left sidebar - Media Library */}
-        <div className="w-72 bg-editor-panel border-r border-white/10 flex flex-col">
-          <Tabs defaultValue="visuals" value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <div className="w-64 min-w-64 bg-editor-panel border-r border-white/10 flex flex-col">
+          <Tabs defaultValue="visuals" value={activeTab} onValueChange={setActiveTab} className="w-full h-full">
             <TabsList className="w-full flex justify-between bg-editor-bg/50 rounded-none border-b border-white/10">
               <TabsTrigger value="visuals" className="flex-1 py-2 px-3 data-[state=active]:bg-editor-hover">
                 <Film size={16} className="mr-2" />
@@ -154,15 +153,15 @@ const VideoEditor: React.FC = () => {
               </TabsTrigger>
             </TabsList>
             
-            <TabsContent value="visuals" className="p-0 flex-1">
+            <TabsContent value="visuals" className="p-0 flex-1 overflow-hidden">
               <MediaLibrary onAddToTimeline={handleAddTimelineItem} mediaType="video" />
             </TabsContent>
             
-            <TabsContent value="audio" className="p-0 flex-1">
+            <TabsContent value="audio" className="p-0 flex-1 overflow-hidden">
               <MediaLibrary onAddToTimeline={handleAddTimelineItem} mediaType="audio" />
             </TabsContent>
             
-            <TabsContent value="voiceover" className="p-0 flex-1">
+            <TabsContent value="voiceover" className="p-0 flex-1 overflow-hidden">
               <div className="flex flex-col items-center justify-center h-full p-4 text-white/70">
                 <Mic size={32} className="mb-2" />
                 <p className="text-sm">Record voiceover coming soon</p>
@@ -171,36 +170,34 @@ const VideoEditor: React.FC = () => {
           </Tabs>
         </div>
       
-        <div className="flex-1 overflow-hidden">
-          <ResizablePanelGroup direction="vertical">
-            <ResizablePanel defaultSize={70} minSize={40}>
-              <Preview 
-                currentTime={currentTime} 
-                isPlaying={isPlaying} 
-                timelineItems={timelineItems}
-                volume={volume}
-                muted={muted}
-                duration={duration} // Added the duration prop
-                onToggleMute={handleToggleMute}
-                onVolumeChange={handleVolumeChange}
-              />
-            </ResizablePanel>
-            
-            <ResizableHandle withHandle />
-            
-            <ResizablePanel defaultSize={30} minSize={20}>
-              <Timeline 
-                currentTime={currentTime}
-                duration={duration}
-                isPlaying={isPlaying}
-                onPlayPause={handlePlayPause}
-                onSeek={handleSeek}
-                items={timelineItems}
-                onRemoveItem={handleRemoveTimelineItem}
-                onUpdateItem={handleUpdateTimelineItem}
-              />
-            </ResizablePanel>
-          </ResizablePanelGroup>
+        <div className="flex-1 flex flex-col overflow-hidden">
+          {/* Preview area */}
+          <div className="h-[60%] min-h-[300px] overflow-hidden">
+            <Preview 
+              currentTime={currentTime} 
+              isPlaying={isPlaying} 
+              timelineItems={timelineItems}
+              volume={volume}
+              muted={muted}
+              duration={duration}
+              onToggleMute={handleToggleMute}
+              onVolumeChange={handleVolumeChange}
+            />
+          </div>
+          
+          {/* Timeline area */}
+          <div className="h-[40%] border-t border-white/10 overflow-hidden">
+            <Timeline 
+              currentTime={currentTime}
+              duration={duration}
+              isPlaying={isPlaying}
+              onPlayPause={handlePlayPause}
+              onSeek={handleSeek}
+              items={timelineItems}
+              onRemoveItem={handleRemoveTimelineItem}
+              onUpdateItem={handleUpdateTimelineItem}
+            />
+          </div>
         </div>
       </div>
     </div>

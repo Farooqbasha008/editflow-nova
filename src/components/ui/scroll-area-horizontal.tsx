@@ -15,13 +15,11 @@ interface ScrollAreaHorizontalProps {
 const ScrollAreaHorizontal = React.forwardRef<
   HTMLDivElement,
   ScrollAreaHorizontalProps
->(({ children, orientation = "vertical", className, ...props }, ref) => {
+>(({ children, orientation = "horizontal", className, ...props }, ref) => {
   return (
     <BaseScrollArea ref={ref} className={className} {...props}>
       {children}
-      {orientation === "horizontal" && (
-        <ScrollBar orientation="horizontal" />
-      )}
+      <ScrollBar orientation={orientation} />
     </BaseScrollArea>
   );
 });
