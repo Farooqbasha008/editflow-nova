@@ -19,7 +19,7 @@ interface VideoPlayerProps {
   onToggleFullscreen: () => void;
   fullscreen: boolean;
   containerRef: React.RefObject<HTMLDivElement>;
-  duration: number; // Added the missing duration prop
+  duration: number; // This prop is needed for progress calculation
 }
 
 const VideoPlayer: React.FC<VideoPlayerProps> = ({
@@ -34,7 +34,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   onToggleFullscreen,
   fullscreen,
   containerRef,
-  duration // Added the duration parameter to the component props
+  duration // Make sure this prop is included in the component destructuring
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [loaded, setLoaded] = useState(false);
