@@ -5,7 +5,7 @@ import MediaLibrary from './MediaLibrary';
 import Timeline from './Timeline';
 import Preview from './Preview';
 import { toast } from 'sonner';
-import { Image, Film, Music, Mic, FolderOpen } from 'lucide-react';
+import { Image, Film, Music, Mic, FolderOpen, TextIcon } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 export interface TimelineItem {
@@ -136,19 +136,23 @@ const VideoEditor: React.FC = () => {
       
       <div className="flex flex-1 overflow-hidden">
         {/* Left sidebar - Media Library */}
-        <div className="w-64 min-w-64 bg-editor-panel border-r border-white/10 flex flex-col">
+        <div className="w-56 min-w-56 bg-editor-panel border-r border-white/10 flex flex-col">
           <Tabs defaultValue="visuals" value={activeTab} onValueChange={setActiveTab} className="w-full h-full">
-            <TabsList className="w-full flex justify-between bg-editor-bg/50 rounded-none border-b border-white/10">
-              <TabsTrigger value="visuals" className="flex-1 py-2 px-3 data-[state=active]:bg-editor-hover">
-                <Film size={16} className="mr-2" />
+            <TabsList className="flex justify-between w-full bg-editor-bg/50 rounded-none border-b border-white/10 px-1 py-0 h-auto">
+              <TabsTrigger value="visuals" className="flex gap-1 items-center py-2 px-2 rounded-full data-[state=active]:bg-editor-accent">
+                <Film size={16} />
                 <span className="text-xs">Visuals</span>
               </TabsTrigger>
-              <TabsTrigger value="audio" className="flex-1 py-2 px-3 data-[state=active]:bg-editor-hover">
-                <Music size={16} className="mr-2" />
+              <TabsTrigger value="audio" className="flex gap-1 items-center py-2 px-2 rounded-full data-[state=active]:bg-editor-accent">
+                <Music size={16} />
                 <span className="text-xs">Audio</span>
               </TabsTrigger>
-              <TabsTrigger value="voiceover" className="flex-1 py-2 px-3 data-[state=active]:bg-editor-hover">
-                <Mic size={16} className="mr-2" />
+              <TabsTrigger value="text" className="flex gap-1 items-center py-2 px-2 rounded-full data-[state=active]:bg-editor-accent">
+                <TextIcon size={16} />
+                <span className="text-xs">Text</span>
+              </TabsTrigger>
+              <TabsTrigger value="voiceover" className="flex gap-1 items-center py-2 px-2 rounded-full data-[state=active]:bg-editor-accent">
+                <Mic size={16} />
                 <span className="text-xs">Voice</span>
               </TabsTrigger>
             </TabsList>
@@ -159,6 +163,13 @@ const VideoEditor: React.FC = () => {
             
             <TabsContent value="audio" className="p-0 flex-1 overflow-hidden">
               <MediaLibrary onAddToTimeline={handleAddTimelineItem} mediaType="audio" />
+            </TabsContent>
+            
+            <TabsContent value="text" className="p-0 flex-1 overflow-hidden">
+              <div className="flex flex-col items-center justify-center h-full p-4 text-white/70">
+                <TextIcon size={32} className="mb-2" />
+                <p className="text-sm">Text elements coming soon</p>
+              </div>
             </TabsContent>
             
             <TabsContent value="voiceover" className="p-0 flex-1 overflow-hidden">
@@ -172,7 +183,7 @@ const VideoEditor: React.FC = () => {
       
         <div className="flex-1 flex flex-col overflow-hidden">
           {/* Preview area */}
-          <div className="h-[60%] min-h-[300px] overflow-hidden">
+          <div className="h-[55%] min-h-[300px] overflow-hidden">
             <Preview 
               currentTime={currentTime} 
               isPlaying={isPlaying} 
@@ -186,7 +197,7 @@ const VideoEditor: React.FC = () => {
           </div>
           
           {/* Timeline area */}
-          <div className="h-[40%] border-t border-white/10 overflow-hidden">
+          <div className="h-[45%] border-t border-white/10 overflow-hidden">
             <Timeline 
               currentTime={currentTime}
               duration={duration}
