@@ -1,7 +1,7 @@
 
 import React, { useRef, useEffect, useState } from 'react';
 import { cn } from '@/lib/utils';
-import { Maximize, MinusCircle, PlusCircle, Play, Pause } from 'lucide-react';
+import { Maximize, MinusCircle, PlusCircle, Play, Pause, Volume2, VolumeX } from 'lucide-react';
 import { toast } from 'sonner';
 import { TimelineItem } from '../VideoEditor';
 
@@ -71,6 +71,13 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     }
   }, [activeVideo]);
 
+  // Format time as MM:SS
+  const formatTime = (timeInSeconds: number) => {
+    const minutes = Math.floor(timeInSeconds / 60);
+    const seconds = Math.floor(timeInSeconds % 60);
+    return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+  };
+
   return (
     <div className="flex-1 bg-[#1a1a1a] flex items-center justify-center p-2 relative">
       <div className={cn(
@@ -91,8 +98,9 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
           }}
         />
         
-        <div className="absolute inset-0 opacity-0 hover:opacity-100 transition-opacity duration-300 flex flex-col justify-between p-3">
-          <div className="flex justify-end">
+        {/* Video Controls Overlay - matching the UI in the image */}
+        <div className="absolute inset-0 opacity-0 hover:opacity-100 transition-opacity duration-300 flex flex-col justify-between">
+          <div className="p-3 flex justify-end">
             <div className="flex space-x-1 bg-black/50 backdrop-blur-sm p-1 rounded-md">
               <button 
                 className="p-1 text-white/80 hover:text-white transition-colors"
@@ -121,13 +129,34 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
             </button>
           </div>
           
-          <div className="w-full bg-black/50 backdrop-blur-sm p-1 rounded-md">
-            <div className="w-full h-1 bg-white/20 rounded-full overflow-hidden">
+          {/* Bottom control bar - similar to the image */}
+          <div className="w-full bg-black/50 backdrop-blur-sm p-2 flex items-center gap-3">
+            <button className="text-white">
+              {isPlaying ? <Pause size={16} /> : <Play size={16} />}
+            </button>
+            
+            <button className="text-white">
+              {muted ? <VolumeX size={16} /> : <Volume2 size={16} />}
+            </button>
+            
+            <div className="text-white text-xs font-medium">
+              {formatTime(currentTime)} / {formatTime(duration)}
+            </div>
+            
+            <div className="flex-1 h-1 bg-white/20 rounded-full overflow-hidden">
               <div 
                 className="h-full bg-editor-accent transition-all"
                 style={{ width: `${(currentTime / duration) * 100}%` }}
               ></div>
             </div>
+            
+            <button 
+              className="text-white/80 hover:text-white text-xs bg-black/30 px-2 py-0.5 rounded"
+              onClick={onToggleFullscreen}
+            >
+              <Maximize size={12} className="mr-1 inline" />
+              <span>Full</span>
+            </button>
           </div>
         </div>
       </div>
