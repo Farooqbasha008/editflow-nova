@@ -1,4 +1,3 @@
-
 import React, { useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { TimelineItem } from '../VideoEditor';
@@ -6,6 +5,7 @@ import PreviewControls from './PreviewControls';
 import VideoPlayer from './VideoPlayer';
 import ActiveMediaDisplay from './ActiveMediaDisplay';
 import AudioManager from './AudioManager';
+import { MinusCircle, PlusCircle } from 'lucide-react';
 
 interface PreviewProps {
   currentTime: number;
@@ -30,6 +30,7 @@ const Preview: React.FC<PreviewProps> = ({
 }) => {
   const [zoom, setZoom] = useState(1);
   const [fullscreen, setFullscreen] = useState(false);
+  const [minimized, setMinimized] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   
   const activeVideos = timelineItems.filter(item => 
@@ -75,20 +76,39 @@ const Preview: React.FC<PreviewProps> = ({
     }
   };
   
+  const toggleMinimize = () => {
+    setMinimized(prev => !prev);
+  };
+  
   return (
-    <div ref={containerRef} className="flex-1 bg-editor-bg flex flex-col overflow-hidden animate-fade-in">
-      <PreviewControls 
-        onZoomIn={handleZoomIn}
-        onZoomOut={handleZoomOut}
-        onToggleFullscreen={toggleFullscreen}
-        onToggleMute={onToggleMute}
-        volume={volume}
-        muted={muted}
-        onVolumeChange={handleVolumeChange}
-        currentTime={currentTime}
-        duration={duration}
-        isPlaying={isPlaying}
-      />
+    <div ref={containerRef} className={`flex-1 bg-editor-bg flex flex-col overflow-hidden animate-fade-in ${minimized ? 'h-[200px] min-h-[200px]' : ''}`}>
+      <div className="flex items-center justify-between p-1 bg-editor-panel/50 border-b border-white/10">
+        <span className="text-xs font-semibold text-white/80 px-2">Preview</span>
+        <div className="flex items-center space-x-1">
+          <button 
+            className="p-1 text-white/80 hover:text-white transition-colors"
+            onClick={toggleMinimize}
+            title={minimized ? "Expand preview" : "Minimize preview"}
+          >
+            {minimized ? <PlusCircle size={14} /> : <MinusCircle size={14} />}
+          </button>
+        </div>
+      </div>
+      
+      {!minimized && (
+        <PreviewControls 
+          onZoomIn={handleZoomIn}
+          onZoomOut={handleZoomOut}
+          onToggleFullscreen={toggleFullscreen}
+          onToggleMute={onToggleMute}
+          volume={volume}
+          muted={muted}
+          onVolumeChange={handleVolumeChange}
+          currentTime={currentTime}
+          duration={duration}
+          isPlaying={isPlaying}
+        />
+      )}
       
       <VideoPlayer 
         activeVideo={activeVideo}
@@ -102,21 +122,26 @@ const Preview: React.FC<PreviewProps> = ({
         onToggleFullscreen={toggleFullscreen}
         fullscreen={fullscreen}
         containerRef={containerRef}
-        duration={duration} // Passing the duration prop to VideoPlayer
+        duration={duration}
+        minimized={minimized}
       />
       
-      <AudioManager 
-        activeAudios={activeAudios}
-        currentTime={currentTime}
-        isPlaying={isPlaying}
-        volume={volume}
-        muted={muted}
-      />
-      
-      <ActiveMediaDisplay 
-        activeVideos={activeVideos}
-        activeAudios={activeAudios}
-      />
+      {!minimized && (
+        <>
+          <AudioManager 
+            activeAudios={activeAudios}
+            currentTime={currentTime}
+            isPlaying={isPlaying}
+            volume={volume}
+            muted={muted}
+          />
+          
+          <ActiveMediaDisplay 
+            activeVideos={activeVideos}
+            activeAudios={activeAudios}
+          />
+        </>
+      )}
     </div>
   );
 };

@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Play, Pause, Volume2, Scissors, Plus, Trash2, ZoomIn, ZoomOut, Clock, Undo, Redo } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -17,6 +16,7 @@ interface TimelineProps {
   items: TimelineItem[];
   onRemoveItem: (id: string) => void;
   onUpdateItem?: (item: TimelineItem) => void;
+  scale?: number; // Pixels per second
 }
 
 const INITIAL_SCALE = 80; // pixels per second
@@ -29,7 +29,8 @@ const Timeline: React.FC<TimelineProps> = ({
   onSeek,
   items,
   onRemoveItem,
-  onUpdateItem
+  onUpdateItem,
+  scale = INITIAL_SCALE
 }) => {
   const timelineRef = useRef<HTMLDivElement>(null);
   const playheadRef = useRef<HTMLDivElement>(null);
@@ -37,7 +38,6 @@ const Timeline: React.FC<TimelineProps> = ({
   const [isDragging, setIsDragging] = useState(false);
   const [draggedItem, setDraggedItem] = useState<TimelineItem | null>(null);
   const [showVolumeControl, setShowVolumeControl] = useState<string | null>(null);
-  const [scale, setScale] = useState(INITIAL_SCALE);
   
   // Calculate timeline width based on duration
   const timelineWidth = Math.max(duration * scale, 1000);
@@ -61,15 +61,6 @@ const Timeline: React.FC<TimelineProps> = ({
     const clickedTime = (offsetX / scale);
     
     onSeek(Math.max(0, Math.min(clickedTime, duration)));
-  };
-  
-  // Handle zoom in/out
-  const handleZoomIn = () => {
-    setScale(prev => Math.min(prev * 1.2, 200));
-  };
-  
-  const handleZoomOut = () => {
-    setScale(prev => Math.max(prev / 1.2, 20));
   };
   
   // Handle item drag start
@@ -246,12 +237,6 @@ const Timeline: React.FC<TimelineProps> = ({
         <div className="flex-1" />
         
         <div className="flex items-center space-x-3">
-          <button className="button-icon" onClick={handleZoomOut}>
-            <ZoomOut size={16} />
-          </button>
-          <button className="button-icon" onClick={handleZoomIn}>
-            <ZoomIn size={16} />
-          </button>
           <div className="h-4 w-px bg-white/20 mx-1"></div>
           <button className="button-icon">
             <Undo size={16} />
