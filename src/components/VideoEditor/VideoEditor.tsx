@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import Header from './Header';
 import MediaLibrary from './MediaLibrary';
@@ -8,6 +9,7 @@ import { Image, Film, Music, Mic, FolderOpen, TextIcon, ChevronLeft, ChevronRigh
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import MediaSidebar from './MediaSidebar';
 
 export interface TimelineItem {
   id: string;
@@ -31,8 +33,8 @@ const VideoEditor: React.FC = () => {
   const [volume, setVolume] = useState(1);
   const [muted, setMuted] = useState(false);
   const [activeTab, setActiveTab] = useState<string>("visuals");
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [timelineScale, setTimelineScale] = useState(80); // scale for timeline (pixels per second)
+  const [promptText, setPromptText] = useState("");
   
   useEffect(() => {
     let playbackInterval: number;
@@ -121,6 +123,20 @@ const VideoEditor: React.FC = () => {
   const handleTimelineZoomOut = () => {
     setTimelineScale(prev => Math.max(prev / 1.2, 20));
   };
+
+  const handleGenerate = () => {
+    if (!promptText.trim()) {
+      toast.error('Please enter a prompt');
+      return;
+    }
+    
+    toast.success('Generating content', {
+      description: `Creating content based on: "${promptText}"`,
+    });
+    
+    // In a real implementation, this would trigger the AI generation
+    setPromptText("");
+  };
   
   useEffect(() => {
     const handleAddItem = (e: CustomEvent<TimelineItem>) => {
@@ -135,7 +151,7 @@ const VideoEditor: React.FC = () => {
   }, []);
   
   return (
-    <div className="flex flex-col h-full bg-editor-bg text-white">
+    <div className="flex flex-col h-full bg-[#151514] text-[#F7F8F6]">
       <Header 
         projectName={projectName}
         onRename={handleRename}
@@ -144,97 +160,22 @@ const VideoEditor: React.FC = () => {
       />
       
       <div className="flex flex-1 overflow-hidden">
-        <Collapsible 
-          open={!sidebarCollapsed} 
-          onOpenChange={(open) => setSidebarCollapsed(!open)}
-          className="h-full"
-        >
-          <div className={`${sidebarCollapsed ? 'w-8' : 'w-56'} h-full transition-all duration-300 flex flex-col`}>
-            {sidebarCollapsed ? (
-              <div className="flex flex-col h-full bg-editor-panel border-r border-white/10">
-                <CollapsibleTrigger asChild>
-                  <button className="p-2 hover:bg-editor-hover rounded-r-none flex justify-center">
-                    <ChevronRight size={16} />
-                  </button>
-                </CollapsibleTrigger>
-                
-                <div className="flex-1 flex flex-col items-center py-4 space-y-6">
-                  <button className="p-2 hover:bg-editor-hover rounded-full" title="Media">
-                    <Film size={16} />
-                  </button>
-                  <button className="p-2 hover:bg-editor-hover rounded-full" title="Audio">
-                    <Music size={16} />
-                  </button>
-                  <button className="p-2 hover:bg-editor-hover rounded-full" title="Text">
-                    <TextIcon size={16} />
-                  </button>
-                  <button className="p-2 hover:bg-editor-hover rounded-full" title="Voice">
-                    <Mic size={16} />
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <CollapsibleContent className="h-full">
-                <div className="flex items-center justify-between p-2 bg-editor-panel/70 border-b border-white/10">
-                  <span className="text-xs font-semibold">Media Library</span>
-                  <CollapsibleTrigger asChild>
-                    <button className="p-1 hover:bg-editor-hover rounded">
-                      <ChevronLeft size={14} />
-                    </button>
-                  </CollapsibleTrigger>
-                </div>
-                <div className="min-w-56 bg-editor-panel border-r border-white/10 flex-1 flex flex-col">
-                  <Tabs defaultValue="visuals" value={activeTab} onValueChange={setActiveTab} className="w-full h-full">
-                    <TabsList className="flex justify-between w-full bg-editor-bg/50 rounded-none border-b border-white/10 px-1 py-0 h-auto">
-                      <TabsTrigger value="visuals" className="flex gap-1 items-center py-2 px-2 rounded-full data-[state=active]:bg-editor-accent">
-                        <Film size={16} />
-                        <span className="text-xs">Visuals</span>
-                      </TabsTrigger>
-                      <TabsTrigger value="audio" className="flex gap-1 items-center py-2 px-2 rounded-full data-[state=active]:bg-editor-accent">
-                        <Music size={16} />
-                        <span className="text-xs">Audio</span>
-                      </TabsTrigger>
-                      <TabsTrigger value="text" className="flex gap-1 items-center py-2 px-2 rounded-full data-[state=active]:bg-editor-accent">
-                        <TextIcon size={16} />
-                        <span className="text-xs">Text</span>
-                      </TabsTrigger>
-                      <TabsTrigger value="voiceover" className="flex gap-1 items-center py-2 px-2 rounded-full data-[state=active]:bg-editor-accent">
-                        <Mic size={16} />
-                        <span className="text-xs">Voice</span>
-                      </TabsTrigger>
-                    </TabsList>
-                    
-                    <TabsContent value="visuals" className="p-0 flex-1 overflow-hidden">
-                      <MediaLibrary onAddToTimeline={handleAddTimelineItem} mediaType="video" />
-                    </TabsContent>
-                    
-                    <TabsContent value="audio" className="p-0 flex-1 overflow-hidden">
-                      <MediaLibrary onAddToTimeline={handleAddTimelineItem} mediaType="audio" />
-                    </TabsContent>
-                    
-                    <TabsContent value="text" className="p-0 flex-1 overflow-hidden">
-                      <div className="flex flex-col items-center justify-center h-full p-4 text-white/70">
-                        <TextIcon size={32} className="mb-2" />
-                        <p className="text-sm">Text elements coming soon</p>
-                      </div>
-                    </TabsContent>
-                    
-                    <TabsContent value="voiceover" className="p-0 flex-1 overflow-hidden">
-                      <div className="flex flex-col items-center justify-center h-full p-4 text-white/70">
-                        <Mic size={32} className="mb-2" />
-                        <p className="text-sm">Record voiceover coming soon</p>
-                      </div>
-                    </TabsContent>
-                  </Tabs>
-                </div>
-              </CollapsibleContent>
-            )}
-          </div>
-        </Collapsible>
-      
-        <div className="flex-1 flex flex-col overflow-hidden">
+        {/* Left Panel - 30% width */}
+        <div className="w-[30%] h-full flex flex-col border-r border-white/10">
+          <MediaSidebar 
+            activeTab={activeTab}
+            setActiveTab={setActiveTab}
+            onAddToTimeline={handleAddTimelineItem}
+            promptText={promptText}
+            setPromptText={setPromptText}
+            onGenerate={handleGenerate}
+          />
+        </div>
+        
+        {/* Right Panel - 70% width */}
+        <div className="w-[70%] h-full flex flex-col">
           <ResizablePanelGroup direction="vertical" className="h-full">
-            <ResizablePanel defaultSize={50} minSize={20}>
+            <ResizablePanel defaultSize={60} minSize={30}>
               <Preview 
                 currentTime={currentTime} 
                 isPlaying={isPlaying} 
@@ -244,12 +185,13 @@ const VideoEditor: React.FC = () => {
                 duration={duration}
                 onToggleMute={handleToggleMute}
                 onVolumeChange={handleVolumeChange}
+                onPlayPause={handlePlayPause}
               />
             </ResizablePanel>
             
             <ResizableHandle withHandle />
             
-            <ResizablePanel defaultSize={50} minSize={25}>
+            <ResizablePanel defaultSize={40} minSize={25}>
               <div className="flex items-center justify-end p-1 bg-editor-panel/50 border-b border-white/10">
                 <span className="text-xs font-semibold text-white/80 mr-2">Timeline Zoom:</span>
                 <button 

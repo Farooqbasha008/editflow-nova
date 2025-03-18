@@ -1,11 +1,11 @@
+
 import React, { useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { TimelineItem } from '../VideoEditor';
-import PreviewControls from './PreviewControls';
 import VideoPlayer from './VideoPlayer';
 import ActiveMediaDisplay from './ActiveMediaDisplay';
 import AudioManager from './AudioManager';
-import { MinusCircle, PlusCircle } from 'lucide-react';
+import { Maximize, Volume2, VolumeX, Play, Pause } from 'lucide-react';
 
 interface PreviewProps {
   currentTime: number;
@@ -16,6 +16,7 @@ interface PreviewProps {
   duration: number;
   onToggleMute: () => void;
   onVolumeChange: (value: number) => void;
+  onPlayPause: () => void;
 }
 
 const Preview: React.FC<PreviewProps> = ({ 
@@ -26,11 +27,10 @@ const Preview: React.FC<PreviewProps> = ({
   muted,
   duration,
   onToggleMute,
-  onVolumeChange
+  onVolumeChange,
+  onPlayPause
 }) => {
-  const [zoom, setZoom] = useState(1);
   const [fullscreen, setFullscreen] = useState(false);
-  const [minimized, setMinimized] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   
   const activeVideos = timelineItems.filter(item => 
@@ -46,14 +46,6 @@ const Preview: React.FC<PreviewProps> = ({
   );
   
   const activeVideo = activeVideos.length > 0 ? activeVideos[activeVideos.length - 1] : null;
-  
-  const handleZoomIn = () => {
-    setZoom(prev => Math.min(prev + 0.1, 2));
-  };
-  
-  const handleZoomOut = () => {
-    setZoom(prev => Math.max(prev - 0.1, 0.5));
-  };
   
   const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newVolume = parseFloat(e.target.value);
@@ -76,72 +68,81 @@ const Preview: React.FC<PreviewProps> = ({
     }
   };
   
-  const toggleMinimize = () => {
-    setMinimized(prev => !prev);
+  const formatTime = (time: number) => {
+    const minutes = Math.floor(time / 60);
+    const seconds = Math.floor(time % 60);
+    return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
   };
   
   return (
-    <div ref={containerRef} className={`flex-1 bg-editor-bg flex flex-col overflow-hidden animate-fade-in ${minimized ? 'h-[200px] min-h-[200px]' : ''}`}>
-      <div className="flex items-center justify-between p-1 bg-editor-panel/50 border-b border-white/10">
-        <span className="text-xs font-semibold text-white/80 px-2">Preview</span>
-        <div className="flex items-center space-x-1">
-          <button 
-            className="p-1 text-white/80 hover:text-white transition-colors"
-            onClick={toggleMinimize}
-            title={minimized ? "Expand preview" : "Minimize preview"}
-          >
-            {minimized ? <PlusCircle size={14} /> : <MinusCircle size={14} />}
-          </button>
-        </div>
-      </div>
-      
-      {!minimized && (
-        <PreviewControls 
-          onZoomIn={handleZoomIn}
-          onZoomOut={handleZoomOut}
-          onToggleFullscreen={toggleFullscreen}
-          onToggleMute={onToggleMute}
-          volume={volume}
-          muted={muted}
-          onVolumeChange={handleVolumeChange}
-          currentTime={currentTime}
-          duration={duration}
-          isPlaying={isPlaying}
-        />
-      )}
-      
+    <div ref={containerRef} className="flex-1 bg-[#151514] flex flex-col overflow-hidden animate-fade-in">
       <VideoPlayer 
         activeVideo={activeVideo}
         currentTime={currentTime}
         isPlaying={isPlaying}
         muted={muted}
         volume={volume}
-        zoom={zoom}
-        onZoomIn={handleZoomIn}
-        onZoomOut={handleZoomOut}
-        onToggleFullscreen={toggleFullscreen}
         fullscreen={fullscreen}
         containerRef={containerRef}
         duration={duration}
-        minimized={minimized}
       />
       
-      {!minimized && (
-        <>
-          <AudioManager 
-            activeAudios={activeAudios}
-            currentTime={currentTime}
-            isPlaying={isPlaying}
-            volume={volume}
-            muted={muted}
-          />
+      <div className="p-3 flex items-center justify-between border-b border-white/10 bg-[#151514]">
+        <div className="flex items-center gap-3">
+          <button 
+            className="w-10 h-10 flex items-center justify-center bg-white/10 hover:bg-white/20 rounded-full transition-colors"
+            onClick={onPlayPause}
+          >
+            {isPlaying ? 
+              <Pause size={18} className="text-[#F7F8F6]" /> : 
+              <Play size={18} className="text-[#F7F8F6] ml-1" />
+            }
+          </button>
           
-          <ActiveMediaDisplay 
-            activeVideos={activeVideos}
-            activeAudios={activeAudios}
+          <button 
+            className="w-8 h-8 flex items-center justify-center text-[#F7F8F6]/80 hover:text-[#F7F8F6] transition-colors"
+            onClick={onToggleMute}
+          >
+            {muted ? <VolumeX size={18} /> : <Volume2 size={18} />}
+          </button>
+          
+          <input
+            type="range"
+            min="0"
+            max="1"
+            step="0.01"
+            value={volume}
+            onChange={handleVolumeChange}
+            className="w-20 h-1 bg-white/20 rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:bg-[#D7F266] [&::-webkit-slider-thumb]:rounded-full"
           />
-        </>
-      )}
+        </div>
+        
+        <div className="text-[#F7F8F6]/80 text-sm">
+          {formatTime(currentTime)} / {formatTime(duration)}
+        </div>
+        
+        <div className="flex items-center gap-3">
+          <button
+            className="w-8 h-8 flex items-center justify-center text-[#F7F8F6]/80 hover:text-[#F7F8F6] transition-colors"
+            onClick={toggleFullscreen}
+          >
+            <Maximize size={18} />
+          </button>
+        </div>
+      </div>
+      
+      <AudioManager 
+        activeAudios={activeAudios}
+        currentTime={currentTime}
+        isPlaying={isPlaying}
+        volume={volume}
+        muted={muted}
+      />
+      
+      <ActiveMediaDisplay 
+        activeVideos={activeVideos}
+        activeAudios={activeAudios}
+      />
     </div>
   );
 };
