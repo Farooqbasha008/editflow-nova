@@ -102,7 +102,7 @@ const Preview: React.FC<PreviewProps> = ({
         onToggleFullscreen={toggleFullscreen}
         fullscreen={fullscreen}
         containerRef={containerRef}
-        duration={duration} // Explicitly passing the duration prop to VideoPlayer
+        duration={duration} // Passing the duration prop to VideoPlayer
       />
       
       <AudioManager 
