@@ -10,7 +10,7 @@ import {
 
 const Index = () => {
   return (
-    <div className="h-screen w-screen overflow-hidden bg-editor-bg">
+    <div className="h-screen w-screen overflow-hidden bg-theme-dark">
       <ResizablePanelGroup direction="horizontal" className="h-full">
         <VideoEditor />
       </ResizablePanelGroup>

@@ -29,7 +29,7 @@ const PreviewControls: React.FC<PreviewControlsProps> = ({
 }) => {
   return (
     <>
-      <div className="flex items-center justify-between p-2 bg-editor-panel/50 border-b border-white/10">
+      <div className="flex items-center justify-between p-2 bg-theme-dark/70 border-b border-theme-light/10">
         <div className="flex items-center space-x-1">
           <button className="button-icon p-1">
             <Undo size={14} />
@@ -37,7 +37,7 @@ const PreviewControls: React.FC<PreviewControlsProps> = ({
           <button className="button-icon p-1">
             <Redo size={14} />
           </button>
-          <div className="h-4 w-px bg-white/20 mx-1"></div>
+          <div className="h-4 w-px bg-theme-light/20 mx-1"></div>
           <button className="button-icon p-1">
             <Scissors size={14} />
           </button>
@@ -49,7 +49,7 @@ const PreviewControls: React.FC<PreviewControlsProps> = ({
           </button>
         </div>
         
-        <div className="text-xs font-medium text-white/70">
+        <div className="text-xs font-medium text-theme-light/70">
           {isPlaying ? "Playing" : "Paused"} | {`${Math.floor(currentTime / 60)}:${Math.floor(currentTime % 60).toString().padStart(2, '0')} / ${Math.floor(duration / 60)}:${Math.floor(duration % 60).toString().padStart(2, '0')}`}
         </div>
         
@@ -68,7 +68,7 @@ const PreviewControls: React.FC<PreviewControlsProps> = ({
             step="0.1"
             value={volume}
             onChange={onVolumeChange}
-            className="w-20 h-1 bg-white/20 rounded-full appearance-none cursor-pointer"
+            className="w-20 h-1 bg-theme-light/20 rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:bg-theme-primary [&::-webkit-slider-thumb]:rounded-full"
           />
         </div>
       </div>

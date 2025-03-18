@@ -5,72 +5,73 @@
 
 @layer base {
   :root {
-    --background: 210 40% 98%;
-    --foreground: 222 47% 11.2%;
+    --background: 60 2% 97%;     /* Off-White #F7F8F6 */
+    --foreground: 60 1% 8%;      /* Almost Black #151514 */
 
-    --card: 0 0% 100%;
-    --card-foreground: 222 47% 11.2%;
+    --card: 60 2% 97%;           /* Off-White #F7F8F6 */
+    --card-foreground: 60 1% 8%; /* Almost Black #151514 */
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 222 47% 11.2%;
+    --popover: 60 2% 97%;        /* Off-White #F7F8F6 */
+    --popover-foreground: 60 1% 8%; /* Almost Black #151514 */
 
-    --primary: 222 47% 11.2%;
-    --primary-foreground: 210 40% 98%;
+    --primary: 75 86% 67%;       /* Lime Green #D7F266 */
+    --primary-foreground: 60 1% 8%; /* Almost Black #151514 */
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222 47% 11.2%;
+    --secondary: 165 8% 85%;     /* Soft Grey #D3DDDA */
+    --secondary-foreground: 60 1% 8%; /* Almost Black #151514 */
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215 16% 47%;
+    --muted: 165 8% 85%;         /* Soft Grey #D3DDDA */
+    --muted-foreground: 60 1% 20%; /* Darker variant of Almost Black */
 
-    --accent: 216 34% 62%;
-    --accent-foreground: 210 40% 98%;
+    --accent: 75 86% 67%;        /* Lime Green #D7F266 */
+    --accent-foreground: 60 1% 8%; /* Almost Black #151514 */
 
     --destructive: 0 84% 60%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive-foreground: 60 2% 97%; /* Off-White #F7F8F6 */
 
-    --border: 214 32% 91%;
-    --input: 214 32% 91%;
-    --ring: 222 47% 11.2%;
+    --border: 165 8% 85%;        /* Soft Grey #D3DDDA */
+    --input: 165 8% 85%;         /* Soft Grey #D3DDDA */
+    --ring: 75 86% 67%;          /* Lime Green #D7F266 */
 
     --radius: 0.5rem;
 
-    --editor-bg: 220 30% 9%;
-    --editor-panel: 220 16% 16%;
-    --editor-timeline: 220 20% 13%;
-    --editor-hover: 220 18% 20%;
-    --editor-accent: 210 100% 65%;
-    --editor-accent-hover: 210 90% 55%;
+    /* Editor-specific variables */
+    --editor-bg: 60 1% 8%;         /* Almost Black #151514 */
+    --editor-panel: 60 1% 12%;     /* Slightly lighter than Almost Black */
+    --editor-timeline: 60 1% 10%;  /* Between the two above */
+    --editor-hover: 60 1% 15%;     /* Slightly lighter for hover states */
+    --editor-accent: 75 86% 67%;   /* Lime Green #D7F266 */
+    --editor-accent-hover: 75 76% 60%; /* Slightly darker Lime Green */
   }
 
   .dark {
-    --background: 222 47% 11.2%;
-    --foreground: 210 40% 98%;
+    --background: 60 1% 8%;      /* Almost Black #151514 */
+    --foreground: 60 2% 97%;     /* Off-White #F7F8F6 */
 
-    --card: 222 47% 11.2%;
-    --card-foreground: 210 40% 98%;
+    --card: 60 1% 8%;            /* Almost Black #151514 */
+    --card-foreground: 60 2% 97%; /* Off-White #F7F8F6 */
 
-    --popover: 222 47% 11.2%;
-    --popover-foreground: 210 40% 98%;
+    --popover: 60 1% 8%;         /* Almost Black #151514 */
+    --popover-foreground: 60 2% 97%; /* Off-White #F7F8F6 */
 
-    --primary: 210 40% 98%;
-    --primary-foreground: 222 47% 11.2%;
+    --primary: 75 86% 67%;       /* Lime Green #D7F266 */
+    --primary-foreground: 60 1% 8%; /* Almost Black #151514 */
 
-    --secondary: 217 33% 17.5%;
-    --secondary-foreground: 210 40% 98%;
+    --secondary: 165 8% 25%;     /* Darker Soft Grey */
+    --secondary-foreground: 60 2% 97%; /* Off-White #F7F8F6 */
 
-    --muted: 217 33% 17.5%;
-    --muted-foreground: 215 20% 65%;
+    --muted: 165 8% 25%;         /* Darker Soft Grey */
+    --muted-foreground: 165 8% 65%; /* Lighter Soft Grey */
 
-    --accent: 216 34% 62%;
-    --accent-foreground: 210 40% 98%;
+    --accent: 75 86% 67%;        /* Lime Green #D7F266 */
+    --accent-foreground: 60 1% 8%; /* Almost Black #151514 */
 
     --destructive: 0 63% 31%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive-foreground: 60 2% 97%; /* Off-White #F7F8F6 */
 
-    --border: 217 33% 17.5%;
-    --input: 217 33% 17.5%;
-    --ring: 212.5 26.8% 83.9%;
+    --border: 165 8% 35%;        /* Mid-tone Soft Grey */
+    --input: 165 8% 35%;         /* Mid-tone Soft Grey */
+    --ring: 75 86% 67%;          /* Lime Green #D7F266 */
   }
 }
 
@@ -91,27 +92,27 @@
 
 @layer components {
   .glass-panel {
-    @apply bg-white/10 backdrop-blur-md border border-white/20 shadow-lg;
+    @apply bg-theme-light/10 backdrop-blur-md border border-theme-light/20 shadow-lg;
   }
 
   .video-item {
-    @apply rounded-md overflow-hidden bg-editor-panel border border-white/10 transition-all duration-300 hover:border-editor-accent cursor-grab select-none;
+    @apply rounded-md overflow-hidden bg-editor-panel border border-theme-light/10 transition-all duration-300 hover:border-theme-primary cursor-grab select-none;
   }
 
   .timeline-item {
-    @apply rounded-md overflow-hidden bg-editor-accent/70 border border-white/10 transition-all duration-150 hover:bg-editor-accent cursor-grab select-none;
+    @apply rounded-md overflow-hidden bg-theme-primary/70 border border-theme-light/10 transition-all duration-150 hover:bg-theme-primary cursor-grab select-none;
   }
 
   .playhead {
-    @apply absolute top-0 bottom-0 w-px bg-editor-accent/80 z-10 transition-transform duration-100;
+    @apply absolute top-0 bottom-0 w-px bg-theme-primary/80 z-10 transition-transform duration-100;
   }
 
   .timeline-track {
-    @apply h-16 relative border-b border-white/5 transition-all duration-200 hover:bg-editor-hover/50;
+    @apply h-16 relative border-b border-theme-light/5 transition-all duration-200 hover:bg-editor-hover/50;
   }
 
   .time-marker {
-    @apply text-xs text-white/50 border-r border-white/10 h-full flex items-center justify-center;
+    @apply text-xs text-theme-light/50 border-r border-theme-light/10 h-full flex items-center justify-center;
   }
 
   .hover-scale {
@@ -119,7 +120,7 @@
   }
 
   .button-icon {
-    @apply p-2 rounded-full bg-editor-panel/80 backdrop-blur-sm hover:bg-editor-hover transition-all duration-200 border border-white/10 text-white/80;
+    @apply p-2 rounded-full bg-editor-panel/80 backdrop-blur-sm hover:bg-editor-hover transition-all duration-200 border border-theme-light/10 text-theme-light/80;
   }
 
   .dragging {

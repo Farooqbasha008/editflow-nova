@@ -1,4 +1,3 @@
-
 import type { Config } from "tailwindcss";
 
 export default {
@@ -70,6 +69,13 @@ export default {
 					hover: 'hsl(var(--editor-hover))',
 					accent: 'hsl(var(--editor-accent))',
 					'accent-hover': 'hsl(var(--editor-accent-hover))',
+				},
+				// New theme colors
+				theme: {
+					primary: '#D7F266', // Lime Green
+					dark: '#151514',    // Almost Black
+					neutral: '#D3DDDA', // Soft Grey
+					light: '#F7F8F6',   // Off-White
 				}
 			},
 			borderRadius: {
