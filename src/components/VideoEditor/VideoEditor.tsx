@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Header from './Header';
 import MediaLibrary from './MediaLibrary';
 import Timeline from './Timeline';
@@ -35,6 +35,19 @@ const VideoEditor: React.FC = () => {
   const [activeTab, setActiveTab] = useState<string>("visuals");
   const [timelineScale, setTimelineScale] = useState(80); // scale for timeline (pixels per second)
   const [promptText, setPromptText] = useState("");
+  const [history, setHistory] = useState<TimelineItem[][]>([[]]);
+  const [historyIndex, setHistoryIndex] = useState(0);
+  const [selectedItem, setSelectedItem] = useState<TimelineItem | null>(null);
+  
+  // Set up history tracking for undo/redo
+  useEffect(() => {
+    if (JSON.stringify(timelineItems) !== JSON.stringify(history[historyIndex])) {
+      const newHistory = history.slice(0, historyIndex + 1);
+      newHistory.push([...timelineItems]);
+      setHistory(newHistory);
+      setHistoryIndex(newHistory.length - 1);
+    }
+  }, [timelineItems]);
   
   useEffect(() => {
     let playbackInterval: number;
@@ -67,20 +80,46 @@ const VideoEditor: React.FC = () => {
   };
 
   const handleSave = () => {
+    // Create a data object to represent the project
+    const projectData = {
+      name: projectName,
+      timeline: timelineItems,
+      duration: duration
+    };
+    
+    // Convert to JSON and save to localStorage
+    localStorage.setItem('editflow_project', JSON.stringify(projectData));
+    
     toast.success('Project saved', {
       description: `${projectName} has been saved.`,
     });
   };
 
   const handleExport = () => {
+    // In a real implementation, this would trigger an actual export process
     toast.success('Export started', {
       description: 'Your video is being prepared for download.',
     });
-    // In a real implementation, this would trigger the export process
+    
+    // Simulate export process
     setTimeout(() => {
       toast.success('Export complete', {
         description: 'Your video is ready to download.',
       });
+      
+      // Create a fake download link (in a real app, this would be the actual video file)
+      const a = document.createElement('a');
+      a.href = '#';
+      a.download = `${projectName.replace(/\s+/g, '_')}_export.mp4`;
+      a.textContent = 'Download';
+      a.addEventListener('click', (e) => {
+        e.preventDefault();
+        toast.info('This is a simulated download in the demo');
+      });
+      
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
     }, 2000);
   };
 
@@ -135,7 +174,53 @@ const VideoEditor: React.FC = () => {
     });
     
     // In a real implementation, this would trigger the AI generation
+    setTimeout(() => {
+      toast.info('AI generated insight', {
+        description: 'Based on your prompt, we recommend adding more transition effects between clips.',
+      });
+    }, 2000);
+    
     setPromptText("");
+  };
+  
+  const handleUndo = () => {
+    if (historyIndex > 0) {
+      setHistoryIndex(historyIndex - 1);
+      setTimelineItems([...history[historyIndex - 1]]);
+      toast.info('Undo successful');
+    } else {
+      toast.info('Nothing to undo');
+    }
+  };
+  
+  const handleRedo = () => {
+    if (historyIndex < history.length - 1) {
+      setHistoryIndex(historyIndex + 1);
+      setTimelineItems([...history[historyIndex + 1]]);
+      toast.info('Redo successful');
+    } else {
+      toast.info('Nothing to redo');
+    }
+  };
+  
+  const handleTrimItem = () => {
+    if (!selectedItem) {
+      toast.info('Please select an item to trim');
+      return;
+    }
+    
+    // Simple trim functionality - reduce duration by 1 second
+    if (selectedItem.duration > 1) {
+      const updatedItem = {
+        ...selectedItem,
+        duration: selectedItem.duration - 1
+      };
+      
+      handleUpdateTimelineItem(updatedItem);
+      toast.success('Item trimmed by 1 second');
+    } else {
+      toast.info('Item is too short to trim further');
+    }
   };
   
   useEffect(() => {
@@ -149,9 +234,13 @@ const VideoEditor: React.FC = () => {
       window.removeEventListener('add-timeline-item', handleAddItem as EventListener);
     };
   }, []);
+
+  // Find any selected video for audio extraction
+  const selectedVideo = selectedItem?.type === 'video' ? selectedItem : 
+    timelineItems.find(item => item.type === 'video' && item.id === selectedItem?.id) || null;
   
   return (
-    <div className="flex flex-col h-full bg-[#151514] text-[#F7F8F6]">
+    <div className="flex flex-col h-full bg-[#151514] text-[#F7F8F6] overflow-hidden">
       <Header 
         projectName={projectName}
         onRename={handleRename}
@@ -161,7 +250,7 @@ const VideoEditor: React.FC = () => {
       
       <div className="flex flex-1 overflow-hidden">
         {/* Left Panel - 30% width */}
-        <div className="w-[30%] h-full flex flex-col border-r border-white/10">
+        <div className="w-[30%] max-w-[350px] min-w-[200px] h-full flex flex-col border-r border-white/10">
           <MediaSidebar 
             activeTab={activeTab}
             setActiveTab={setActiveTab}
@@ -169,13 +258,14 @@ const VideoEditor: React.FC = () => {
             promptText={promptText}
             setPromptText={setPromptText}
             onGenerate={handleGenerate}
+            selectedVideo={selectedVideo}
           />
         </div>
         
         {/* Right Panel - 70% width */}
-        <div className="w-[70%] h-full flex flex-col">
+        <div className="w-[70%] min-w-[500px] h-full flex flex-col overflow-hidden">
           <ResizablePanelGroup direction="vertical" className="h-full">
-            <ResizablePanel defaultSize={60} minSize={30}>
+            <ResizablePanel defaultSize={50} minSize={15} maxSize={80}>
               <Preview 
                 currentTime={currentTime} 
                 isPlaying={isPlaying} 
@@ -191,21 +281,48 @@ const VideoEditor: React.FC = () => {
             
             <ResizableHandle withHandle />
             
-            <ResizablePanel defaultSize={40} minSize={25}>
-              <div className="flex items-center justify-end p-1 bg-editor-panel/50 border-b border-white/10">
-                <span className="text-xs font-semibold text-white/80 mr-2">Timeline Zoom:</span>
-                <button 
-                  className="p-1 text-white/80 hover:text-white transition-colors"
-                  onClick={handleTimelineZoomOut}
-                >
-                  <ZoomOut size={14} />
-                </button>
-                <button 
-                  className="p-1 text-white/80 hover:text-white transition-colors ml-1"
-                  onClick={handleTimelineZoomIn}
-                >
-                  <ZoomIn size={14} />
-                </button>
+            <ResizablePanel defaultSize={50} minSize={20}>
+              <div className="flex items-center justify-between p-1 bg-editor-panel/50 border-b border-white/10 h-9">
+                <div className="flex items-center">
+                  <button 
+                    className="p-1 text-white/80 hover:text-white transition-colors mx-1"
+                    onClick={handleUndo}
+                    title="Undo"
+                  >
+                    <ChevronLeft size={14} />
+                  </button>
+                  <button 
+                    className="p-1 text-white/80 hover:text-white transition-colors mr-1"
+                    onClick={handleRedo}
+                    title="Redo"
+                  >
+                    <ChevronRight size={14} />
+                  </button>
+                  <div className="h-4 w-px bg-white/20 mx-1"></div>
+                  <button 
+                    className="p-1 text-white/80 hover:text-white transition-colors mx-1"
+                    onClick={handleTrimItem}
+                    title="Trim selected item"
+                  >
+                    <ZoomIn size={14} />
+                  </button>
+                </div>
+                
+                <div className="flex items-center">
+                  <span className="text-xs font-semibold text-white/80 mr-2">Timeline Zoom:</span>
+                  <button 
+                    className="p-1 text-white/80 hover:text-white transition-colors"
+                    onClick={handleTimelineZoomOut}
+                  >
+                    <ZoomOut size={14} />
+                  </button>
+                  <button 
+                    className="p-1 text-white/80 hover:text-white transition-colors ml-1"
+                    onClick={handleTimelineZoomIn}
+                  >
+                    <ZoomIn size={14} />
+                  </button>
+                </div>
               </div>
               <Timeline 
                 currentTime={currentTime}
@@ -217,6 +334,8 @@ const VideoEditor: React.FC = () => {
                 onRemoveItem={handleRemoveTimelineItem}
                 onUpdateItem={handleUpdateTimelineItem}
                 scale={timelineScale}
+                onSelectItem={setSelectedItem}
+                selectedItem={selectedItem}
               />
             </ResizablePanel>
           </ResizablePanelGroup>

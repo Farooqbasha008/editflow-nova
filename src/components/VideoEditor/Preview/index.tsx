@@ -5,7 +5,7 @@ import { TimelineItem } from '../VideoEditor';
 import VideoPlayer from './VideoPlayer';
 import ActiveMediaDisplay from './ActiveMediaDisplay';
 import AudioManager from './AudioManager';
-import { Maximize, Volume2, VolumeX, Play, Pause } from 'lucide-react';
+import { Maximize, Volume2, VolumeX, Play, Pause, Minimize2 } from 'lucide-react';
 
 interface PreviewProps {
   currentTime: number;
@@ -31,6 +31,7 @@ const Preview: React.FC<PreviewProps> = ({
   onPlayPause
 }) => {
   const [fullscreen, setFullscreen] = useState(false);
+  const [minimized, setMinimized] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   
   const activeVideos = timelineItems.filter(item => 
@@ -67,6 +68,10 @@ const Preview: React.FC<PreviewProps> = ({
       setFullscreen(false);
     }
   };
+
+  const toggleMinimized = () => {
+    setMinimized(prev => !prev);
+  };
   
   const formatTime = (time: number) => {
     const minutes = Math.floor(time / 60);
@@ -75,35 +80,41 @@ const Preview: React.FC<PreviewProps> = ({
   };
   
   return (
-    <div ref={containerRef} className="flex-1 bg-[#151514] flex flex-col overflow-hidden animate-fade-in">
-      <VideoPlayer 
-        activeVideo={activeVideo}
-        currentTime={currentTime}
-        isPlaying={isPlaying}
-        muted={muted}
-        volume={volume}
-        fullscreen={fullscreen}
-        containerRef={containerRef}
-        duration={duration}
-      />
+    <div ref={containerRef} className={`flex-1 bg-[#151514] flex flex-col overflow-hidden animate-fade-in ${minimized ? 'h-20' : ''}`}>
+      {!minimized ? (
+        <VideoPlayer 
+          activeVideo={activeVideo}
+          currentTime={currentTime}
+          isPlaying={isPlaying}
+          muted={muted}
+          volume={volume}
+          fullscreen={fullscreen}
+          containerRef={containerRef}
+          duration={duration}
+        />
+      ) : (
+        <div className="h-20 flex items-center justify-center bg-editor-panel/30 text-[#F7F8F6]/80">
+          Preview minimized - Click to restore
+        </div>
+      )}
       
-      <div className="p-3 flex items-center justify-between border-b border-white/10 bg-[#151514]">
-        <div className="flex items-center gap-3">
+      <div className="p-2 flex items-center justify-between border-b border-white/10 bg-[#151514]">
+        <div className="flex items-center gap-2">
           <button 
-            className="w-10 h-10 flex items-center justify-center bg-white/10 hover:bg-white/20 rounded-full transition-colors"
+            className="w-8 h-8 flex items-center justify-center bg-white/10 hover:bg-white/20 rounded-full transition-colors"
             onClick={onPlayPause}
           >
             {isPlaying ? 
-              <Pause size={18} className="text-[#F7F8F6]" /> : 
-              <Play size={18} className="text-[#F7F8F6] ml-1" />
+              <Pause size={14} className="text-[#F7F8F6]" /> : 
+              <Play size={14} className="text-[#F7F8F6] ml-0.5" />
             }
           </button>
           
           <button 
-            className="w-8 h-8 flex items-center justify-center text-[#F7F8F6]/80 hover:text-[#F7F8F6] transition-colors"
+            className="w-7 h-7 flex items-center justify-center text-[#F7F8F6]/80 hover:text-[#F7F8F6] transition-colors"
             onClick={onToggleMute}
           >
-            {muted ? <VolumeX size={18} /> : <Volume2 size={18} />}
+            {muted ? <VolumeX size={14} /> : <Volume2 size={14} />}
           </button>
           
           <input
@@ -113,20 +124,27 @@ const Preview: React.FC<PreviewProps> = ({
             step="0.01"
             value={volume}
             onChange={handleVolumeChange}
-            className="w-20 h-1 bg-white/20 rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:bg-[#D7F266] [&::-webkit-slider-thumb]:rounded-full"
+            className="w-16 h-1 bg-white/20 rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:bg-[#D7F266] [&::-webkit-slider-thumb]:rounded-full"
           />
         </div>
         
-        <div className="text-[#F7F8F6]/80 text-sm">
+        <div className="text-[#F7F8F6]/80 text-xs">
           {formatTime(currentTime)} / {formatTime(duration)}
         </div>
         
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           <button
-            className="w-8 h-8 flex items-center justify-center text-[#F7F8F6]/80 hover:text-[#F7F8F6] transition-colors"
+            className="w-7 h-7 flex items-center justify-center text-[#F7F8F6]/80 hover:text-[#F7F8F6] transition-colors"
+            onClick={toggleMinimized}
+            title={minimized ? "Expand preview" : "Minimize preview"}
+          >
+            <Minimize2 size={14} />
+          </button>
+          <button
+            className="w-7 h-7 flex items-center justify-center text-[#F7F8F6]/80 hover:text-[#F7F8F6] transition-colors"
             onClick={toggleFullscreen}
           >
-            <Maximize size={18} />
+            <Maximize size={14} />
           </button>
         </div>
       </div>
@@ -139,10 +157,12 @@ const Preview: React.FC<PreviewProps> = ({
         muted={muted}
       />
       
-      <ActiveMediaDisplay 
-        activeVideos={activeVideos}
-        activeAudios={activeAudios}
-      />
+      {!minimized && (
+        <ActiveMediaDisplay 
+          activeVideos={activeVideos}
+          activeAudios={activeAudios}
+        />
+      )}
     </div>
   );
 };

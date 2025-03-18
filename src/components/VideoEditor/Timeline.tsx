@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Play, Pause, Volume2, Scissors, Plus, Trash2, ZoomIn, ZoomOut, Clock, Undo, Redo } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -17,6 +18,8 @@ interface TimelineProps {
   onRemoveItem: (id: string) => void;
   onUpdateItem?: (item: TimelineItem) => void;
   scale?: number; // Pixels per second
+  onSelectItem?: (item: TimelineItem | null) => void;
+  selectedItem?: TimelineItem | null;
 }
 
 const INITIAL_SCALE = 80; // pixels per second
@@ -30,7 +33,9 @@ const Timeline: React.FC<TimelineProps> = ({
   items,
   onRemoveItem,
   onUpdateItem,
-  scale = INITIAL_SCALE
+  scale = INITIAL_SCALE,
+  onSelectItem,
+  selectedItem
 }) => {
   const timelineRef = useRef<HTMLDivElement>(null);
   const playheadRef = useRef<HTMLDivElement>(null);
@@ -63,10 +68,21 @@ const Timeline: React.FC<TimelineProps> = ({
     onSeek(Math.max(0, Math.min(clickedTime, duration)));
   };
   
+  // Handle item click for selection
+  const handleItemClick = (e: React.MouseEvent, item: TimelineItem) => {
+    e.stopPropagation();
+    if (onSelectItem) {
+      onSelectItem(item);
+    }
+  };
+  
   // Handle item drag start
   const handleItemDragStart = (e: React.DragEvent, item: TimelineItem) => {
     e.dataTransfer.setData('application/json', JSON.stringify(item));
     setDraggedItem(item);
+    if (onSelectItem) {
+      onSelectItem(item);
+    }
   };
   
   // Handle drag over for tracks
@@ -169,6 +185,9 @@ const Timeline: React.FC<TimelineProps> = ({
   const handleItemDelete = (id: string) => {
     onRemoveItem(id);
     toast.success('Item removed from timeline');
+    if (onSelectItem && selectedItem?.id === id) {
+      onSelectItem(null);
+    }
   };
   
   // Handle volume change for individual audio clip
@@ -220,45 +239,28 @@ const Timeline: React.FC<TimelineProps> = ({
   return (
     <div className="flex flex-col h-full overflow-hidden bg-editor-timeline">
       {/* Timeline controls */}
-      <div className="flex items-center h-12 px-4 border-b border-white/10 bg-editor-panel/70">
+      <div className="flex items-center h-8 px-4 border-b border-white/10 bg-editor-panel/70">
         <div className="flex items-center space-x-2">
           <button 
-            className="button-icon"
+            className="button-icon w-7 h-7"
             onClick={onPlayPause}
           >
-            {isPlaying ? <Pause size={16} /> : <Play size={16} />}
+            {isPlaying ? <Pause size={14} /> : <Play size={14} />}
           </button>
           
-          <div className="text-white/80 text-sm font-medium">
+          <div className="text-white/80 text-xs font-medium">
             {`${Math.floor(currentTime / 60).toString().padStart(2, '0')}:${Math.floor(currentTime % 60).toString().padStart(2, '0')} / ${Math.floor(duration / 60).toString().padStart(2, '0')}:${Math.floor(duration % 60).toString().padStart(2, '0')}`}
           </div>
         </div>
         
         <div className="flex-1" />
-        
-        <div className="flex items-center space-x-3">
-          <div className="h-4 w-px bg-white/20 mx-1"></div>
-          <button className="button-icon">
-            <Undo size={16} />
-          </button>
-          <button className="button-icon">
-            <Redo size={16} />
-          </button>
-          <div className="h-4 w-px bg-white/20 mx-1"></div>
-          <button className="button-icon">
-            <Scissors size={16} />
-          </button>
-          <button className="button-icon">
-            <Trash2 size={16} />
-          </button>
-        </div>
       </div>
       
       {/* Timeline ruler */}
-      <div className="flex h-8 border-b border-white/10 bg-editor-panel/80 relative overflow-hidden">
-        <div className="w-24 bg-editor-panel border-r border-white/10 shrink-0 flex items-center justify-center">
-          <Clock size={14} className="mr-1 text-white/50" />
-          <span className="text-xs text-white/70">Timeline</span>
+      <div className="flex h-6 border-b border-white/10 bg-editor-panel/80 relative overflow-hidden">
+        <div className="w-16 bg-editor-panel border-r border-white/10 shrink-0 flex items-center justify-center">
+          <Clock size={12} className="mr-1 text-white/50" />
+          <span className="text-xs text-white/70">Time</span>
         </div>
         <div 
           className="flex select-none overflow-hidden"
@@ -269,7 +271,7 @@ const Timeline: React.FC<TimelineProps> = ({
               {timeMarkers.map(time => (
                 <div 
                   key={time} 
-                  className="time-marker" 
+                  className="time-marker text-xs" 
                   style={{ width: `${markerInterval * scale}px` }}
                 >
                   {`${Math.floor(time / 60).toString().padStart(2, '0')}:${Math.floor(time % 60).toString().padStart(2, '0')}`}
@@ -283,12 +285,12 @@ const Timeline: React.FC<TimelineProps> = ({
       {/* Timeline tracks */}
       <div className="flex-1 flex flex-row overflow-hidden">
         {/* Track labels */}
-        <div className="w-24 shrink-0 bg-editor-panel border-r border-white/10">
+        <div className="w-16 shrink-0 bg-editor-panel border-r border-white/10">
           {tracks.map((track, index) => (
             <div 
               key={index} 
               className={cn(
-                "timeline-track flex items-center justify-start px-3 text-white/70 text-xs",
+                "timeline-track flex items-center justify-start px-2 text-white/70 text-xs h-12",
                 index < 2 ? "bg-yellow-950/30" : // Video tracks
                 index < 4 ? "bg-blue-950/30" : // Audio tracks
                 "bg-green-950/30" // Voiceover track
@@ -317,7 +319,7 @@ const Timeline: React.FC<TimelineProps> = ({
               <div 
                 key={`track-${index}`}
                 className={cn(
-                  "timeline-track",
+                  "timeline-track h-12",
                   index < 2 ? "bg-yellow-950/10" : // Video tracks
                   index < 4 ? "bg-blue-950/10" : // Audio tracks
                   "bg-green-950/10" // Voiceover track
@@ -340,20 +342,24 @@ const Timeline: React.FC<TimelineProps> = ({
             {/* Timeline items */}
             {items.map(item => {
               const trackIndex = parseInt(item.trackId.replace('track', '')) - 1;
+              const isSelected = selectedItem?.id === item.id;
+              
               return (
                 <div
                   key={item.id}
                   className={cn(
-                    "absolute timeline-item h-12 flex flex-col justify-center px-2 text-white z-10",
+                    "absolute timeline-item h-10 flex flex-col justify-center px-2 text-white z-10",
                     item.color,
-                    draggedItem?.id === item.id && "opacity-50"
+                    draggedItem?.id === item.id && "opacity-50",
+                    isSelected && "ring-2 ring-[#D7F266] ring-offset-0"
                   )}
                   style={{
-                    top: `${trackIndex * 64}px`,
+                    top: `${trackIndex * 48 + 1}px`,
                     left: `${item.start * scale}px`,
                     width: `${item.duration * scale}px`,
                   }}
                   draggable
+                  onClick={(e) => handleItemClick(e, item)}
                   onDragStart={(e) => handleItemDragStart(e, item)}
                 >
                   <div className="flex justify-between items-center w-full">
@@ -361,14 +367,20 @@ const Timeline: React.FC<TimelineProps> = ({
                     <div className="flex items-center gap-1">
                       {item.type === 'audio' && (
                         <button 
-                          onClick={() => toggleVolumeControl(item.id)}
-                          className="text-white/70 hover:text-white mr-1"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggleVolumeControl(item.id);
+                          }}
+                          className="text-white/70 hover:text-white"
                         >
                           <Volume2 size={12} />
                         </button>
                       )}
                       <button 
-                        onClick={() => handleItemDelete(item.id)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleItemDelete(item.id);
+                        }}
                         className="text-white/70 hover:text-white"
                       >
                         <Trash2 size={12} />
@@ -386,6 +398,7 @@ const Timeline: React.FC<TimelineProps> = ({
                         step={0.1}
                         onValueChange={(value) => handleVolumeChange(item.id, value[0])}
                         className="h-1"
+                        onClick={(e) => e.stopPropagation()}
                       />
                       <div className="text-[10px] text-white/80 text-center mt-0.5">
                         {Math.round((item.volume || 1) * 100)}%
