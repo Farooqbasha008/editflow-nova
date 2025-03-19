@@ -1,13 +1,16 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { Image as ImageIcon, Download, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Slider } from '@/components/ui/slider';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
+import { Slider } from '@/components/ui/slider';
 import { TimelineItem } from './VideoEditor';
+import { generateImage } from '@/lib/huggingface';
+import { getOptimizedParams } from '@/lib/groq';
 
 interface ImageGeneratorProps {
   onAddToTimeline: (item: TimelineItem) => void;
@@ -20,10 +23,26 @@ const ImageGenerator: React.FC<ImageGeneratorProps> = ({ onAddToTimeline }) => {
   const [cfg, setCfg] = useState(7.5);
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
+  const [apiKey, setApiKey] = useState<string>("");
+  
+  // Get the API key from environment variables
+  useEffect(() => {
+    const hfApiKey = import.meta.env.VITE_HF_API_KEY;
+    if (hfApiKey) {
+      setApiKey(hfApiKey);
+    }
+  }, []);
 
   const handleGenerate = async () => {
     if (!prompt.trim()) {
       toast.error('Please enter a prompt');
+      return;
+    }
+    
+    if (!apiKey) {
+      toast.error('API key is missing', {
+        description: 'Please add your Hugging Face API key to the .env file (VITE_HF_API_KEY)',
+      });
       return;
     }
 
@@ -33,20 +52,26 @@ const ImageGenerator: React.FC<ImageGeneratorProps> = ({ onAddToTimeline }) => {
     });
 
     try {
-      // Simulate API call to Hugging Face SDXL Turbo
-      // In a real implementation, you would make an actual API call
-      await new Promise(resolve => setTimeout(resolve, 3000));
+      // Use the Hugging Face API to generate an image
+      const imageUrl = await generateImage(prompt, apiKey, {
+        negativePrompt,
+        steps,
+        cfgScale: cfg,
+        // You can specify a different model here if needed
+        // model: 'stabilityai/sdxl-turbo'
+      });
       
-      // For demo purposes, generate a placeholder colored rectangle
-      const dummyImageUrl = await generateDummyImage();
-      setGeneratedImage(dummyImageUrl);
-      
+      setGeneratedImage(imageUrl);
       toast.success('Image generated successfully!');
     } catch (error) {
       console.error('Error generating image:', error);
       toast.error('Failed to generate image', {
-        description: 'An error occurred while communicating with the AI model.',
+        description: error instanceof Error ? error.message : 'An error occurred while communicating with the AI model.',
       });
+      
+      // Fallback to dummy image if API fails
+      const dummyImageUrl = await generateDummyImage();
+      setGeneratedImage(dummyImageUrl);
     } finally {
       setIsGenerating(false);
     }
@@ -151,6 +176,8 @@ const ImageGenerator: React.FC<ImageGeneratorProps> = ({ onAddToTimeline }) => {
           <Label htmlFor="steps" className="text-xs text-[#F7F8F6]">Steps: {steps}</Label>
         </div>
         <Slider
+
+
           id="steps"
           min={1}
           max={50}
@@ -183,6 +210,12 @@ const ImageGenerator: React.FC<ImageGeneratorProps> = ({ onAddToTimeline }) => {
       >
         {isGenerating ? 'Generating...' : 'Generate Image'}
       </Button>
+      
+      {!apiKey && (
+        <div className="text-xs text-amber-400 mt-1">
+          ⚠️ Please add your Hugging Face API key to the .env file (VITE_HF_API_KEY)
+        </div>
+      )}
       
       {generatedImage && (
         <div className="mt-3 space-y-2">

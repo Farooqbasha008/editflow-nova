@@ -4,6 +4,7 @@ import { Upload, Film, Music, Image as ImageIcon, Mic, Video, Search } from 'luc
 import { cn } from '@/lib/utils';
 import { TimelineItem } from './VideoEditor';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 // Mock data for media items
 const MEDIA_ITEMS = [
@@ -211,20 +212,39 @@ const MediaLibrary: React.FC<MediaLibraryProps> = ({ onAddToTimeline, mediaType 
       color = 'bg-blue-400/70';
     }
     
-    const newItem: TimelineItem = {
-      id: `timeline-${Date.now()}`,
-      trackId,
-      start: 0,
-      duration: durationInSeconds,
-      type: item.type as 'video' | 'audio',
-      name: item.name,
-      color,
-      src: item.src,
-      thumbnail: item.thumbnail,
-      volume: 1.0 // Default volume
-    };
-    
-    onAddToTimeline(newItem);
+    // Get all existing timeline items from the DOM event listener
+    const customEvent = new CustomEvent('get-timeline-items', { 
+      detail: { callback: (existingItems: TimelineItem[]) => {
+        // Find the last item in this track to position new item right after it
+        const itemsInTrack = existingItems.filter(item => item.trackId === trackId);
+        let startTime = 0;
+        
+        if (itemsInTrack.length > 0) {
+          const lastItemInTrack = itemsInTrack.reduce((latest, item) => {
+            return (item.start + item.duration > latest.start + latest.duration) ? item : latest;
+          }, itemsInTrack[0]);
+          
+          // Position new item immediately after the last item
+          startTime = lastItemInTrack.start + lastItemInTrack.duration;
+        }
+        
+        const newItem: TimelineItem = {
+          id: `timeline-${Date.now()}`,
+          trackId,
+          start: startTime,
+          duration: durationInSeconds,
+          type: item.type as 'video' | 'audio',
+          name: item.name,
+          color,
+          src: item.src,
+          thumbnail: item.thumbnail,
+          volume: 1.0 // Default volume
+        };
+        
+        onAddToTimeline(newItem);
+      }}
+    });
+    document.dispatchEvent(customEvent);
   };
 
   const filteredItems = MEDIA_ITEMS.filter(item => {
@@ -241,6 +261,10 @@ const MediaLibrary: React.FC<MediaLibraryProps> = ({ onAddToTimeline, mediaType 
     return true;
   });
 
+  // Group items by type
+  const videoItems = filteredItems.filter(item => item.type === 'video');
+  const audioItems = filteredItems.filter(item => item.type === 'audio');
+  
   return (
     <div className="flex flex-col h-full bg-editor-panel/70">
       {/* Search bar */}
@@ -258,22 +282,63 @@ const MediaLibrary: React.FC<MediaLibraryProps> = ({ onAddToTimeline, mediaType 
       </div>
       
       <ScrollArea className="flex-1">
-        <div className="p-3 grid grid-cols-2 gap-2">
+        <div className="p-3 flex flex-col gap-3">
           <div 
-            className="video-item border border-dashed border-white/20 h-32 flex flex-col items-center justify-center text-white/60 cursor-pointer hover:border-white/40 hover:text-white/80 col-span-2"
+            className="video-item border border-dashed border-white/20 h-32 flex flex-col items-center justify-center text-white/60 cursor-pointer hover:border-white/40 hover:text-white/80 w-full"
           >
             <Upload size={24} className="mb-2" />
             <span className="text-xs">Upload Media</span>
           </div>
           
-          {filteredItems.map(item => (
-            <MediaItem 
-              key={item.id} 
-              item={item} 
-              onDragStart={handleDragStart}
-              onDoubleClick={handleDoubleClick}
-            />
-          ))}
+          {/* Video Group */}
+          {videoItems.length > 0 && (
+            <Collapsible defaultOpen className="w-full">
+              <CollapsibleTrigger className="flex items-center justify-between w-full p-2 bg-editor-panel/90 hover:bg-editor-panel text-white/90 text-sm font-medium rounded-t-md border-b border-white/10">
+                <div className="flex items-center gap-2">
+                  <Film size={16} />
+                  <span>Example Videos</span>
+                </div>
+                <div className="text-xs text-white/60">{videoItems.length} items</div>
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <div className="grid grid-cols-2 gap-2 p-2 bg-editor-panel/50 rounded-b-md">
+                  {videoItems.map(item => (
+                    <MediaItem 
+                      key={item.id} 
+                      item={item} 
+                      onDragStart={handleDragStart}
+                      onDoubleClick={handleDoubleClick}
+                    />
+                  ))}
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
+          )}
+          
+          {/* Audio Group */}
+          {audioItems.length > 0 && (
+            <Collapsible defaultOpen className="w-full">
+              <CollapsibleTrigger className="flex items-center justify-between w-full p-2 bg-editor-panel/90 hover:bg-editor-panel text-white/90 text-sm font-medium rounded-t-md border-b border-white/10">
+                <div className="flex items-center gap-2">
+                  <Music size={16} />
+                  <span>Example Audio</span>
+                </div>
+                <div className="text-xs text-white/60">{audioItems.length} items</div>
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <div className="grid grid-cols-2 gap-2 p-2 bg-editor-panel/50 rounded-b-md">
+                  {audioItems.map(item => (
+                    <MediaItem 
+                      key={item.id} 
+                      item={item} 
+                      onDragStart={handleDragStart}
+                      onDoubleClick={handleDoubleClick}
+                    />
+                  ))}
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
+          )}
         </div>
       </ScrollArea>
     </div>

@@ -4,6 +4,24 @@
 
 **URL**: https://lovable.dev/projects/99ab81ca-14f0-4afc-b0b1-f23d16adceb4
 
+## Environment Setup
+
+This project requires API keys for certain features:
+
+1. **Hugging Face API Key** - Used for image generation
+2. **Groq API Key** - Used for AI-powered features
+
+To set up your environment:
+
+1. Copy the `.env.example` file to a new file named `.env`
+2. Replace the placeholder values with your actual API keys
+
+```sh
+# Example .env file
+VITE_HF_API_KEY="your_huggingface_api_key_here"
+VITE_GROQ_API_KEY="your_groq_api_key_here"
+```
+
 ## How can I edit this code?
 
 There are several ways of editing your application.

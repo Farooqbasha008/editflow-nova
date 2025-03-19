@@ -26,7 +26,7 @@ export interface TimelineItem {
 
 const VideoEditor: React.FC = () => {
   const [currentTime, setCurrentTime] = useState(0);
-  const [duration, setDuration] = useState(30); // Total timeline duration in seconds
+  const [duration, setDuration] = useState(600); // Total timeline duration in seconds (10 minutes)
   const [isPlaying, setIsPlaying] = useState(false);
   const [projectName, setProjectName] = useState("Untitled Project");
   const [timelineItems, setTimelineItems] = useState<TimelineItem[]>([]);
@@ -50,12 +50,34 @@ const VideoEditor: React.FC = () => {
   }, [timelineItems]);
   
   useEffect(() => {
+    // Calculate the actual timeline duration based on the end time of the last item
+    const calculateTimelineDuration = () => {
+      if (timelineItems.length === 0) return 600; // Default duration if no items (10 minutes)
+      
+      // Find the end time of the last item (start + duration)
+      const lastItemEndTime = Math.max(
+        ...timelineItems.map(item => item.start + item.duration)
+      );
+      
+      // Add a small buffer (2 seconds) and return
+      return Math.max(lastItemEndTime + 2, 600);
+    };
+    
+    setDuration(calculateTimelineDuration());
+  }, [timelineItems]);
+  
+  useEffect(() => {
     let playbackInterval: number;
     
     if (isPlaying) {
       playbackInterval = window.setInterval(() => {
         setCurrentTime(prevTime => {
-          if (prevTime >= duration) {
+          // Find the end time of the last media item
+          const lastMediaEndTime = timelineItems.length > 0 ?
+            Math.max(...timelineItems.map(item => item.start + item.duration)) : 0;
+          
+          // Stop playback if we've reached the end of media content
+          if (prevTime >= lastMediaEndTime) {
             setIsPlaying(false);
             return 0;
           }
@@ -69,7 +91,7 @@ const VideoEditor: React.FC = () => {
         clearInterval(playbackInterval);
       }
     };
-  }, [isPlaying, duration]);
+  }, [isPlaying, timelineItems]);
   
   const handlePlayPause = () => {
     setIsPlaying(prev => !prev);
@@ -228,12 +250,20 @@ const VideoEditor: React.FC = () => {
       handleAddTimelineItem(e.detail);
     };
     
+    const handleGetTimelineItems = (e: CustomEvent<{callback: (items: TimelineItem[]) => void}>) => {
+      if (e.detail && e.detail.callback) {
+        e.detail.callback([...timelineItems]);
+      }
+    };
+    
     window.addEventListener('add-timeline-item', handleAddItem as EventListener);
+    document.addEventListener('get-timeline-items', handleGetTimelineItems as EventListener);
     
     return () => {
       window.removeEventListener('add-timeline-item', handleAddItem as EventListener);
+      document.removeEventListener('get-timeline-items', handleGetTimelineItems as EventListener);
     };
-  }, []);
+  }, [timelineItems]);
 
   // Find any selected video for audio extraction
   const selectedVideo = selectedItem?.type === 'video' ? selectedItem : 
@@ -265,7 +295,7 @@ const VideoEditor: React.FC = () => {
         {/* Right Panel - 70% width */}
         <div className="w-[70%] min-w-[500px] h-full flex flex-col overflow-hidden">
           <ResizablePanelGroup direction="vertical" className="h-full">
-            <ResizablePanel defaultSize={50} minSize={15} maxSize={80}>
+            <ResizablePanel defaultSize={65} minSize={30} maxSize={80}>
               <Preview 
                 currentTime={currentTime} 
                 isPlaying={isPlaying} 

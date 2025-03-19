@@ -1,12 +1,13 @@
 
-import React, { useState, useRef, useEffect } from 'react';
-import { Play, Pause, Volume2, Scissors, Plus, Trash2, ZoomIn, ZoomOut, Clock, Undo, Redo } from 'lucide-react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { Play, Pause, Volume2, Scissors, Plus, Trash2, ZoomIn, ZoomOut, Clock, Undo, Redo, ChevronLeft, ChevronRight, ArrowLeft, ArrowRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { TimelineItem } from './VideoEditor';
 import { Slider } from '@/components/ui/slider';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { ScrollAreaHorizontal } from '@/components/ui/scroll-area-horizontal';
 import { toast } from 'sonner';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface TimelineProps {
   currentTime: number;
@@ -24,7 +25,7 @@ interface TimelineProps {
 
 const INITIAL_SCALE = 80; // pixels per second
 
-const Timeline: React.FC<TimelineProps> = ({
+const Timeline = ({
   currentTime,
   duration,
   isPlaying,
@@ -39,10 +40,17 @@ const Timeline: React.FC<TimelineProps> = ({
 }) => {
   const timelineRef = useRef<HTMLDivElement>(null);
   const playheadRef = useRef<HTMLDivElement>(null);
-  const [tracks] = useState(['Video 1', 'Video 2', 'Audio 1', 'Audio 2', 'Voiceover']);
+  const [tracks] = useState(['Video', 'Audio 1', 'Audio 2', 'Voiceover']);
   const [isDragging, setIsDragging] = useState(false);
   const [draggedItem, setDraggedItem] = useState<TimelineItem | null>(null);
   const [showVolumeControl, setShowVolumeControl] = useState<string | null>(null);
+  const [isResizing, setIsResizing] = useState(false);
+  const [resizeDirection, setResizeDirection] = useState<'start' | 'end' | null>(null);
+  const [resizeItem, setResizeItem] = useState<TimelineItem | null>(null);
+  const [resizeStartPos, setResizeStartPos] = useState(0);
+  const [snapEnabled, setSnapEnabled] = useState(true);
+  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
+  const [showPositionTooltip, setShowPositionTooltip] = useState(false);
   
   // Calculate timeline width based on duration
   const timelineWidth = Math.max(duration * scale, 1000);
@@ -78,10 +86,165 @@ const Timeline: React.FC<TimelineProps> = ({
   
   // Handle item drag start
   const handleItemDragStart = (e: React.DragEvent, item: TimelineItem) => {
+    // Don't start drag if we're resizing
+    if (isResizing) {
+      e.preventDefault();
+      return;
+    }
+    
     e.dataTransfer.setData('application/json', JSON.stringify(item));
     setDraggedItem(item);
     if (onSelectItem) {
       onSelectItem(item);
+    }
+  };
+  
+  // Handle resize start
+  const handleResizeStart = (e: React.MouseEvent, item: TimelineItem, direction: 'start' | 'end') => {
+    e.stopPropagation();
+    e.preventDefault();
+    
+    setIsResizing(true);
+    setResizeDirection(direction);
+    setResizeItem(item);
+    setResizeStartPos(e.clientX);
+    
+    // Add event listeners for mouse move and mouse up
+    document.addEventListener('mousemove', handleResizeMove);
+    document.addEventListener('mouseup', handleResizeEnd);
+  };
+  
+  // Handle resize move
+  const handleResizeMove = (e: MouseEvent) => {
+    if (!isResizing || !resizeItem || !resizeDirection || !timelineRef.current) return;
+    
+    const rect = timelineRef.current.getBoundingClientRect();
+    const offsetX = e.clientX - rect.left;
+    const timeDelta = (e.clientX - resizeStartPos) / scale;
+    
+    // Calculate new position and duration
+    let newStart = resizeItem.start;
+    let newDuration = resizeItem.duration;
+    
+    // Check for overlapping items in the same track
+    const overlappingItems = items.filter(item => 
+      item.id !== resizeItem.id && 
+      item.trackId === resizeItem.trackId
+    );
+    
+    if (resizeDirection === 'start') {
+      // Resizing from the start (left side)
+      const proposedStart = Math.max(0, resizeItem.start + timeDelta);
+      const proposedDuration = Math.max(0.5, resizeItem.duration - timeDelta);
+      
+      // Check if new position would overlap with other items
+      const wouldOverlap = overlappingItems.some(item => 
+        proposedStart < (item.start + item.duration) && 
+        (proposedStart + proposedDuration) > item.start
+      );
+      
+      if (!wouldOverlap) {
+        newStart = proposedStart;
+        newDuration = proposedDuration;
+      }
+    } else {
+      // Resizing from the end (right side)
+      const proposedDuration = Math.max(0.5, resizeItem.duration + timeDelta);
+      
+      // Check if new duration would overlap with other items
+      const wouldOverlap = overlappingItems.some(item => 
+        (newStart + proposedDuration) > item.start && 
+        newStart < (item.start + item.duration)
+      );
+      
+      if (!wouldOverlap) {
+        newDuration = proposedDuration;
+      }
+    }
+    
+    // Update mouse position for tooltip
+    setMousePosition({ x: e.clientX, y: e.clientY });
+    setShowPositionTooltip(true);
+    
+    // Apply snapping if enabled
+    if (snapEnabled) {
+      const snapThreshold = 5; // pixels
+      const snapPoints = [];
+      
+      // Add time markers as snap points
+      timeMarkers.forEach(time => {
+        snapPoints.push(time * scale);
+      });
+      
+      // Add other items' edges as snap points
+      overlappingItems.forEach(item => {
+        snapPoints.push(item.start * scale);
+        snapPoints.push((item.start + item.duration) * scale);
+      });
+      
+      // Find closest snap point
+      if (resizeDirection === 'start') {
+        const startPos = newStart * scale;
+        const closestPoint = snapPoints.find(point => Math.abs(point - startPos) < snapThreshold);
+        if (closestPoint !== undefined) {
+          const snappedTime = closestPoint / scale;
+          // Verify snapped position doesn't cause overlap
+          const wouldOverlap = overlappingItems.some(item => 
+            snappedTime < (item.start + item.duration) && 
+            (snappedTime + newDuration) > item.start
+          );
+          
+          if (!wouldOverlap) {
+            newDuration = resizeItem.start + resizeItem.duration - snappedTime;
+            newStart = snappedTime;
+          }
+        }
+      } else {
+        const endPos = (newStart + newDuration) * scale;
+        const closestPoint = snapPoints.find(point => Math.abs(point - endPos) < snapThreshold);
+        if (closestPoint !== undefined) {
+          const proposedDuration = (closestPoint / scale) - newStart;
+          // Verify snapped duration doesn't cause overlap
+          const wouldOverlap = overlappingItems.some(item => 
+            (newStart + proposedDuration) > item.start && 
+            newStart < (item.start + item.duration)
+          );
+          
+          if (!wouldOverlap) {
+            newDuration = proposedDuration;
+          }
+        }
+      }
+    }
+    
+    // Update the item with new values if they've changed
+    if (onUpdateItem && (newStart !== resizeItem.start || newDuration !== resizeItem.duration)) {
+      onUpdateItem({
+        ...resizeItem,
+        start: newStart,
+        duration: newDuration
+      });
+    }
+    
+    // Update resize start position for next move
+    setResizeStartPos(e.clientX);
+  };
+  
+  // Handle resize end
+  const handleResizeEnd = () => {
+    setIsResizing(false);
+    setResizeDirection(null);
+    setResizeItem(null);
+    setShowPositionTooltip(false);
+    
+    // Remove event listeners
+    document.removeEventListener('mousemove', handleResizeMove);
+    document.removeEventListener('mouseup', handleResizeEnd);
+    
+    if (resizeItem) {
+      toast.success('Clip trimmed', {
+        description: `${resizeItem.name} has been adjusted`
+      });
     }
   };
   
@@ -105,80 +268,136 @@ const Timeline: React.FC<TimelineProps> = ({
       // Get drop position
       const rect = e.currentTarget.getBoundingClientRect();
       const offsetX = e.clientX - rect.left;
-      const dropTime = offsetX / scale;
+      let dropTime = Math.max(0, offsetX / scale);
+      
+      // Find the last item in this track to position new item right after it
+      const itemsInTrack = items.filter(item => item.trackId === trackId);
+      if (itemsInTrack.length > 0) {
+        const lastItemInTrack = itemsInTrack.reduce((latest, item) => {
+          return (item.start + item.duration > latest.start + latest.duration) ? item : latest;
+        }, itemsInTrack[0]);
+        
+        // Position new item immediately after the last item
+        dropTime = lastItemInTrack.start + lastItemInTrack.duration;
+      }
       
       const itemData = e.dataTransfer.getData('application/json');
       
-      if (itemData) {
-        const droppedItem = JSON.parse(itemData);
+      if (!itemData) {
+        toast.error('Invalid item data');
+        return;
+      }
+      
+      const droppedItem = JSON.parse(itemData);
+      
+      // Validate track type compatibility
+      const trackNumber = parseInt(trackId.replace('track', ''));
+      const isVideoTrack = trackNumber <= 2; // First two tracks are video
+      const isAudioTrack = trackNumber > 2 && trackNumber <= 4; // Next two tracks are audio
+      const isVoiceoverTrack = trackNumber === 5; // Last track is voiceover
+      
+      const itemType = droppedItem.type?.toLowerCase();
+      if (isVideoTrack && itemType === 'audio') {
+        toast.error('Invalid track type', {
+          description: 'Cannot place audio item on video track'
+        });
+        return;
+      }
+      if ((isAudioTrack || isVoiceoverTrack) && itemType === 'video') {
+        toast.error('Invalid track type', {
+          description: 'Cannot place video item on audio track'
+        });
+        return;
+      }
+      
+      // Apply snapping if enabled
+      if (snapEnabled) {
+        const snapThreshold = 5; // pixels
+        const snapPoints = [];
         
-        // If the item is from the media library (has src property)
-        if (droppedItem.src) {
-          // Choose color based on track type and media type
-          let color = 'bg-yellow-400/70'; // default for video
-          let type = droppedItem.type;
-          
-          // Assign colors and confirm types based on track
-          if (trackId === 'track1' || trackId === 'track2') {
-            // Force type to video for video tracks
-            type = 'video';
-            color = 'bg-yellow-400/70';
-          } else if (trackId === 'track3' || trackId === 'track4') {
-            // Force type to audio for audio tracks
-            type = 'audio';
-            color = 'bg-blue-400/70';
-          } else if (trackId === 'track5') {
-            // Force type to audio for voiceover track
-            type = 'audio';
-            color = 'bg-green-400/70';
+        // Add time markers as snap points
+        timeMarkers.forEach(time => {
+          snapPoints.push(time * scale);
+        });
+        
+        // Add other items' edges as snap points
+        items.forEach(otherItem => {
+          if ((!draggedItem || otherItem.id !== draggedItem.id) && otherItem.trackId === trackId) {
+            snapPoints.push(otherItem.start * scale);
+            snapPoints.push((otherItem.start + otherItem.duration) * scale);
           }
-          
-          const durationInSeconds = parseInt(droppedItem.duration.split(':')[1]) || 5;
-          
-          const newItem: TimelineItem = {
-            id: `timeline-${Date.now()}`,
-            trackId,
-            start: Math.max(0, dropTime),
-            duration: durationInSeconds,
-            type,
-            name: droppedItem.name,
-            color,
-            src: droppedItem.src,
-            thumbnail: droppedItem.thumbnail,
-            volume: 1.0, // Default volume
-          };
-          
-          // This will trigger the parent component to add the item
-          const customEvent = new CustomEvent('timeline-item-add', { 
-            detail: newItem 
-          });
-          document.dispatchEvent(customEvent);
-          
-          toast.success('Media added to timeline', {
-            description: `${droppedItem.name} added to ${trackId.replace('track', 'Track ')}`
-          });
-        } 
-        // If it's an existing timeline item being moved
-        else if (draggedItem) {
-          const updatedItem = { 
-            ...draggedItem,
-            trackId, 
-            start: Math.max(0, dropTime) 
-          };
-          
-          // Remove the old item and add the updated one
-          onRemoveItem(draggedItem.id);
-          const customEvent = new CustomEvent('timeline-item-add', { 
-            detail: updatedItem 
-          });
-          document.dispatchEvent(customEvent);
+        });
+        
+        // Find closest snap point
+        const dropPos = dropTime * scale;
+        const closestPoint = snapPoints.find(point => Math.abs(point - dropPos) < snapThreshold);
+        if (closestPoint !== undefined) {
+          dropTime = closestPoint / scale;
         }
       }
-    } catch (err) {
-      console.error('Error dropping item:', err);
+      
+      // If the item is from the media library (has src property)
+      if (droppedItem.src) {
+        // Choose color based on track type
+        let color, type;
+        
+        if (isVideoTrack) {
+          type = 'video';
+          color = 'bg-yellow-400/70';
+        } else if (isAudioTrack) {
+          type = 'audio';
+          color = 'bg-blue-400/70';
+        } else if (isVoiceoverTrack) {
+          type = 'audio';
+          color = 'bg-green-400/70';
+        }
+        
+        const durationInSeconds = parseInt(droppedItem.duration?.split(':')[1]) || 5;
+        
+        const newItem: TimelineItem = {
+          id: `timeline-${Date.now()}`,
+          trackId,
+          start: dropTime,
+          duration: durationInSeconds,
+          type,
+          name: droppedItem.name,
+          color,
+          src: droppedItem.src,
+          thumbnail: droppedItem.thumbnail,
+          volume: 1.0
+        };
+        
+        // Check for overlapping items in the same track
+        const overlappingItems = items.filter(item => 
+          item.trackId === trackId &&
+          newItem.start < (item.start + item.duration) &&
+          (newItem.start + newItem.duration) > item.start
+        );
+        
+        if (overlappingItems.length > 0) {
+          toast.error('Cannot place item', {
+            description: 'This position overlaps with existing items on the track'
+          });
+          return;
+        }
+        
+        // Add the new item to the timeline
+        // Create and dispatch a custom event to add the item
+        const customEvent = new CustomEvent('timeline-item-add', { 
+          detail: newItem
+        });
+        document.dispatchEvent(customEvent);
+        
+        toast.success('Item added to timeline', {
+          description: `Added ${newItem.name} to the timeline`
+        });
+      }
+    } catch (error: any) {
+      toast.error('Error dropping item', {
+        description: error.message || 'An unexpected error occurred'
+      });
+      console.error('Error dropping item:', error);
     }
-    
-    setDraggedItem(null);
   };
   
   // Handle item delete
@@ -209,6 +428,100 @@ const Timeline: React.FC<TimelineProps> = ({
   const toggleVolumeControl = (id: string) => {
     setShowVolumeControl(prev => prev === id ? null : id);
   };
+  
+  // Handle keyboard shortcuts for fine-tuning selected item position
+  const handleKeyDown = useCallback((e: KeyboardEvent) => {
+    if (!selectedItem || !onUpdateItem) return;
+    
+    const nudgeAmount = e.shiftKey ? 1 : 0.1; // 1 second with shift, 0.1 second without
+    let newItem = { ...selectedItem };
+    let updated = false;
+    
+    // Get overlapping items in the same track
+    const overlappingItems = items.filter(item => 
+      item.id !== selectedItem.id && 
+      item.trackId === selectedItem.trackId
+    );
+    
+    const checkOverlap = (start: number, duration: number) => {
+      return overlappingItems.some(item => 
+        start < (item.start + item.duration) && 
+        (start + duration) > item.start
+      );
+    };
+    
+    switch (e.key) {
+      case 'ArrowLeft':
+        // Move item left
+        const newStartLeft = Math.max(0, newItem.start - nudgeAmount);
+        if (!checkOverlap(newStartLeft, newItem.duration)) {
+          newItem.start = newStartLeft;
+          updated = true;
+        }
+        break;
+      case 'ArrowRight':
+        // Move item right
+        const newStartRight = newItem.start + nudgeAmount;
+        if (!checkOverlap(newStartRight, newItem.duration)) {
+          newItem.start = newStartRight;
+          updated = true;
+        }
+        break;
+      case '[':
+      case '{':
+        // Decrease duration from start
+        if (newItem.duration > 0.5) {
+          const decrease = Math.min(nudgeAmount, newItem.duration - 0.5);
+          const newStart = newItem.start + decrease;
+          const newDuration = newItem.duration - decrease;
+          if (!checkOverlap(newStart, newDuration)) {
+            newItem.start = newStart;
+            newItem.duration = newDuration;
+            updated = true;
+          }
+        }
+        break;
+      case ']':
+      case '}':
+        // Increase duration from start
+        const newStartExpand = Math.max(0, newItem.start - nudgeAmount);
+        const newDurationExpand = newItem.duration + nudgeAmount;
+        if (!checkOverlap(newStartExpand, newDurationExpand)) {
+          newItem.start = newStartExpand;
+          newItem.duration = newDurationExpand;
+          updated = true;
+        }
+        break;
+      case '-':
+      case '_':
+        // Decrease duration from end
+        if (newItem.duration > 0.5) {
+          newItem.duration = Math.max(0.5, newItem.duration - nudgeAmount);
+          updated = true;
+        }
+        break;
+      case '=':
+      case '+':
+        // Increase duration from end
+        newItem.duration = newItem.duration + nudgeAmount;
+        updated = true;
+        break;
+    }
+    
+    if (updated) {
+      e.preventDefault();
+      onUpdateItem(newItem);
+      toast.info(`Item ${e.shiftKey ? 'moved/resized by 1s' : 'fine-tuned by 0.1s'}`);
+    }
+  }, [selectedItem, onUpdateItem]);
+  
+  // Add keyboard event listener
+  useEffect(() => {
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [handleKeyDown]);
   
   // Update playhead position when currentTime changes
   useEffect(() => {
@@ -291,8 +604,8 @@ const Timeline: React.FC<TimelineProps> = ({
               key={index} 
               className={cn(
                 "timeline-track flex items-center justify-start px-2 text-white/70 text-xs h-12",
-                index < 2 ? "bg-yellow-950/30" : // Video tracks
-                index < 4 ? "bg-blue-950/30" : // Audio tracks
+                index === 0 ? "bg-yellow-950/30" : // Video track
+                index < 3 ? "bg-blue-950/30" : // Audio tracks
                 "bg-green-950/30" // Voiceover track
               )}
             >
@@ -320,8 +633,8 @@ const Timeline: React.FC<TimelineProps> = ({
                 key={`track-${index}`}
                 className={cn(
                   "timeline-track h-12",
-                  index < 2 ? "bg-yellow-950/10" : // Video tracks
-                  index < 4 ? "bg-blue-950/10" : // Audio tracks
+                  index === 0 ? "bg-yellow-950/10" : // Video track
+                  index < 3 ? "bg-blue-950/10" : // Audio tracks
                   "bg-green-950/10" // Voiceover track
                 )}
                 onDragOver={(e) => handleTrackDragOver(e, getTrackId(index))}
@@ -348,7 +661,7 @@ const Timeline: React.FC<TimelineProps> = ({
                 <div
                   key={item.id}
                   className={cn(
-                    "absolute timeline-item h-10 flex flex-col justify-center px-2 text-white z-10",
+                    "absolute timeline-item h-10 flex flex-col justify-center px-2 text-white z-10 group",
                     item.color,
                     draggedItem?.id === item.id && "opacity-50",
                     isSelected && "ring-2 ring-[#D7F266] ring-offset-0"
@@ -362,6 +675,18 @@ const Timeline: React.FC<TimelineProps> = ({
                   onClick={(e) => handleItemClick(e, item)}
                   onDragStart={(e) => handleItemDragStart(e, item)}
                 >
+                  {/* Left resize handle */}
+                  <div 
+                    className="absolute left-0 top-0 w-2 h-full cursor-w-resize opacity-0 group-hover:opacity-100 hover:bg-white/20"
+                    onMouseDown={(e) => handleResizeStart(e, item, 'start')}
+                  />
+                  
+                  {/* Right resize handle */}
+                  <div 
+                    className="absolute right-0 top-0 w-2 h-full cursor-e-resize opacity-0 group-hover:opacity-100 hover:bg-white/20"
+                    onMouseDown={(e) => handleResizeStart(e, item, 'end')}
+                  />
+                  
                   <div className="flex justify-between items-center w-full">
                     <p className="text-xs font-medium truncate">{item.name}</p>
                     <div className="flex items-center gap-1">
@@ -386,6 +711,16 @@ const Timeline: React.FC<TimelineProps> = ({
                         <Trash2 size={12} />
                       </button>
                     </div>
+                  </div>
+                  
+                  {/* Time indicator */}
+                  <div className="absolute -bottom-5 left-0 text-[10px] text-white/70 opacity-0 group-hover:opacity-100">
+                    {formatTime(item.start)}
+                  </div>
+                  
+                  {/* Duration indicator */}
+                  <div className="absolute -top-5 left-1/2 -translate-x-1/2 text-[10px] text-white/70 opacity-0 group-hover:opacity-100">
+                    {formatTime(item.duration)}
                   </div>
                   
                   {/* Individual volume control */}
@@ -413,6 +748,13 @@ const Timeline: React.FC<TimelineProps> = ({
       </div>
     </div>
   );
+};
+
+// Helper function to format time in MM:SS format
+const formatTime = (seconds: number): string => {
+  const minutes = Math.floor(seconds / 60);
+  const remainingSeconds = Math.floor(seconds % 60);
+  return `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
 };
 
 export default Timeline;

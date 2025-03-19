@@ -63,10 +63,10 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   }, [activeVideo]);
 
   return (
-    <div className="flex-1 bg-[#1a1a1a] flex items-center justify-center relative">
+    <div className="flex-1 bg-[#1a1a1a] flex items-center justify-center relative p-4">
       <div className={cn(
         "relative aspect-video bg-black rounded overflow-hidden shadow-lg",
-        fullscreen ? "w-full h-full" : "w-full max-w-full max-h-full"
+        fullscreen ? "w-full h-full" : "w-[90%] mx-auto"
       )}>
         <video 
           ref={videoRef} 
