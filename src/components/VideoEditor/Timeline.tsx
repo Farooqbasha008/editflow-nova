@@ -290,22 +290,38 @@ const Timeline = ({
       
       const droppedItem = JSON.parse(itemData);
       
-      // Validate track type compatibility
+      // Get track number
       const trackNumber = parseInt(trackId.replace('track', ''));
-      const isVideoTrack = trackNumber <= 2; // First two tracks are video
-      const isAudioTrack = trackNumber > 2 && trackNumber <= 4; // Next two tracks are audio
-      const isVoiceoverTrack = trackNumber === 5; // Last track is voiceover
       
-      const itemType = droppedItem.type?.toLowerCase();
+      // Determine track type based on track number
+      const isVideoTrack = trackNumber <= 1; // First track is video
+      const isAudioTrack = trackNumber >= 2 && trackNumber <= 4; // Tracks 2-4 are audio
+      
+      // Identify item type from either its type property or other characteristics
+      let itemType = droppedItem.type?.toLowerCase();
+      
+      // If type isn't explicitly set, try to determine it from other properties
+      if (!itemType) {
+        if (droppedItem.src?.match(/\.(mp4|mov|avi|webm)$/i)) {
+          itemType = 'video';
+        } else if (droppedItem.src?.match(/\.(mp3|wav|ogg|m4a)$/i)) {
+          itemType = 'audio';
+        } else if (droppedItem.src?.match(/\.(jpg|jpeg|png|gif|webp)$/i)) {
+          itemType = 'image';
+        }
+      }
+      
+      // Validation for track compatibility
       if (isVideoTrack && itemType === 'audio') {
-        toast.error('Invalid track type', {
-          description: 'Cannot place audio item on video track'
+        toast.error('Cannot place audio item on video track', {
+          description: 'Please use an audio track instead'
         });
         return;
       }
-      if ((isAudioTrack || isVoiceoverTrack) && itemType === 'video') {
-        toast.error('Invalid track type', {
-          description: 'Cannot place video item on audio track'
+      
+      if (isAudioTrack && itemType === 'video') {
+        toast.error('Cannot place video item on audio track', {
+          description: 'Please use a video track instead'
         });
         return;
       }
@@ -344,14 +360,12 @@ const Timeline = ({
         if (isVideoTrack) {
           type = 'video';
           color = 'bg-yellow-400/70';
-        } else if (isAudioTrack) {
+        } else {
           type = 'audio';
           color = 'bg-blue-400/70';
-        } else if (isVoiceoverTrack) {
-          type = 'audio';
-          color = 'bg-green-400/70';
         }
         
+        // Set duration (use provided or default)
         const durationInSeconds = parseInt(droppedItem.duration?.split(':')[1]) || 5;
         
         const newItem: TimelineItem = {
@@ -383,10 +397,10 @@ const Timeline = ({
         
         // Add the new item to the timeline
         // Create and dispatch a custom event to add the item
-        const customEvent = new CustomEvent('timeline-item-add', { 
+        const customEvent = new CustomEvent('add-timeline-item', { 
           detail: newItem
         });
-        document.dispatchEvent(customEvent);
+        window.dispatchEvent(customEvent);
         
         toast.success('Item added to timeline', {
           description: `Added ${newItem.name} to the timeline`
@@ -409,7 +423,7 @@ const Timeline = ({
     }
   };
   
-  // Handle volume change for individual audio clip
+  // Handle volume change for individual audio or video clip
   const handleVolumeChange = (id: string, newVolume: number) => {
     const item = items.find(i => i.id === id);
     if (item && onUpdateItem) {
@@ -418,7 +432,7 @@ const Timeline = ({
         volume: newVolume
       });
       
-      toast.success('Audio volume updated', {
+      toast.success(`${item.type.charAt(0).toUpperCase() + item.type.slice(1)} volume updated`, {
         description: `Volume set to ${Math.round(newVolume * 100)}%`
       });
     }
@@ -550,18 +564,18 @@ const Timeline = ({
   const getTrackId = (index: number) => `track${index + 1}`;
   
   return (
-    <div className="flex flex-col h-full overflow-hidden bg-editor-timeline">
+    <div className="flex flex-col h-full overflow-hidden bg-[#151514]">
       {/* Timeline controls */}
-      <div className="flex items-center h-8 px-4 border-b border-white/10 bg-editor-panel/70">
+      <div className="flex items-center h-8 px-4 border-b border-white/10 bg-[#151514]/70">
         <div className="flex items-center space-x-2">
           <button 
-            className="button-icon w-7 h-7"
+            className="button-icon w-7 h-7 hover:bg-[#D7F266]/20 rounded-full transition-all"
             onClick={onPlayPause}
           >
-            {isPlaying ? <Pause size={14} /> : <Play size={14} />}
+            {isPlaying ? <Pause size={14} className="text-[#F7F8F6]" /> : <Play size={14} className="text-[#F7F8F6] ml-0.5" />}
           </button>
           
-          <div className="text-white/80 text-xs font-medium">
+          <div className="text-[#F7F8F6]/80 text-xs font-medium">
             {`${Math.floor(currentTime / 60).toString().padStart(2, '0')}:${Math.floor(currentTime % 60).toString().padStart(2, '0')} / ${Math.floor(duration / 60).toString().padStart(2, '0')}:${Math.floor(duration % 60).toString().padStart(2, '0')}`}
           </div>
         </div>
@@ -570,10 +584,10 @@ const Timeline = ({
       </div>
       
       {/* Timeline ruler */}
-      <div className="flex h-6 border-b border-white/10 bg-editor-panel/80 relative overflow-hidden">
-        <div className="w-16 bg-editor-panel border-r border-white/10 shrink-0 flex items-center justify-center">
-          <Clock size={12} className="mr-1 text-white/50" />
-          <span className="text-xs text-white/70">Time</span>
+      <div className="flex h-6 border-b border-white/10 bg-[#151514]/80 relative overflow-hidden">
+        <div className="w-16 bg-[#151514] border-r border-white/10 shrink-0 flex items-center justify-center">
+          <Clock size={12} className="mr-1 text-[#F7F8F6]/50" />
+          <span className="text-xs text-[#F7F8F6]/70">Time</span>
         </div>
         <div 
           className="flex select-none overflow-hidden"
@@ -584,7 +598,7 @@ const Timeline = ({
               {timeMarkers.map(time => (
                 <div 
                   key={time} 
-                  className="time-marker text-xs" 
+                  className="time-marker text-xs text-[#F7F8F6]/60" 
                   style={{ width: `${markerInterval * scale}px` }}
                 >
                   {`${Math.floor(time / 60).toString().padStart(2, '0')}:${Math.floor(time % 60).toString().padStart(2, '0')}`}
@@ -598,12 +612,12 @@ const Timeline = ({
       {/* Timeline tracks */}
       <div className="flex-1 flex flex-row overflow-hidden">
         {/* Track labels */}
-        <div className="w-16 shrink-0 bg-editor-panel border-r border-white/10">
+        <div className="w-16 shrink-0 bg-[#151514] border-r border-white/10">
           {tracks.map((track, index) => (
             <div 
               key={index} 
               className={cn(
-                "timeline-track flex items-center justify-start px-2 text-white/70 text-xs h-12",
+                "timeline-track flex items-center justify-start px-2 text-[#F7F8F6]/70 text-xs h-10",
                 index === 0 ? "bg-yellow-950/30" : // Video track
                 index < 3 ? "bg-blue-950/30" : // Audio tracks
                 "bg-green-950/30" // Voiceover track
@@ -624,7 +638,8 @@ const Timeline = ({
           >
             {/* Playhead */}
             <div ref={playheadRef} className="playhead">
-              <div className="absolute -top-1 -left-[5px] w-[10px] h-[10px] bg-editor-accent rounded-full" />
+              <div className="absolute -top-1 -left-[5px] w-[10px] h-[10px] bg-[#D7F266] rounded-full" />
+              <div className="absolute top-[9px] bottom-0 w-px bg-[#D7F266]" />
             </div>
             
             {/* Track backgrounds */}
@@ -632,7 +647,7 @@ const Timeline = ({
               <div 
                 key={`track-${index}`}
                 className={cn(
-                  "timeline-track h-12",
+                  "timeline-track h-10",
                   index === 0 ? "bg-yellow-950/10" : // Video track
                   index < 3 ? "bg-blue-950/10" : // Audio tracks
                   "bg-green-950/10" // Voiceover track
@@ -661,13 +676,13 @@ const Timeline = ({
                 <div
                   key={item.id}
                   className={cn(
-                    "absolute timeline-item h-10 flex flex-col justify-center px-2 text-white z-10 group",
+                    "absolute timeline-item h-8 flex flex-col justify-center px-2 text-white z-10 group",
                     item.color,
                     draggedItem?.id === item.id && "opacity-50",
                     isSelected && "ring-2 ring-[#D7F266] ring-offset-0"
                   )}
                   style={{
-                    top: `${trackIndex * 48 + 1}px`,
+                    top: `${trackIndex * 40 + 1}px`,
                     left: `${item.start * scale}px`,
                     width: `${item.duration * scale}px`,
                   }}
@@ -690,7 +705,7 @@ const Timeline = ({
                   <div className="flex justify-between items-center w-full">
                     <p className="text-xs font-medium truncate">{item.name}</p>
                     <div className="flex items-center gap-1">
-                      {item.type === 'audio' && (
+                      {(item.type === 'audio' || item.type === 'video') && (
                         <button 
                           onClick={(e) => {
                             e.stopPropagation();
@@ -724,7 +739,7 @@ const Timeline = ({
                   </div>
                   
                   {/* Individual volume control */}
-                  {item.type === 'audio' && showVolumeControl === item.id && (
+                  {(item.type === 'audio' || item.type === 'video') && showVolumeControl === item.id && (
                     <div className="mt-1 px-1">
                       <Slider
                         value={[item.volume || 1]}
