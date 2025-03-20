@@ -3,10 +3,9 @@ import React, { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import MediaLibrary from './MediaLibrary';
 import { TimelineItem } from './VideoEditor';
-import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Film, Music, TextIcon, Mic, FolderOpen, Sparkles, ImageIcon } from 'lucide-react';
+import { Film, Music, TextIcon, Mic, Sparkles } from 'lucide-react';
 import ImageGenerator from './ImageGenerator';
 import AudioExtractor from './AudioExtractor';
 import FreeSoundBrowser from './FreeSoundBrowser';
@@ -36,27 +35,24 @@ const MediaSidebar: React.FC<MediaSidebarProps> = ({
 
   return (
     <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full flex flex-col">
-      <TabsList className="flex w-full justify-between bg-editor-panel/50 p-0 h-10">
+      <TabsList className="flex w-full justify-between bg-editor-panel p-0 h-10">
         <TabsTrigger 
           value="visuals" 
-          className="flex-1 h-full rounded-none data-[state=active]:bg-editor-panel"
+          className="flex-1 h-full rounded-none data-[state=active]:bg-editor-bg data-[state=active]:text-theme-light"
         >
-          <Film size={16} className="mr-1.5" />
-          <span className="text-xs">Visuals</span>
+          <Film size={16} />
         </TabsTrigger>
         <TabsTrigger 
           value="audio" 
-          className="flex-1 h-full rounded-none data-[state=active]:bg-editor-panel"
+          className="flex-1 h-full rounded-none data-[state=active]:bg-editor-bg data-[state=active]:text-theme-light"
         >
-          <Music size={16} className="mr-1.5" />
-          <span className="text-xs">Audio</span>
+          <Music size={16} />
         </TabsTrigger>
         <TabsTrigger 
           value="text" 
-          className="flex-1 h-full rounded-none data-[state=active]:bg-editor-panel"
+          className="flex-1 h-full rounded-none data-[state=active]:bg-editor-bg data-[state=active]:text-theme-light"
         >
-          <TextIcon size={16} className="mr-1.5" />
-          <span className="text-xs">Text</span>
+          <TextIcon size={16} />
         </TabsTrigger>
       </TabsList>
       
@@ -65,15 +61,15 @@ const MediaSidebar: React.FC<MediaSidebarProps> = ({
           <TabsList className="flex justify-between w-full bg-editor-panel/30 p-0.5 h-8">
             <TabsTrigger 
               value="library" 
-              className="h-7 text-xs px-2 rounded-sm data-[state=active]:bg-editor-panel"
+              className="h-7 text-xs px-3 rounded-sm data-[state=active]:bg-editor-panel data-[state=active]:text-theme-light"
             >
-              Media Library
+              Media
             </TabsTrigger>
             <TabsTrigger 
               value="generator" 
-              className="h-7 text-xs px-2 rounded-sm data-[state=active]:bg-editor-panel"
+              className="h-7 text-xs px-3 rounded-sm data-[state=active]:bg-editor-panel data-[state=active]:text-theme-light"
             >
-              Generate Image
+              Generate
             </TabsTrigger>
           </TabsList>
           
@@ -95,21 +91,21 @@ const MediaSidebar: React.FC<MediaSidebarProps> = ({
           <TabsList className="flex justify-between w-full bg-editor-panel/30 p-0.5 h-8">
             <TabsTrigger 
               value="library" 
-              className="h-7 text-xs px-2 rounded-sm data-[state=active]:bg-editor-panel"
+              className="h-7 text-xs px-3 rounded-sm data-[state=active]:bg-editor-panel data-[state=active]:text-theme-light"
             >
-              Media Library
+              Library
             </TabsTrigger>
             <TabsTrigger 
               value="freesound" 
-              className="h-7 text-xs px-2 rounded-sm data-[state=active]:bg-editor-panel"
+              className="h-7 text-xs px-3 rounded-sm data-[state=active]:bg-editor-panel data-[state=active]:text-theme-light"
             >
-              Royalty Free Music
+              FreeSound
             </TabsTrigger>
             <TabsTrigger 
               value="generator" 
-              className="h-7 text-xs px-2 rounded-sm data-[state=active]:bg-editor-panel"
+              className="h-7 text-xs px-2 rounded-sm data-[state=active]:bg-editor-panel data-[state=active]:text-theme-light"
             >
-              Extract Audio
+              Extract
             </TabsTrigger>
           </TabsList>
           
@@ -126,7 +122,6 @@ const MediaSidebar: React.FC<MediaSidebarProps> = ({
           
           <TabsContent value="generator" className="flex-1 overflow-hidden m-0 border-0 p-0">
             <AudioExtractor 
-              onAddToTimeline={onAddToTimeline} 
               selectedVideo={selectedVideo}
             />
           </TabsContent>
@@ -134,10 +129,10 @@ const MediaSidebar: React.FC<MediaSidebarProps> = ({
       </TabsContent>
       
       <TabsContent value="text" className="flex-1 overflow-hidden m-0 border-0 p-0">
-        <div className="flex flex-col h-full bg-editor-panel/70">
-          <div className="p-3 border-b border-white/10">
-            <div className="text-sm font-medium text-white/90 mb-2">AI Assistance</div>
-            <div className="text-xs text-white/70 mb-4">
+        <div className="flex flex-col h-full bg-editor-bg">
+          <div className="p-3 border-b border-theme-light/10">
+            <div className="text-sm font-medium text-theme-light/90 mb-2">AI Assistance</div>
+            <div className="text-xs text-theme-light/70 mb-4">
               Describe what you want to create and the AI will help you generate it.
             </div>
             
@@ -147,7 +142,7 @@ const MediaSidebar: React.FC<MediaSidebarProps> = ({
                   placeholder="Describe your idea..."
                   value={promptText}
                   onChange={(e) => setPromptText(e.target.value)}
-                  className="bg-editor-bg/80 border-white/10 text-white/90 min-h-24"
+                  className="bg-editor-panel/80 border-theme-light/10 text-theme-light/90 min-h-24"
                 />
               </ScrollArea>
               
@@ -160,8 +155,6 @@ const MediaSidebar: React.FC<MediaSidebarProps> = ({
               </Button>
             </div>
           </div>
-          
-          {/* Text options will go here */}
         </div>
       </TabsContent>
     </Tabs>
