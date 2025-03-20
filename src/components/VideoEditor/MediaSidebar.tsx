@@ -69,14 +69,13 @@ const MediaSidebar: React.FC<MediaSidebarProps> = ({
         {activeTab === 'audio' && (
           <div className="flex flex-col h-full">
             <MediaLibrary onAddToTimeline={onAddToTimeline} mediaType="audio" />
-            <AudioExtractor videoItem={selectedVideo} onAddToTimeline={onAddToTimeline} />
+            <AudioExtractor videoItem={selectedVideo} onAddExtractedAudio={onAddToTimeline} />
           </div>
         )}
         
         {activeTab === 'voiceover' && (
           <div className="flex flex-col items-center justify-center h-full p-4 text-white/70">
             <Mic size={32} className="mb-2" />
-            <p className="text-sm">Record voiceover coming soon</p>
           </div>
         )}
         
