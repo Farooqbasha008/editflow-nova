@@ -5,7 +5,6 @@ import { cn } from '@/lib/utils';
 import { TimelineItem } from './VideoEditor';
 import { Slider } from '@/components/ui/slider';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { ScrollAreaHorizontal } from '@/components/ui/scroll-area-horizontal';
 import { toast } from 'sonner';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
@@ -40,8 +39,12 @@ const Timeline = ({
 }) => {
   const timelineRef = useRef<HTMLDivElement>(null);
   const playheadRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null); // Reference for the scrollable container
   const [tracks] = useState(['Video', 'Audio 1', 'Audio 2', 'Voiceover']);
   const [isDragging, setIsDragging] = useState(false);
+  const [dragStartX, setDragStartX] = useState(0);
+  const [dragStartY, setDragStartY] = useState(0);
+  const [dragStartPos, setDragStartPos] = useState({ start: 0, trackId: '' });
   const [draggedItem, setDraggedItem] = useState<TimelineItem | null>(null);
   const [showVolumeControl, setShowVolumeControl] = useState<string | null>(null);
   const [isResizing, setIsResizing] = useState(false);
@@ -65,6 +68,37 @@ const Timeline = ({
     timeMarkers.push(time);
   }
   
+  // Handle scrolling synchronization
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+    
+    const handleScroll = (e: Event) => {
+      const scrollLeft = (e.target as HTMLElement).scrollLeft;
+      
+      // Find all scrollable elements and sync their scroll position
+      const scrollables = document.querySelectorAll('.timeline-scroll-sync');
+      scrollables.forEach(scrollable => {
+        if (scrollable !== e.target) {
+          (scrollable as HTMLElement).scrollLeft = scrollLeft;
+        }
+      });
+    };
+    
+    // Add scroll event listener to all scrollable elements
+    const scrollables = document.querySelectorAll('.timeline-scroll-sync');
+    scrollables.forEach(scrollable => {
+      scrollable.addEventListener('scroll', handleScroll);
+    });
+    
+    return () => {
+      const scrollables = document.querySelectorAll('.timeline-scroll-sync');
+      scrollables.forEach(scrollable => {
+        scrollable.removeEventListener('scroll', handleScroll);
+      });
+    };
+  }, []);
+  
   // Handle timeline click for seeking
   const handleTimelineClick = (e: React.MouseEvent) => {
     if (!timelineRef.current) return;
@@ -85,18 +119,72 @@ const Timeline = ({
   };
   
   // Handle item drag start
-  const handleItemDragStart = (e: React.DragEvent, item: TimelineItem) => {
+  const handleItemDragStart = (e: React.MouseEvent, item: TimelineItem) => {
+    e.preventDefault();
     // Don't start drag if we're resizing
-    if (isResizing) {
-      e.preventDefault();
-      return;
-    }
+    if (isResizing) return;
     
-    e.dataTransfer.setData('application/json', JSON.stringify(item));
+    setIsDragging(true);
     setDraggedItem(item);
+    setDragStartX(e.clientX);
+    setDragStartY(e.clientY);
+    setDragStartPos({ start: item.start, trackId: item.trackId });
+    
     if (onSelectItem) {
       onSelectItem(item);
     }
+    
+    document.addEventListener('mousemove', handleItemDragMove);
+    document.addEventListener('mouseup', handleItemDragEnd);
+  };
+  
+  // Handle item drag move
+  const handleItemDragMove = (e: MouseEvent) => {
+    if (!isDragging || !draggedItem || !timelineRef.current) return;
+    
+    const dx = e.clientX - dragStartX;
+    const dy = e.clientY - dragStartY;
+    
+    // Calculate new start time
+    const deltaTime = dx / scale;
+    let newStart = Math.max(0, dragStartPos.start + deltaTime);
+    
+    // Calculate new track
+    const trackHeight = 40; // Height of each track in pixels
+    const trackOffset = Math.round(dy / trackHeight);
+    const tracksCount = tracks.length;
+    const trackIndex = Math.max(0, Math.min(tracksCount - 1, parseInt(dragStartPos.trackId.replace('track', '')) - 1 + trackOffset));
+    const newTrackId = `track${trackIndex + 1}`;
+    
+    // Check for overlapping items in the target track
+    const overlappingItems = items.filter(item => 
+      item.id !== draggedItem.id && 
+      item.trackId === newTrackId &&
+      newStart < (item.start + item.duration) && 
+      (newStart + draggedItem.duration) > item.start
+    );
+    
+    if (overlappingItems.length === 0) {
+      // Update the dragged item position visually
+      const updatedItem = {
+        ...draggedItem,
+        start: newStart,
+        trackId: newTrackId
+      };
+      
+      if (onUpdateItem) {
+        onUpdateItem(updatedItem);
+      }
+    }
+  };
+  
+  // Handle item drag end
+  const handleItemDragEnd = () => {
+    setIsDragging(false);
+    setDraggedItem(null);
+    
+    document.removeEventListener('mousemove', handleItemDragMove);
+    document.removeEventListener('mouseup', handleItemDragEnd);
   };
   
   // Handle resize start
@@ -527,7 +615,7 @@ const Timeline = ({
       onUpdateItem(newItem);
       toast.info(`Item ${e.shiftKey ? 'moved/resized by 1s' : 'fine-tuned by 0.1s'}`);
     }
-  }, [selectedItem, onUpdateItem]);
+  }, [selectedItem, onUpdateItem, items]);
   
   // Add keyboard event listener
   useEffect(() => {
@@ -590,22 +678,21 @@ const Timeline = ({
           <span className="text-xs text-[#F7F8F6]/70">Time</span>
         </div>
         <div 
-          className="flex select-none overflow-hidden"
+          className="flex select-none overflow-hidden timeline-scroll-sync"
           style={{ width: timelineWidth }}
+          ref={containerRef}
         >
-          <ScrollAreaHorizontal orientation="horizontal">
-            <div style={{ width: timelineWidth, height: '100%' }} className="flex">
-              {timeMarkers.map(time => (
-                <div 
-                  key={time} 
-                  className="time-marker text-xs text-[#F7F8F6]/60" 
-                  style={{ width: `${markerInterval * scale}px` }}
-                >
-                  {`${Math.floor(time / 60).toString().padStart(2, '0')}:${Math.floor(time % 60).toString().padStart(2, '0')}`}
-                </div>
-              ))}
-            </div>
-          </ScrollAreaHorizontal>
+          <div style={{ width: timelineWidth, height: '100%' }} className="flex">
+            {timeMarkers.map(time => (
+              <div 
+                key={time} 
+                className="time-marker text-xs text-[#F7F8F6]/60" 
+                style={{ width: `${markerInterval * scale}px` }}
+              >
+                {`${Math.floor(time / 60).toString().padStart(2, '0')}:${Math.floor(time % 60).toString().padStart(2, '0')}`}
+              </div>
+            ))}
+          </div>
         </div>
       </div>
       
@@ -629,7 +716,7 @@ const Timeline = ({
         </div>
         
         {/* Timeline */}
-        <ScrollAreaHorizontal orientation="horizontal" className="flex-1">
+        <div className="flex-1 overflow-x-auto timeline-scroll-sync">
           <div 
             ref={timelineRef}
             className="relative overflow-y-hidden"
@@ -676,9 +763,9 @@ const Timeline = ({
                 <div
                   key={item.id}
                   className={cn(
-                    "absolute timeline-item h-8 flex flex-col justify-center px-2 text-white z-10 group",
+                    "absolute timeline-item h-8 flex flex-col justify-center px-2 text-white z-10 group cursor-move",
                     item.color,
-                    draggedItem?.id === item.id && "opacity-50",
+                    isDragging && draggedItem?.id === item.id && "opacity-50",
                     isSelected && "ring-2 ring-[#D7F266] ring-offset-0"
                   )}
                   style={{
@@ -686,9 +773,8 @@ const Timeline = ({
                     left: `${item.start * scale}px`,
                     width: `${item.duration * scale}px`,
                   }}
-                  draggable
                   onClick={(e) => handleItemClick(e, item)}
-                  onDragStart={(e) => handleItemDragStart(e, item)}
+                  onMouseDown={(e) => handleItemDragStart(e, item)}
                 >
                   {/* Left resize handle */}
                   <div 
@@ -759,7 +845,7 @@ const Timeline = ({
               );
             })}
           </div>
-        </ScrollAreaHorizontal>
+        </div>
       </div>
     </div>
   );
