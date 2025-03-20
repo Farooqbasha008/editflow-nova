@@ -1,20 +1,22 @@
 
 import React, { useState } from 'react';
-import { Film, Music, TextIcon, Mic, Image, Sparkles } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import MediaLibrary from './MediaLibrary';
 import { TimelineItem } from './VideoEditor';
+import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import AudioExtractor from './AudioExtractor';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Film, Music, TextIcon, Mic, FolderOpen, Sparkles, ImageIcon } from 'lucide-react';
 import ImageGenerator from './ImageGenerator';
+import AudioExtractor from './AudioExtractor';
+import FreeSoundBrowser from './FreeSoundBrowser';
 
 interface MediaSidebarProps {
   activeTab: string;
   setActiveTab: (tab: string) => void;
   onAddToTimeline: (item: TimelineItem) => void;
   promptText: string;
-  setPromptText: (text: string) => void;
+  setPromptText: (prompt: string) => void;
   onGenerate: () => void;
   selectedVideo: TimelineItem | null;
 }
@@ -28,100 +30,138 @@ const MediaSidebar: React.FC<MediaSidebarProps> = ({
   onGenerate,
   selectedVideo
 }) => {
-  const [generatorTab, setGeneratorTab] = useState<string>("prompt");
-  
+  // Determine the active media type (visuals, audio, text)
+  const [activeMediaType, setActiveMediaType] = useState<'library' | 'freesound' | 'generator'>('library');
+
   return (
-    <div className="flex flex-col h-full bg-[#151514]">
-      {/* Media Type Icons */}
-      <div className="flex p-1 space-x-1 border-b border-white/10">
-        <button 
-          className={`p-2 rounded-full flex items-center justify-center ${activeTab === 'visuals' ? 'bg-[#D7F266] text-[#151514]' : 'bg-white/10 text-white'}`}
-          onClick={() => setActiveTab('visuals')}
+    <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full flex flex-col">
+      <TabsList className="flex w-full justify-between bg-editor-panel/50 p-0 h-10">
+        <TabsTrigger 
+          value="visuals" 
+          className="flex-1 h-full rounded-none data-[state=active]:bg-editor-panel"
         >
-          <Film size={16} />
-        </button>
-        <button 
-          className={`p-2 rounded-full flex items-center justify-center ${activeTab === 'audio' ? 'bg-[#D7F266] text-[#151514]' : 'bg-white/10 text-white'}`}
-          onClick={() => setActiveTab('audio')}
+          <Film size={16} className="mr-1.5" />
+          <span className="text-xs">Visuals</span>
+        </TabsTrigger>
+        <TabsTrigger 
+          value="audio" 
+          className="flex-1 h-full rounded-none data-[state=active]:bg-editor-panel"
         >
-          <Music size={16} />
-        </button>
-        <button 
-          className={`p-2 rounded-full flex items-center justify-center ${activeTab === 'text' ? 'bg-[#D7F266] text-[#151514]' : 'bg-white/10 text-white'}`}
-          onClick={() => setActiveTab('text')}
+          <Music size={16} className="mr-1.5" />
+          <span className="text-xs">Audio</span>
+        </TabsTrigger>
+        <TabsTrigger 
+          value="text" 
+          className="flex-1 h-full rounded-none data-[state=active]:bg-editor-panel"
         >
-          <TextIcon size={16} />
-        </button>
-        <button 
-          className={`p-2 rounded-full flex items-center justify-center ${activeTab === 'voiceover' ? 'bg-[#D7F266] text-[#151514]' : 'bg-white/10 text-white'}`}
-          onClick={() => setActiveTab('voiceover')}
-        >
-          <Mic size={16} />
-        </button>
-        <button 
-          className={`p-2 rounded-full flex items-center justify-center ${activeTab === 'generate' ? 'bg-[#D7F266] text-[#151514]' : 'bg-white/10 text-white'}`}
-          onClick={() => setActiveTab('generate')}
-        >
-          <Sparkles size={16} />
-        </button>
-      </div>
+          <TextIcon size={16} className="mr-1.5" />
+          <span className="text-xs">Text</span>
+        </TabsTrigger>
+      </TabsList>
       
-      {/* Media Library */}
-      <div className="flex-1 overflow-hidden">
-        {activeTab === 'visuals' && (
-          <MediaLibrary onAddToTimeline={onAddToTimeline} mediaType="video" />
-        )}
-        
-        {activeTab === 'audio' && (
-          <div className="flex flex-col h-full">
-            <MediaLibrary onAddToTimeline={onAddToTimeline} mediaType="audio" />
-            <AudioExtractor videoItem={selectedVideo} onAddExtractedAudio={onAddToTimeline} />
-          </div>
-        )}
-        
-        {activeTab === 'text' && (
-          <div className="flex flex-col items-center justify-center h-full p-4 text-white/70">
-            <TextIcon size={32} className="mb-2" />
-            <p className="text-sm">Text elements coming soon</p>
-          </div>
-        )}
-        
-        {activeTab === 'voiceover' && (
-          <div className="flex flex-col items-center justify-center h-full p-4 text-white/70">
-            <Mic size={32} className="mb-2" />
-            <p className="text-sm">Record voiceover coming soon</p>
-          </div>
-        )}
-        
-        {activeTab === 'generate' && (
-          <Tabs defaultValue="image" className="w-full h-full">
-            <TabsList className="w-full grid grid-cols-2 bg-editor-panel/50 p-1 h-8">
-              <TabsTrigger value="image" className="text-xs h-6">Image Generator</TabsTrigger>
-              <TabsTrigger value="prompt" className="text-xs h-6">Text Prompt</TabsTrigger>
-            </TabsList>
-            <TabsContent value="image" className="h-[calc(100%-2rem)] overflow-y-auto">
-              <ImageGenerator onAddToTimeline={onAddToTimeline} />
-            </TabsContent>
-            <TabsContent value="prompt" className="h-[calc(100%-2rem)] flex flex-col p-3">
-              <div className="flex-1">
-                <Textarea
-                  placeholder="Describe your idea... (e.g., 'Create a montage of city scenes with upbeat music')"
+      <TabsContent value="visuals" className="flex-1 flex flex-col overflow-hidden m-0 border-0 p-0">
+        <Tabs value={activeMediaType} onValueChange={setActiveMediaType as any} className="h-full flex flex-col">
+          <TabsList className="flex justify-between w-full bg-editor-panel/30 p-0.5 h-8">
+            <TabsTrigger 
+              value="library" 
+              className="h-7 text-xs px-2 rounded-sm data-[state=active]:bg-editor-panel"
+            >
+              Media Library
+            </TabsTrigger>
+            <TabsTrigger 
+              value="generator" 
+              className="h-7 text-xs px-2 rounded-sm data-[state=active]:bg-editor-panel"
+            >
+              Generate Image
+            </TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="library" className="flex-1 overflow-hidden m-0 border-0 p-0">
+            <MediaLibrary 
+              onAddToTimeline={onAddToTimeline} 
+              mediaType="video"
+            />
+          </TabsContent>
+          
+          <TabsContent value="generator" className="flex-1 overflow-hidden m-0 border-0 p-0">
+            <ImageGenerator onAddToTimeline={onAddToTimeline} />
+          </TabsContent>
+        </Tabs>
+      </TabsContent>
+      
+      <TabsContent value="audio" className="flex-1 flex flex-col overflow-hidden m-0 border-0 p-0">
+        <Tabs value={activeMediaType} onValueChange={setActiveMediaType as any} className="h-full flex flex-col">
+          <TabsList className="flex justify-between w-full bg-editor-panel/30 p-0.5 h-8">
+            <TabsTrigger 
+              value="library" 
+              className="h-7 text-xs px-2 rounded-sm data-[state=active]:bg-editor-panel"
+            >
+              Media Library
+            </TabsTrigger>
+            <TabsTrigger 
+              value="freesound" 
+              className="h-7 text-xs px-2 rounded-sm data-[state=active]:bg-editor-panel"
+            >
+              Royalty Free Music
+            </TabsTrigger>
+            <TabsTrigger 
+              value="generator" 
+              className="h-7 text-xs px-2 rounded-sm data-[state=active]:bg-editor-panel"
+            >
+              Extract Audio
+            </TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="library" className="flex-1 overflow-hidden m-0 border-0 p-0">
+            <MediaLibrary 
+              onAddToTimeline={onAddToTimeline} 
+              mediaType="audio"
+            />
+          </TabsContent>
+          
+          <TabsContent value="freesound" className="flex-1 overflow-hidden m-0 border-0 p-0">
+            <FreeSoundBrowser onAddToTimeline={onAddToTimeline} />
+          </TabsContent>
+          
+          <TabsContent value="generator" className="flex-1 overflow-hidden m-0 border-0 p-0">
+            <AudioExtractor onAddToTimeline={onAddToTimeline} selectedVideo={selectedVideo} />
+          </TabsContent>
+        </Tabs>
+      </TabsContent>
+      
+      <TabsContent value="text" className="flex-1 overflow-hidden m-0 border-0 p-0">
+        <div className="flex flex-col h-full bg-editor-panel/70">
+          <div className="p-3 border-b border-white/10">
+            <div className="text-sm font-medium text-white/90 mb-2">AI Assistance</div>
+            <div className="text-xs text-white/70 mb-4">
+              Describe what you want to create and the AI will help you generate it.
+            </div>
+            
+            <div className="space-y-3">
+              <ScrollArea className="h-28">
+                <Input
+                  placeholder="Describe your idea..."
                   value={promptText}
                   onChange={(e) => setPromptText(e.target.value)}
-                  className="bg-transparent border-white/20 resize-none text-sm text-[#F7F8F6] focus-visible:ring-[#D7F266] h-[calc(100%-3rem)]"
+                  className="bg-editor-bg/80 border-white/10 text-white/90"
+                  multiline={true}
                 />
-              </div>
-              <Button 
-                className="w-full mt-3 bg-[#D7F266] hover:bg-[#D7F266]/90 text-[#151514] rounded-full transition-all duration-300"
+              </ScrollArea>
+              
+              <Button
                 onClick={onGenerate}
+                className="w-full bg-editor-accent hover:bg-editor-accent/90 text-black"
               >
+                <Sparkles size={16} className="mr-1.5" />
                 Generate
               </Button>
-            </TabsContent>
-          </Tabs>
-        )}
-      </div>
-    </div>
+            </div>
+          </div>
+          
+          {/* Text options will go here */}
+        </div>
+      </TabsContent>
+    </Tabs>
   );
 };
 
