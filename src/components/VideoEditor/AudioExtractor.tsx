@@ -6,18 +6,18 @@ import { Button } from '@/components/ui/button';
 import { TimelineItem } from './VideoEditor';
 
 interface AudioExtractorProps {
-  selectedVideo: TimelineItem | null;
-  onAddToTimeline: (item: TimelineItem) => void;
+  videoItem: TimelineItem | null;
+  onAddExtractedAudio: (item: TimelineItem) => void;
 }
 
-const AudioExtractor: React.FC<AudioExtractorProps> = ({ selectedVideo, onAddToTimeline }) => {
+const AudioExtractor: React.FC<AudioExtractorProps> = ({ videoItem, onAddExtractedAudio }) => {
   const [isExtracting, setIsExtracting] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [extractedAudioUrl, setExtractedAudioUrl] = useState<string | null>(null);
   const audioRef = React.useRef<HTMLAudioElement | null>(null);
 
   const extractAudio = async () => {
-    if (!selectedVideo || !selectedVideo.src) {
+    if (!videoItem || !videoItem.src) {
       toast.error('No video selected for audio extraction');
       return;
     }
@@ -34,10 +34,10 @@ const AudioExtractor: React.FC<AudioExtractorProps> = ({ selectedVideo, onAddToT
       await new Promise(resolve => setTimeout(resolve, 1500));
       
       // Use the same source for audio (in reality, you'd extract the audio track)
-      setExtractedAudioUrl(selectedVideo.src);
+      setExtractedAudioUrl(videoItem.src);
       
       toast.success('Audio extracted successfully!', {
-        description: `Extracted from ${selectedVideo.name}`
+        description: `Extracted from ${videoItem.name}`
       });
     } catch (error) {
       console.error('Error extracting audio:', error);
@@ -64,22 +64,22 @@ const AudioExtractor: React.FC<AudioExtractorProps> = ({ selectedVideo, onAddToT
   };
 
   const addToTimeline = () => {
-    if (!extractedAudioUrl || !selectedVideo) return;
+    if (!extractedAudioUrl || !videoItem) return;
     
     const newAudioItem: TimelineItem = {
       id: `audio-${Date.now()}`,
       trackId: 'track3', // First audio track
       start: 0,
-      duration: selectedVideo.duration,
+      duration: videoItem.duration,
       type: 'audio',
-      name: `Audio from ${selectedVideo.name}`,
+      name: `Audio from ${videoItem.name}`,
       color: 'bg-blue-400/70',
       src: extractedAudioUrl,
       thumbnail: '',
       volume: 1.0,
     };
     
-    onAddToTimeline(newAudioItem);
+    onAddExtractedAudio(newAudioItem);
     toast.success('Audio added to timeline', {
       description: `Added to Audio Track 1`
     });
@@ -91,7 +91,7 @@ const AudioExtractor: React.FC<AudioExtractorProps> = ({ selectedVideo, onAddToT
     // Create a temporary link element to trigger the download
     const a = document.createElement('a');
     a.href = extractedAudioUrl;
-    a.download = `audio_from_${selectedVideo?.name || 'video'}.mp3`;
+    a.download = `audio_from_${videoItem?.name || 'video'}.mp3`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -101,7 +101,7 @@ const AudioExtractor: React.FC<AudioExtractorProps> = ({ selectedVideo, onAddToT
 
   return (
     <div className="p-3 border-t border-white/10">
-      {selectedVideo ? (
+      {videoItem ? (
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <div className="text-sm text-[#F7F8F6] font-medium">Extract Audio</div>
@@ -121,7 +121,7 @@ const AudioExtractor: React.FC<AudioExtractorProps> = ({ selectedVideo, onAddToT
               <div className="flex items-center gap-2 mt-2 bg-editor-panel/50 p-2 rounded">
                 <FileAudio size={16} className="text-[#D7F266]" />
                 <div className="text-xs text-[#F7F8F6]/90 truncate flex-1">
-                  Audio from {selectedVideo.name}
+                  Audio from {videoItem.name}
                 </div>
                 <button
                   className="p-1 bg-editor-hover rounded-full"

@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Play, Pause, Volume2, Scissors, Plus, Trash2, ZoomIn, ZoomOut, Clock, Undo, Redo, ChevronLeft, ChevronRight, ArrowLeft, ArrowRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -37,10 +38,8 @@ const Timeline = ({
   onSelectItem,
   selectedItem
 }) => {
-  
   const timelineRef = useRef<HTMLDivElement>(null);
   const playheadRef = useRef<HTMLDivElement>(null);
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [tracks] = useState(['Video', 'Audio 1', 'Audio 2', 'Voiceover']);
   const [isDragging, setIsDragging] = useState(false);
   const [draggedItem, setDraggedItem] = useState<TimelineItem | null>(null);
@@ -65,31 +64,6 @@ const Timeline = ({
     const time = i * markerInterval;
     timeMarkers.push(time);
   }
-  
-  // Update playhead position and scroll position when currentTime changes
-  useEffect(() => {
-    if (playheadRef.current) {
-      const playheadPosition = currentTime * scale;
-      playheadRef.current.style.transform = `translateX(${playheadPosition}px)`;
-      
-      // Auto-scroll timeline as playhead moves
-      if (scrollContainerRef.current) {
-        const container = scrollContainerRef.current;
-        const containerWidth = container.clientWidth;
-        const scrollLeft = container.scrollLeft;
-        
-        // Check if playhead is close to the edge of the visible area
-        if (playheadPosition > scrollLeft + containerWidth * 0.8 || playheadPosition < scrollLeft + containerWidth * 0.2) {
-          // Smooth scroll to keep playhead in view (centered)
-          container.scrollTo({
-            left: Math.max(0, playheadPosition - containerWidth / 2),
-            behavior: 'smooth'
-          });
-        }
-      }
-    }
-  }, [currentTime, scale]);
-
   
   // Handle timeline click for seeking
   const handleTimelineClick = (e: React.MouseEvent) => {
@@ -285,173 +259,160 @@ const Timeline = ({
     e.currentTarget.classList.remove('bg-editor-hover/30');
   };
   
-  
-const handleTrackDrop = (e: React.DragEvent, trackId: string) => {
-  e.preventDefault();
-  e.currentTarget.classList.remove('bg-editor-hover/30');
-  
-  try {
-    // Get drop position
-    const rect = e.currentTarget.getBoundingClientRect();
-    const offsetX = e.clientX - rect.left;
-    let dropTime = Math.max(0, offsetX / scale);
+  // Handle drop on timeline track
+  const handleTrackDrop = (e: React.DragEvent, trackId: string) => {
+    e.preventDefault();
+    e.currentTarget.classList.remove('bg-editor-hover/30');
     
-    // Find the last item in this track to position new item right after it
-    const itemsInTrack = items.filter(item => item.trackId === trackId);
-    if (itemsInTrack.length > 0) {
-      const lastItemInTrack = itemsInTrack.reduce((latest, item) => {
-        return (item.start + item.duration > latest.start + latest.duration) ? item : latest;
-      }, itemsInTrack[0]);
+    try {
+      // Get drop position
+      const rect = e.currentTarget.getBoundingClientRect();
+      const offsetX = e.clientX - rect.left;
+      let dropTime = Math.max(0, offsetX / scale);
       
-      // Position new item immediately after the last item
-      dropTime = lastItemInTrack.start + lastItemInTrack.duration;
-    }
-    
-    const itemData = e.dataTransfer.getData('application/json');
-    
-    if (!itemData) {
-      toast.error('Invalid item data');
-      return;
-    }
-    
-    const droppedItem = JSON.parse(itemData);
-    
-    // Get track number and determine type
-    const trackNumber = parseInt(trackId.replace('track', ''));
-    const isVideoTrack = trackNumber === 1; // Track 1 is video
-    const isAudioTrack = trackNumber >= 2; // Tracks 2+ are audio tracks
-    
-    // Identify item type from either its type property or file extension
-    let itemType = droppedItem.type?.toLowerCase();
-    
-    // If type isn't explicitly set, try to determine it from file extension
-    if (!itemType) {
-      if (droppedItem.src?.match(/\.(mp4|mov|avi|webm)$/i)) {
-        itemType = 'video';
-      } else if (droppedItem.src?.match(/\.(mp3|wav|ogg|m4a|aac)$/i)) {
-        itemType = 'audio';
-      } else if (droppedItem.src?.match(/\.(jpg|jpeg|png|gif|webp)$/i)) {
-        itemType = 'image';
+      // Find the last item in this track to position new item right after it
+      const itemsInTrack = items.filter(item => item.trackId === trackId);
+      if (itemsInTrack.length > 0) {
+        const lastItemInTrack = itemsInTrack.reduce((latest, item) => {
+          return (item.start + item.duration > latest.start + latest.duration) ? item : latest;
+        }, itemsInTrack[0]);
+        
+        // Position new item immediately after the last item
+        dropTime = lastItemInTrack.start + lastItemInTrack.duration;
       }
-    }
-    
-    // Validation for track compatibility
-    if (isVideoTrack && itemType === 'audio') {
-      toast.error('Cannot place audio item on video track', {
-        description: 'Please use an audio track instead'
-      });
-      return;
-    }
-    
-    if (isAudioTrack && itemType === 'video') {
-      toast.error('Cannot place video item on audio track', {
-        description: 'Please use a video track instead'
-      });
-      return;
-    }
-    
-    // Apply snapping if enabled
-    if (snapEnabled) {
-      const snapThreshold = 5; // pixels
-      const snapPoints = [];
       
-      // Add time markers as snap points
-      timeMarkers.forEach(time => {
-        snapPoints.push(time * scale);
-      });
+      const itemData = e.dataTransfer.getData('application/json');
       
-      // Add other items' edges as snap points
-      items.forEach(otherItem => {
-        if ((!draggedItem || otherItem.id !== draggedItem.id) && otherItem.trackId === trackId) {
-          snapPoints.push(otherItem.start * scale);
-          snapPoints.push((otherItem.start + otherItem.duration) * scale);
+      if (!itemData) {
+        toast.error('Invalid item data');
+        return;
+      }
+      
+      const droppedItem = JSON.parse(itemData);
+      
+      // Get track number
+      const trackNumber = parseInt(trackId.replace('track', ''));
+      
+      // Determine track type based on track number
+      const isVideoTrack = trackNumber <= 1; // First track is video
+      const isAudioTrack = trackNumber >= 2 && trackNumber <= 4; // Tracks 2-4 are audio
+      
+      // Identify item type from either its type property or other characteristics
+      let itemType = droppedItem.type?.toLowerCase();
+      
+      // If type isn't explicitly set, try to determine it from other properties
+      if (!itemType) {
+        if (droppedItem.src?.match(/\.(mp4|mov|avi|webm)$/i)) {
+          itemType = 'video';
+        } else if (droppedItem.src?.match(/\.(mp3|wav|ogg|m4a)$/i)) {
+          itemType = 'audio';
+        } else if (droppedItem.src?.match(/\.(jpg|jpeg|png|gif|webp)$/i)) {
+          itemType = 'image';
         }
-      });
-      
-      // Find closest snap point
-      const dropPos = dropTime * scale;
-      const closestPoint = snapPoints.find(point => Math.abs(point - dropPos) < snapThreshold);
-      if (closestPoint !== undefined) {
-        dropTime = closestPoint / scale;
-      }
-    }
-    
-    // If the item is from the media library (has src property)
-    if (droppedItem.src) {
-      // Choose color based on track type
-      let color, type;
-      
-      if (isVideoTrack) {
-        type = 'video';
-        color = 'bg-yellow-400/70';
-      } else {
-        type = 'audio';
-        color = 'bg-blue-400/70';
       }
       
-      // Set duration (use provided or default)
-      let durationInSeconds;
-      if (droppedItem.duration) {
-        if (typeof droppedItem.duration === 'string' && droppedItem.duration.includes(':')) {
-          // Parse "MM:SS" format
-          const parts = droppedItem.duration.split(':');
-          durationInSeconds = parseInt(parts[0]) * 60 + parseInt(parts[1]);
-        } else if (typeof droppedItem.duration === 'number') {
-          // It's already a number
-          durationInSeconds = droppedItem.duration;
-        } else {
-          // Default fallback
-          durationInSeconds = 5;
-        }
-      } else {
-        durationInSeconds = 5;
-      }
-      
-      const newItem: TimelineItem = {
-        id: `timeline-${Date.now()}`,
-        trackId,
-        start: dropTime,
-        duration: durationInSeconds,
-        type,
-        name: droppedItem.name,
-        color,
-        src: droppedItem.src,
-        thumbnail: droppedItem.thumbnail,
-        volume: 1.0
-      };
-      
-      // Check for overlapping items in the same track
-      const overlappingItems = items.filter(item => 
-        item.trackId === trackId &&
-        newItem.start < (item.start + item.duration) &&
-        (newItem.start + newItem.duration) > item.start
-      );
-      
-      if (overlappingItems.length > 0) {
-        toast.error('Cannot place item', {
-          description: 'This position overlaps with existing items on the track'
+      // Validation for track compatibility
+      if (isVideoTrack && itemType === 'audio') {
+        toast.error('Cannot place audio item on video track', {
+          description: 'Please use an audio track instead'
         });
         return;
       }
       
-      // Add the new item to the timeline
-      // Create and dispatch a custom event to add the item
-      const customEvent = new CustomEvent('add-timeline-item', { 
-        detail: newItem
-      });
-      window.dispatchEvent(customEvent);
+      if (isAudioTrack && itemType === 'video') {
+        toast.error('Cannot place video item on audio track', {
+          description: 'Please use a video track instead'
+        });
+        return;
+      }
       
-      toast.success('Item added to timeline', {
-        description: `Added ${newItem.name} to the timeline`
+      // Apply snapping if enabled
+      if (snapEnabled) {
+        const snapThreshold = 5; // pixels
+        const snapPoints = [];
+        
+        // Add time markers as snap points
+        timeMarkers.forEach(time => {
+          snapPoints.push(time * scale);
+        });
+        
+        // Add other items' edges as snap points
+        items.forEach(otherItem => {
+          if ((!draggedItem || otherItem.id !== draggedItem.id) && otherItem.trackId === trackId) {
+            snapPoints.push(otherItem.start * scale);
+            snapPoints.push((otherItem.start + otherItem.duration) * scale);
+          }
+        });
+        
+        // Find closest snap point
+        const dropPos = dropTime * scale;
+        const closestPoint = snapPoints.find(point => Math.abs(point - dropPos) < snapThreshold);
+        if (closestPoint !== undefined) {
+          dropTime = closestPoint / scale;
+        }
+      }
+      
+      // If the item is from the media library (has src property)
+      if (droppedItem.src) {
+        // Choose color based on track type
+        let color, type;
+        
+        if (isVideoTrack) {
+          type = 'video';
+          color = 'bg-yellow-400/70';
+        } else {
+          type = 'audio';
+          color = 'bg-blue-400/70';
+        }
+        
+        // Set duration (use provided or default)
+        const durationInSeconds = parseInt(droppedItem.duration?.split(':')[1]) || 5;
+        
+        const newItem: TimelineItem = {
+          id: `timeline-${Date.now()}`,
+          trackId,
+          start: dropTime,
+          duration: durationInSeconds,
+          type,
+          name: droppedItem.name,
+          color,
+          src: droppedItem.src,
+          thumbnail: droppedItem.thumbnail,
+          volume: 1.0
+        };
+        
+        // Check for overlapping items in the same track
+        const overlappingItems = items.filter(item => 
+          item.trackId === trackId &&
+          newItem.start < (item.start + item.duration) &&
+          (newItem.start + newItem.duration) > item.start
+        );
+        
+        if (overlappingItems.length > 0) {
+          toast.error('Cannot place item', {
+            description: 'This position overlaps with existing items on the track'
+          });
+          return;
+        }
+        
+        // Add the new item to the timeline
+        // Create and dispatch a custom event to add the item
+        const customEvent = new CustomEvent('add-timeline-item', { 
+          detail: newItem
+        });
+        window.dispatchEvent(customEvent);
+        
+        toast.success('Item added to timeline', {
+          description: `Added ${newItem.name} to the timeline`
+        });
+      }
+    } catch (error: any) {
+      toast.error('Error dropping item', {
+        description: error.message || 'An unexpected error occurred'
       });
+      console.error('Error dropping item:', error);
     }
-  } catch (error: any) {
-    toast.error('Error dropping item', {
-      description: error.message || 'An unexpected error occurred'
-    });
-    console.error('Error dropping item:', error);
-  }
-};
+  };
   
   // Handle item delete
   const handleItemDelete = (id: string) => {
@@ -566,7 +527,7 @@ const handleTrackDrop = (e: React.DragEvent, trackId: string) => {
       onUpdateItem(newItem);
       toast.info(`Item ${e.shiftKey ? 'moved/resized by 1s' : 'fine-tuned by 0.1s'}`);
     }
-  }, [selectedItem, onUpdateItem, items]);
+  }, [selectedItem, onUpdateItem]);
   
   // Add keyboard event listener
   useEffect(() => {
@@ -576,7 +537,12 @@ const handleTrackDrop = (e: React.DragEvent, trackId: string) => {
     };
   }, [handleKeyDown]);
   
-  
+  // Update playhead position when currentTime changes
+  useEffect(() => {
+    if (playheadRef.current) {
+      playheadRef.current.style.transform = `translateX(${currentTime * scale}px)`;
+    }
+  }, [currentTime, scale]);
   
   // Listen for timeline-item-add events
   useEffect(() => {
@@ -597,7 +563,6 @@ const handleTrackDrop = (e: React.DragEvent, trackId: string) => {
   // Get track identifier
   const getTrackId = (index: number) => `track${index + 1}`;
   
-  // Render the timeline
   return (
     <div className="flex flex-col h-full overflow-hidden bg-[#151514]">
       {/* Timeline controls */}
@@ -628,10 +593,7 @@ const handleTrackDrop = (e: React.DragEvent, trackId: string) => {
           className="flex select-none overflow-hidden"
           style={{ width: timelineWidth }}
         >
-          <ScrollAreaHorizontal 
-            orientation="horizontal" 
-            ref={scrollContainerRef}
-          >
+          <ScrollAreaHorizontal orientation="horizontal">
             <div style={{ width: timelineWidth, height: '100%' }} className="flex">
               {timeMarkers.map(time => (
                 <div 
@@ -667,11 +629,7 @@ const handleTrackDrop = (e: React.DragEvent, trackId: string) => {
         </div>
         
         {/* Timeline */}
-        <ScrollAreaHorizontal 
-          orientation="horizontal" 
-          className="flex-1"
-          ref={scrollContainerRef}
-        >
+        <ScrollAreaHorizontal orientation="horizontal" className="flex-1">
           <div 
             ref={timelineRef}
             className="relative overflow-y-hidden"
@@ -679,7 +637,7 @@ const handleTrackDrop = (e: React.DragEvent, trackId: string) => {
             onClick={handleTimelineClick}
           >
             {/* Playhead */}
-            <div ref={playheadRef} className="playhead absolute h-full top-0 z-20">
+            <div ref={playheadRef} className="playhead">
               <div className="absolute -top-1 -left-[5px] w-[10px] h-[10px] bg-[#D7F266] rounded-full" />
               <div className="absolute top-[9px] bottom-0 w-px bg-[#D7F266]" />
             </div>

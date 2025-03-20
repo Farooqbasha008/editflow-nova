@@ -1,5 +1,6 @@
+
 import React, { useState } from 'react';
-import { Upload, Film, Music, Search, Video } from 'lucide-react';
+import { Upload, Film, Music, Image as ImageIcon, Mic, Video, Search } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { TimelineItem } from './VideoEditor';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -147,7 +148,7 @@ interface MediaLibraryProps {
 const MediaItem: React.FC<MediaItemProps> = ({ item, onDragStart, onDoubleClick }) => {
   return (
     <div 
-      className="video-item group cursor-pointer mb-2 transition-all duration-200 hover:ring-1 hover:ring-editor-accent"
+      className="video-item group cursor-pointer mb-2"
       draggable
       onDragStart={(e) => onDragStart(e, item)}
       onDoubleClick={() => onDoubleClick(item)}
@@ -156,7 +157,7 @@ const MediaItem: React.FC<MediaItemProps> = ({ item, onDragStart, onDoubleClick 
         <div className="relative">
           <img src={item.thumbnail} alt={item.name} className="w-full h-24 object-cover" />
           <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 bg-black/50 transition-opacity">
-            <Video size={24} className="text-theme-light" />
+            <Video size={24} className="text-white" />
           </div>
           <div className="absolute bottom-0 right-0 bg-black/70 text-white/90 text-[10px] px-1 py-0.5 rounded-tl">
             {item.duration}
@@ -164,13 +165,13 @@ const MediaItem: React.FC<MediaItemProps> = ({ item, onDragStart, onDoubleClick 
         </div>
       ) : (
         <div className="h-16 bg-editor-panel flex items-center justify-center relative">
-          <Music size={24} className="text-theme-light/60 group-hover:text-theme-light/80 transition-colors" />
+          <Music size={24} className="text-white/60 group-hover:text-white/80 transition-colors" />
           <div className="absolute bottom-0 right-0 bg-black/70 text-white/90 text-[10px] px-1 py-0.5 rounded-tl">
             {item.duration}
           </div>
         </div>
       )}
-      <div className="p-2 text-xs text-theme-light/90 truncate bg-editor-panel group-hover:bg-editor-hover transition-colors">
+      <div className="p-2 text-xs text-white/90 truncate bg-editor-panel group-hover:bg-editor-hover transition-colors">
         {item.name}
       </div>
     </div>
@@ -265,17 +266,17 @@ const MediaLibrary: React.FC<MediaLibraryProps> = ({ onAddToTimeline, mediaType 
   const audioItems = filteredItems.filter(item => item.type === 'audio');
   
   return (
-    <div className="flex flex-col h-full bg-editor-bg">
+    <div className="flex flex-col h-full bg-editor-panel/70">
       {/* Search bar */}
-      <div className="p-3 border-b border-theme-light/10">
+      <div className="p-3 border-b border-white/10">
         <div className="relative">
-          <Search size={16} className="absolute left-2 top-1/2 transform -translate-y-1/2 text-theme-light/50" />
+          <Search size={16} className="absolute left-2 top-1/2 transform -translate-y-1/2 text-white/50" />
           <input
             type="text"
             placeholder="Search media..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full bg-editor-panel/80 border border-theme-light/10 rounded-md pl-8 pr-3 py-1.5 text-sm text-theme-light/90 focus:outline-none focus:ring-1 focus:ring-editor-accent"
+            className="w-full bg-editor-bg/80 border border-white/10 rounded-md pl-8 pr-3 py-1.5 text-sm text-white/90 focus:outline-none focus:ring-1 focus:ring-editor-accent"
           />
         </div>
       </div>
@@ -283,7 +284,7 @@ const MediaLibrary: React.FC<MediaLibraryProps> = ({ onAddToTimeline, mediaType 
       <ScrollArea className="flex-1">
         <div className="p-3 flex flex-col gap-3">
           <div 
-            className="video-item border border-dashed border-theme-light/20 h-28 flex flex-col items-center justify-center text-theme-light/60 cursor-pointer hover:border-theme-light/40 hover:text-theme-light/80 w-full transition-all hover:bg-editor-panel/30"
+            className="video-item border border-dashed border-white/20 h-32 flex flex-col items-center justify-center text-white/60 cursor-pointer hover:border-white/40 hover:text-white/80 w-full"
           >
             <Upload size={24} className="mb-2" />
             <span className="text-xs">Upload Media</span>
@@ -292,12 +293,12 @@ const MediaLibrary: React.FC<MediaLibraryProps> = ({ onAddToTimeline, mediaType 
           {/* Video Group */}
           {videoItems.length > 0 && (
             <Collapsible defaultOpen className="w-full">
-              <CollapsibleTrigger className="flex items-center justify-between w-full p-2 bg-editor-panel rounded-t-md border-b border-theme-light/10">
+              <CollapsibleTrigger className="flex items-center justify-between w-full p-2 bg-editor-panel/90 hover:bg-editor-panel text-white/90 text-sm font-medium rounded-t-md border-b border-white/10">
                 <div className="flex items-center gap-2">
-                  <Film size={16} className="text-theme-light/90" />
-                  <span className="text-theme-light/90 text-sm font-medium">Videos</span>
+                  <Film size={16} />
+                  <span>Example Videos</span>
                 </div>
-                <div className="text-xs text-theme-light/60">{videoItems.length}</div>
+                <div className="text-xs text-white/60">{videoItems.length} items</div>
               </CollapsibleTrigger>
               <CollapsibleContent>
                 <div className="grid grid-cols-2 gap-2 p-2 bg-editor-panel/50 rounded-b-md">
@@ -317,12 +318,12 @@ const MediaLibrary: React.FC<MediaLibraryProps> = ({ onAddToTimeline, mediaType 
           {/* Audio Group */}
           {audioItems.length > 0 && (
             <Collapsible defaultOpen className="w-full">
-              <CollapsibleTrigger className="flex items-center justify-between w-full p-2 bg-editor-panel rounded-t-md border-b border-theme-light/10">
+              <CollapsibleTrigger className="flex items-center justify-between w-full p-2 bg-editor-panel/90 hover:bg-editor-panel text-white/90 text-sm font-medium rounded-t-md border-b border-white/10">
                 <div className="flex items-center gap-2">
-                  <Music size={16} className="text-theme-light/90" />
-                  <span className="text-theme-light/90 text-sm font-medium">Audio</span>
+                  <Music size={16} />
+                  <span>Example Audio</span>
                 </div>
-                <div className="text-xs text-theme-light/60">{audioItems.length}</div>
+                <div className="text-xs text-white/60">{audioItems.length} items</div>
               </CollapsibleTrigger>
               <CollapsibleContent>
                 <div className="grid grid-cols-2 gap-2 p-2 bg-editor-panel/50 rounded-b-md">

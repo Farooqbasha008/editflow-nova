@@ -1,167 +1,263 @@
-
 import React, { useState, useEffect, useRef } from 'react';
-import { cn } from '@/lib/utils';
+import Header from './Header';
+import MediaLibrary from './MediaLibrary';
 import Timeline from './Timeline';
 import Preview from './Preview';
-import MediaSidebar from './MediaSidebar';
 import { toast } from 'sonner';
+import { Film, Music, TextIcon, Mic, FolderOpen, Sparkles, ChevronLeft, ChevronRight, ZoomIn, ZoomOut } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import MediaSidebar from './MediaSidebar';
 
 export interface TimelineItem {
   id: string;
   trackId: string;
   start: number;
   duration: number;
-  type: 'video' | 'audio' | 'image' | 'text';
+  type: 'video' | 'audio' | 'image';
   name: string;
-  color?: string;
-  src: string;
+  color: string;
+  src?: string;
   thumbnail?: string;
   volume?: number;
 }
 
 const VideoEditor: React.FC = () => {
   const [currentTime, setCurrentTime] = useState(0);
-  const [duration, setDuration] = useState(60); // Default project duration: 60 seconds
+  const [duration, setDuration] = useState(600); // Total timeline duration in seconds (10 minutes)
   const [isPlaying, setIsPlaying] = useState(false);
+  const [projectName, setProjectName] = useState("Untitled Project");
   const [timelineItems, setTimelineItems] = useState<TimelineItem[]>([]);
-  const [selectedItem, setSelectedItem] = useState<TimelineItem | null>(null);
-  const [activeTab, setActiveTab] = useState('visuals');
   const [volume, setVolume] = useState(1);
   const [muted, setMuted] = useState(false);
-  const [fullscreen, setFullscreen] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [promptText, setPromptText] = useState('');
-  const [history, setHistory] = useState<TimelineItem[][]>([]);
-  const [historyIndex, setHistoryIndex] = useState(-1);
-
-  // Handle timeline item updates (position, duration, etc.)
-  const handleUpdateTimelineItem = (updatedItem: TimelineItem) => {
-    setTimelineItems(items => 
-      items.map(item => item.id === updatedItem.id ? updatedItem : item)
-    );
+  const [activeTab, setActiveTab] = useState<string>("visuals");
+  const [timelineScale, setTimelineScale] = useState(80); // scale for timeline (pixels per second)
+  const [promptText, setPromptText] = useState("");
+  const [history, setHistory] = useState<TimelineItem[][]>([[]]);
+  const [historyIndex, setHistoryIndex] = useState(0);
+  const [selectedItem, setSelectedItem] = useState<TimelineItem | null>(null);
+  
+  useEffect(() => {
+    if (JSON.stringify(timelineItems) !== JSON.stringify(history[historyIndex])) {
+      const newHistory = history.slice(0, historyIndex + 1);
+      newHistory.push([...timelineItems]);
+      setHistory(newHistory);
+      setHistoryIndex(newHistory.length - 1);
+    }
+  }, [timelineItems]);
+  
+  useEffect(() => {
+    const calculateTimelineDuration = () => {
+      if (timelineItems.length === 0) return 600; // Default duration if no items (10 minutes)
+      
+      const lastItemEndTime = Math.max(
+        ...timelineItems.map(item => item.start + item.duration)
+      );
+      
+      return Math.max(lastItemEndTime + 2, 600);
+    };
     
-    // Save to history for undo/redo
-    addToHistory();
-  };
-
-  // Handle adding a new item to the timeline
-  const handleAddTimelineItem = (newItem: TimelineItem) => {
-    setTimelineItems(prev => [...prev, newItem]);
+    setDuration(calculateTimelineDuration());
+  }, [timelineItems]);
+  
+  useEffect(() => {
+    let playbackInterval: number;
     
-    // Save to history for undo/redo
-    addToHistory();
-    
-    toast.success('Item added to timeline', {
-      description: `Added ${newItem.name} to your project`
-    });
-  };
-
-  // Handle removing an item from the timeline
-  const handleRemoveTimelineItem = (id: string) => {
-    setTimelineItems(items => items.filter(item => item.id !== id));
-    if (selectedItem?.id === id) {
-      setSelectedItem(null);
+    if (isPlaying) {
+      playbackInterval = window.setInterval(() => {
+        setCurrentTime(prevTime => {
+          const lastMediaEndTime = timelineItems.length > 0 ?
+            Math.max(...timelineItems.map(item => item.start + item.duration)) : 0;
+          
+          if (prevTime >= lastMediaEndTime) {
+            setIsPlaying(false);
+            return 0;
+          }
+          return prevTime + 0.1;
+        });
+      }, 100);
     }
     
-    // Save to history for undo/redo
-    addToHistory();
-  };
-
-  // Handle project play/pause
+    return () => {
+      if (playbackInterval) {
+        clearInterval(playbackInterval);
+      }
+    };
+  }, [isPlaying, timelineItems]);
+  
   const handlePlayPause = () => {
-    setIsPlaying(!isPlaying);
+    setIsPlaying(prev => !prev);
   };
-
-  // Handle seeking to a specific time in the project
+  
   const handleSeek = (time: number) => {
     setCurrentTime(time);
   };
 
-  // Toggle fullscreen mode for preview
-  const toggleFullscreen = () => {
-    setFullscreen(!fullscreen);
+  const handleSave = () => {
+    const projectData = {
+      name: projectName,
+      timeline: timelineItems,
+      duration: duration
+    };
+    
+    localStorage.setItem('editflow_project', JSON.stringify(projectData));
+    
+    toast.success('Project saved', {
+      description: `${projectName} has been saved.`,
+    });
   };
 
-  // Handle volume changes
-  const handleVolumeChange = (newVolume: number) => {
-    setVolume(newVolume);
+  const handleExport = () => {
+    toast.success('Export started', {
+      description: 'Your video is being prepared for download.',
+    });
+    
+    setTimeout(() => {
+      toast.success('Export complete', {
+        description: 'Your video is ready to download.',
+      });
+      
+      const a = document.createElement('a');
+      a.href = '#';
+      a.download = `${projectName.replace(/\s+/g, '_')}_export.mp4`;
+      a.textContent = 'Download';
+      a.addEventListener('click', (e) => {
+        e.preventDefault();
+        toast.info('This is a simulated download in the demo');
+      });
+      
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    }, 2000);
   };
 
-  // Handle mute toggle
-  const handleMuteToggle = () => {
-    setMuted(!muted);
+  const handleRename = (name: string) => {
+    setProjectName(name);
+    toast.success('Project renamed', {
+      description: `Project is now named "${name}".`,
+    });
   };
 
-  // Add current state to history for undo/redo
-  const addToHistory = () => {
-    // If we're not at the end of history, trim it
-    if (historyIndex >= 0 && historyIndex < history.length - 1) {
-      setHistory(prev => prev.slice(0, historyIndex + 1));
+  const handleAddTimelineItem = (item: TimelineItem) => {
+    setTimelineItems(prev => [...prev, item]);
+    toast.success('Media added', {
+      description: `Added ${item.name} to the timeline.`,
+    });
+  };
+
+  const handleRemoveTimelineItem = (id: string) => {
+    setTimelineItems(prev => prev.filter(item => item.id !== id));
+  };
+
+  const handleUpdateTimelineItem = (updatedItem: TimelineItem) => {
+    setTimelineItems(prev => 
+      prev.map(item => item.id === updatedItem.id ? updatedItem : item)
+    );
+  };
+
+  const handleVolumeChange = (value: number) => {
+    setVolume(value);
+  };
+
+  const handleToggleMute = () => {
+    setMuted(prev => !prev);
+  };
+
+  const handleTimelineZoomIn = () => {
+    setTimelineScale(prev => Math.min(prev * 1.2, 200));
+  };
+
+  const handleTimelineZoomOut = () => {
+    setTimelineScale(prev => Math.max(prev / 1.2, 20));
+  };
+
+  const handleGenerate = () => {
+    if (!promptText.trim()) {
+      toast.error('Please enter a prompt');
+      return;
     }
     
-    setHistory(prev => [...prev, [...timelineItems]]);
-    setHistoryIndex(prev => prev + 1);
+    toast.success('Generating content', {
+      description: `Creating content based on: "${promptText}"`,
+    });
+    
+    setTimeout(() => {
+      toast.info('AI generated insight', {
+        description: 'Based on your prompt, we recommend adding more transition effects between clips.',
+      });
+    }, 2000);
+    
+    setPromptText("");
   };
-
-  // Handle undo action
+  
   const handleUndo = () => {
     if (historyIndex > 0) {
-      const newIndex = historyIndex - 1;
-      setHistoryIndex(newIndex);
-      setTimelineItems(history[newIndex]);
+      setHistoryIndex(historyIndex - 1);
+      setTimelineItems([...history[historyIndex - 1]]);
       toast.info('Undo successful');
     } else {
       toast.info('Nothing to undo');
     }
   };
-
-  // Handle redo action
+  
   const handleRedo = () => {
     if (historyIndex < history.length - 1) {
-      const newIndex = historyIndex + 1;
-      setHistoryIndex(newIndex);
-      setTimelineItems(history[newIndex]);
+      setHistoryIndex(historyIndex + 1);
+      setTimelineItems([...history[historyIndex + 1]]);
       toast.info('Redo successful');
     } else {
       toast.info('Nothing to redo');
     }
   };
-
-  // Generate project using AI
-  const handleGenerate = () => {
-    if (!promptText.trim()) {
-      toast.error('Please enter a prompt first');
+  
+  const handleTrimItem = () => {
+    if (!selectedItem) {
+      toast.info('Please select an item to trim');
       return;
     }
     
-    toast.info('Generating content based on your prompt...', {
-      description: 'This feature is not fully implemented yet.'
-    });
-    
-    // In a real implementation, this would call an API
-    // For now, we'll just add a toast to acknowledge the action
-    
-    setTimeout(() => {
-      toast.success('Project generated!', {
-        description: 'Your content has been generated and added to the timeline'
-      });
+    if (selectedItem.duration > 1) {
+      const updatedItem = {
+        ...selectedItem,
+        duration: selectedItem.duration - 1
+      };
       
-      // Clear the prompt
-      setPromptText('');
-    }, 2000);
+      handleUpdateTimelineItem(updatedItem);
+      toast.success('Item trimmed by 1 second');
+    } else {
+      toast.info('Item is too short to trim further');
+    }
   };
-
-  // Event listener for video volume change
+  
+  useEffect(() => {
+    const handleAddItem = (e: CustomEvent<TimelineItem>) => {
+      handleAddTimelineItem(e.detail);
+    };
+    
+    const handleGetTimelineItems = (e: CustomEvent<{callback: (items: TimelineItem[]) => void}>) => {
+      if (e.detail && e.detail.callback) {
+        e.detail.callback([...timelineItems]);
+      }
+    };
+    
+    window.addEventListener('add-timeline-item', handleAddItem as EventListener);
+    document.addEventListener('get-timeline-items', handleGetTimelineItems as EventListener);
+    
+    return () => {
+      window.removeEventListener('add-timeline-item', handleAddItem as EventListener);
+      document.removeEventListener('get-timeline-items', handleGetTimelineItems as EventListener);
+    };
+  }, [timelineItems]);
+  
   useEffect(() => {
     const handleVideoVolumeChange = (e: CustomEvent<{id: string, volume: number}>) => {
       if (e.detail && e.detail.id) {
-        const item = timelineItems.find(item => item.id === e.detail.id);
-        if (item) {
-          handleUpdateTimelineItem({
-            ...item,
-            volume: e.detail.volume
-          });
-        }
+        handleUpdateTimelineItem({
+          ...timelineItems.find(item => item.id === e.detail.id)!,
+          volume: e.detail.volume
+        });
       }
     };
     
@@ -171,40 +267,21 @@ const VideoEditor: React.FC = () => {
       window.removeEventListener('video-volume-change', handleVideoVolumeChange as EventListener);
     };
   }, [timelineItems]);
-
-  // Add timeline item event listener
-  useEffect(() => {
-    const handleAddTimelineItemEvent = (e: CustomEvent<TimelineItem>) => {
-      handleAddTimelineItem(e.detail);
-    };
-    
-    window.addEventListener('add-timeline-item', handleAddTimelineItemEvent as EventListener);
-    
-    return () => {
-      window.removeEventListener('add-timeline-item', handleAddTimelineItemEvent as EventListener);
-    };
-  }, []);
-
-  // Get timeline items event listener for drag and drop operations
-  useEffect(() => {
-    const handleGetTimelineItems = (e: CustomEvent<{callback: (items: TimelineItem[]) => void}>) => {
-      if (e.detail && e.detail.callback) {
-        e.detail.callback(timelineItems);
-      }
-    };
-    
-    document.addEventListener('get-timeline-items', handleGetTimelineItems as EventListener);
-    
-    return () => {
-      document.removeEventListener('get-timeline-items', handleGetTimelineItems as EventListener);
-    };
-  }, [timelineItems]);
-
+  
+  const selectedVideo = selectedItem?.type === 'video' ? selectedItem : 
+    timelineItems.find(item => item.type === 'video' && item.id === selectedItem?.id) || null;
+  
   return (
-    <div className="flex flex-col h-screen bg-editor-bg overflow-hidden" ref={containerRef}>
-      <div className="flex-1 flex overflow-hidden">
-        {/* Left sidebar */}
-        <div className="w-64 shrink-0 bg-editor-panel border-r border-white/10 overflow-hidden flex flex-col">
+    <div className="flex flex-col h-full bg-[#151514] text-[#F7F8F6] overflow-hidden">
+      <Header 
+        projectName={projectName}
+        onRename={handleRename}
+        onSave={handleSave}
+        onExport={handleExport}
+      />
+      
+      <div className="flex flex-1 overflow-hidden">
+        <div className="w-[30%] max-w-[300px] min-w-[200px] h-full flex flex-col border-r border-white/10">
           <MediaSidebar 
             activeTab={activeTab}
             setActiveTab={setActiveTab}
@@ -212,46 +289,86 @@ const VideoEditor: React.FC = () => {
             promptText={promptText}
             setPromptText={setPromptText}
             onGenerate={handleGenerate}
-            selectedVideo={selectedItem?.type === 'video' ? selectedItem : null}
+            selectedVideo={selectedVideo}
           />
         </div>
         
-        {/* Main content */}
-        <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-          {/* Preview */}
-          <div className={cn(
-            "flex-1 overflow-hidden",
-            fullscreen ? "absolute inset-0 z-50 bg-black" : ""
-          )}>
-            <Preview 
-              currentTime={currentTime}
-              duration={duration}
-              isPlaying={isPlaying}
-              onPlayPause={handlePlayPause}
-              onSeek={handleSeek}
-              timelineItems={timelineItems}
-              volume={volume}
-              onVolumeChange={handleVolumeChange}
-              muted={muted}
-              onToggleMute={handleMuteToggle}
-            />
-          </div>
-          
-          {/* Timeline */}
-          <div className="h-56 shrink-0 border-t border-white/10">
-            <Timeline 
-              currentTime={currentTime}
-              duration={duration}
-              isPlaying={isPlaying}
-              onPlayPause={handlePlayPause}
-              onSeek={handleSeek}
-              items={timelineItems}
-              onRemoveItem={handleRemoveTimelineItem}
-              onUpdateItem={handleUpdateTimelineItem}
-              onSelectItem={setSelectedItem}
-              selectedItem={selectedItem}
-            />
-          </div>
+        <div className="w-[70%] min-w-[500px] h-full flex flex-col overflow-hidden">
+          <ResizablePanelGroup direction="vertical" className="h-full">
+            <ResizablePanel defaultSize={60} minSize={30} maxSize={70}>
+              <Preview 
+                currentTime={currentTime} 
+                isPlaying={isPlaying} 
+                timelineItems={timelineItems}
+                volume={volume}
+                muted={muted}
+                duration={duration}
+                onToggleMute={handleToggleMute}
+                onVolumeChange={handleVolumeChange}
+                onPlayPause={handlePlayPause}
+              />
+            </ResizablePanel>
+            
+            <ResizableHandle withHandle />
+            
+            <ResizablePanel defaultSize={40} minSize={20}>
+              <div className="flex items-center justify-between p-1 bg-[#151514]/70 border-b border-white/10 h-8">
+                <div className="flex items-center">
+                  <button 
+                    className="p-1 text-[#F7F8F6]/80 hover:text-[#D7F266] transition-colors mx-1"
+                    onClick={handleUndo}
+                    title="Undo"
+                  >
+                    <ChevronLeft size={14} />
+                  </button>
+                  <button 
+                    className="p-1 text-[#F7F8F6]/80 hover:text-[#D7F266] transition-colors mr-1"
+                    onClick={handleRedo}
+                    title="Redo"
+                  >
+                    <ChevronRight size={14} />
+                  </button>
+                  <div className="h-4 w-px bg-white/20 mx-1"></div>
+                  <button 
+                    className="p-1 text-[#F7F8F6]/80 hover:text-[#D7F266] transition-colors mx-1"
+                    onClick={handleTrimItem}
+                    title="Trim selected item"
+                  >
+                    <ZoomIn size={14} />
+                  </button>
+                </div>
+                
+                <div className="flex items-center">
+                  <span className="text-xs font-semibold text-[#F7F8F6]/80 mr-2">Timeline Zoom:</span>
+                  <button 
+                    className="p-1 text-[#F7F8F6]/80 hover:text-[#D7F266] transition-colors"
+                    onClick={handleTimelineZoomOut}
+                  >
+                    <ZoomOut size={14} />
+                  </button>
+                  <button 
+                    className="p-1 text-[#F7F8F6]/80 hover:text-[#D7F266] transition-colors ml-1"
+                    onClick={handleTimelineZoomIn}
+                  >
+                    <ZoomIn size={14} />
+                  </button>
+                </div>
+              </div>
+              <Timeline 
+                currentTime={currentTime}
+                duration={duration}
+                isPlaying={isPlaying}
+                onPlayPause={handlePlayPause}
+                onSeek={handleSeek}
+                items={timelineItems}
+                onRemoveItem={handleRemoveTimelineItem}
+                onUpdateItem={handleUpdateTimelineItem}
+                scale={timelineScale}
+                onSelectItem={setSelectedItem}
+                selectedItem={selectedItem}
+              />
+            </ResizablePanel>
+          </ResizablePanelGroup>
         </div>
       </div>
     </div>

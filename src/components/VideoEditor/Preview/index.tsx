@@ -17,7 +17,6 @@ interface PreviewProps {
   onToggleMute: () => void;
   onVolumeChange: (value: number) => void;
   onPlayPause: () => void;
-  onSeek: (time: number) => void;
 }
 
 const Preview: React.FC<PreviewProps> = ({ 
@@ -29,8 +28,7 @@ const Preview: React.FC<PreviewProps> = ({
   duration,
   onToggleMute,
   onVolumeChange,
-  onPlayPause,
-  onSeek
+  onPlayPause
 }) => {
   const [fullscreen, setFullscreen] = useState(false);
   const [minimized, setMinimized] = useState(false);
@@ -82,7 +80,7 @@ const Preview: React.FC<PreviewProps> = ({
   };
   
   return (
-    <div ref={containerRef} className={`flex-1 bg-editor-bg flex flex-col overflow-hidden animate-fade-in ${minimized ? 'h-20' : ''}`} style={{ minHeight: minimized ? '80px' : '360px' }}>
+    <div ref={containerRef} className={`flex-1 bg-[#151514] flex flex-col overflow-hidden animate-fade-in ${minimized ? 'h-20' : ''}`} style={{ minHeight: minimized ? '80px' : '360px' }}>
       {!minimized ? (
         <VideoPlayer 
           activeVideo={activeVideo}
@@ -95,25 +93,25 @@ const Preview: React.FC<PreviewProps> = ({
           duration={duration}
         />
       ) : (
-        <div className="h-20 flex items-center justify-center bg-editor-panel/30 text-theme-light/80">
+        <div className="h-20 flex items-center justify-center bg-editor-panel/30 text-[#F7F8F6]/80">
           Preview minimized - Click to restore
         </div>
       )}
       
-      <div className="p-2 flex items-center justify-between border-b border-white/10 bg-editor-bg">
+      <div className="p-2 flex items-center justify-between border-b border-white/10 bg-[#151514]">
         <div className="flex items-center gap-2">
           <button 
-            className="w-8 h-8 flex items-center justify-center bg-editor-accent hover:bg-editor-accent-hover rounded-full transition-colors"
+            className="w-8 h-8 flex items-center justify-center bg-white/10 hover:bg-white/20 rounded-full transition-colors"
             onClick={onPlayPause}
           >
             {isPlaying ? 
-              <Pause size={14} className="text-editor-bg" /> : 
-              <Play size={14} className="text-editor-bg ml-0.5" />
+              <Pause size={14} className="text-[#F7F8F6]" /> : 
+              <Play size={14} className="text-[#F7F8F6] ml-0.5" />
             }
           </button>
           
           <button 
-            className="w-7 h-7 flex items-center justify-center text-theme-light/80 hover:text-theme-light transition-colors"
+            className="w-7 h-7 flex items-center justify-center text-[#F7F8F6]/80 hover:text-[#F7F8F6] transition-colors"
             onClick={onToggleMute}
           >
             {muted ? <VolumeX size={14} /> : <Volume2 size={14} />}
@@ -126,24 +124,24 @@ const Preview: React.FC<PreviewProps> = ({
             step="0.01"
             value={volume}
             onChange={handleVolumeChange}
-            className="w-16 h-1 bg-white/20 rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:bg-editor-accent [&::-webkit-slider-thumb]:rounded-full"
+            className="w-16 h-1 bg-white/20 rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:bg-[#D7F266] [&::-webkit-slider-thumb]:rounded-full"
           />
         </div>
         
-        <div className="text-theme-light/80 text-xs">
+        <div className="text-[#F7F8F6]/80 text-xs">
           {formatTime(currentTime)} / {formatTime(duration)}
         </div>
         
         <div className="flex items-center gap-2">
           <button
-            className="w-7 h-7 flex items-center justify-center text-theme-light/80 hover:text-theme-light transition-colors"
+            className="w-7 h-7 flex items-center justify-center text-[#F7F8F6]/80 hover:text-[#F7F8F6] transition-colors"
             onClick={toggleMinimized}
             title={minimized ? "Expand preview" : "Minimize preview"}
           >
             <Minimize2 size={14} />
           </button>
           <button
-            className="w-7 h-7 flex items-center justify-center text-theme-light/80 hover:text-theme-light transition-colors"
+            className="w-7 h-7 flex items-center justify-center text-[#F7F8F6]/80 hover:text-[#F7F8F6] transition-colors"
             onClick={toggleFullscreen}
           >
             <Maximize size={14} />

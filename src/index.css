@@ -36,11 +36,11 @@
     --radius: 0.5rem;
 
     /* Editor-specific variables */
-    --editor-bg: 222 30% 12%;     /* Dark Navy #151E2C */
-    --editor-panel: 223 28% 16%;  /* Slightly lighter Navy #1E2738 */
-    --editor-timeline: 224 27% 14%; /* Between the two above #192130*/
-    --editor-hover: 222 25% 20%;  /* Hover state color #243244 */
-    --editor-accent: 75 86% 67%;  /* Lime Green #D7F266 */
+    --editor-bg: 60 1% 8%;         /* Almost Black #151514 */
+    --editor-panel: 60 1% 12%;     /* Slightly lighter than Almost Black */
+    --editor-timeline: 60 1% 10%;  /* Between the two above */
+    --editor-hover: 60 1% 15%;     /* Slightly lighter for hover states */
+    --editor-accent: 75 86% 67%;   /* Lime Green #D7F266 */
     --editor-accent-hover: 75 76% 60%; /* Slightly darker Lime Green */
   }
 
@@ -95,17 +95,17 @@
 
 @layer components {
   .glass-panel {
-    background-color: rgba(247, 248, 246, 0.1);
+    background-color: rgba(var(--theme-light), 0.1);
     backdrop-filter: blur(8px);
-    border: 1px solid rgba(247, 248, 246, 0.2);
+    border: 1px solid rgba(var(--theme-light), 0.2);
     box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
   }
 
   .video-item {
     border-radius: 0.375rem;
     overflow: hidden;
-    background-color: hsl(var(--editor-panel));
-    border: 1px solid rgba(247, 248, 246, 0.1);
+    background-color: var(--editor-panel);
+    border: 1px solid rgba(var(--theme-light), 0.1);
     transition-property: all;
     transition-duration: 300ms;
     cursor: grab;
@@ -115,8 +115,8 @@
   .timeline-item {
     border-radius: 0.375rem;
     overflow: hidden;
-    background-color: rgba(215, 242, 102, 0.7);
-    border: 1px solid rgba(247, 248, 246, 0.1);
+    background-color: rgba(var(--theme-primary), 0.7);
+    border: 1px solid rgba(var(--theme-light), 0.1);
     transition: all 150ms;
     cursor: grab;
     user-select: none;
@@ -127,7 +127,7 @@
     top: 0;
     bottom: 0;
     width: 1px;
-    background-color: rgba(215, 242, 102, 0.8);
+    background-color: rgba(var(--theme-primary), 0.8);
     z-index: 10;
     transition-property: transform;
     transition-duration: 100ms;
@@ -136,14 +136,14 @@
   .timeline-track {
     height: 4rem;
     position: relative;
-    border-bottom: 1px solid rgba(247, 248, 246, 0.05);
+    border-bottom: 1px solid rgba(var(--theme-light), 0.05);
     transition: all 200ms;
   }
 
   .time-marker {
     font-size: 0.75rem;
-    color: rgba(247, 248, 246, 0.5);
-    border-right: 1px solid rgba(247, 248, 246, 0.1);
+    color: rgba(var(--theme-light), 0.5);
+    border-right: 1px solid rgba(var(--theme-light), 0.1);
     height: 100%;
     display: flex;
     align-items: center;
@@ -157,11 +157,11 @@
   .button-icon {
     padding: 0.5rem;
     border-radius: 9999px;
-    background-color: rgba(30, 39, 56, 0.8);
+    background-color: rgba(var(--editor-panel), 0.8);
     backdrop-filter: blur(4px);
     transition: all 0.2s;
-    border: 1px solid rgba(247, 248, 246, 0.1);
-    color: rgba(247, 248, 246, 0.8);
+    border: 1px solid rgba(var(--theme-light), 0.1);
+    color: rgba(var(--theme-light), 0.8);
   }
 
   .dragging {
