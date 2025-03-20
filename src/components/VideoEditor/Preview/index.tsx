@@ -17,6 +17,7 @@ interface PreviewProps {
   onToggleMute: () => void;
   onVolumeChange: (value: number) => void;
   onPlayPause: () => void;
+  onSeek: (time: number) => void;
 }
 
 const Preview: React.FC<PreviewProps> = ({ 
@@ -28,7 +29,8 @@ const Preview: React.FC<PreviewProps> = ({
   duration,
   onToggleMute,
   onVolumeChange,
-  onPlayPause
+  onPlayPause,
+  onSeek
 }) => {
   const [fullscreen, setFullscreen] = useState(false);
   const [minimized, setMinimized] = useState(false);

@@ -200,18 +200,6 @@ const VideoEditor: React.FC = () => {
     };
   }, [timelineItems]);
 
-  // Calculate active videos and audios based on current time
-  const activeVideos = timelineItems.filter(
-    item => item.type === 'video' && currentTime >= item.start && currentTime < item.start + item.duration
-  );
-  
-  const activeAudios = timelineItems.filter(
-    item => item.type === 'audio' && currentTime >= item.start && currentTime < item.start + item.duration
-  );
-  
-  // Determine which video to show in the preview (last one in activeVideos array)
-  const activeVideo = activeVideos.length > 0 ? activeVideos[activeVideos.length - 1] : null;
-
   return (
     <div className="flex flex-col h-screen bg-editor-bg overflow-hidden" ref={containerRef}>
       <div className="flex-1 flex overflow-hidden">
@@ -241,17 +229,11 @@ const VideoEditor: React.FC = () => {
               isPlaying={isPlaying}
               onPlayPause={handlePlayPause}
               onSeek={handleSeek}
-              activeVideo={activeVideo}
-              activeAudios={activeAudios}
+              timelineItems={timelineItems}
               volume={volume}
               onVolumeChange={handleVolumeChange}
               muted={muted}
-              onMuteToggle={handleMuteToggle}
-              fullscreen={fullscreen}
-              onToggleFullscreen={toggleFullscreen}
-              containerRef={containerRef}
-              onUndo={handleUndo}
-              onRedo={handleRedo}
+              onToggleMute={handleMuteToggle}
             />
           </div>
           
