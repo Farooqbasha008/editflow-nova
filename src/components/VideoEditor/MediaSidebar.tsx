@@ -123,6 +123,7 @@ const MediaSidebar: React.FC<MediaSidebarProps> = ({
           <TabsContent value="generator" className="flex-1 overflow-hidden m-0 border-0 p-0">
             <AudioExtractor 
               selectedVideo={selectedVideo}
+              onAddToTimeline={onAddToTimeline}
             />
           </TabsContent>
         </Tabs>
