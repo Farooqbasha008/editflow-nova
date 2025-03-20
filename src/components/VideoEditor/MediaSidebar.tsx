@@ -10,6 +10,7 @@ import { Film, Music, TextIcon, Mic, FolderOpen, Sparkles, ImageIcon } from 'luc
 import ImageGenerator from './ImageGenerator';
 import AudioExtractor from './AudioExtractor';
 import FreeSoundBrowser from './FreeSoundBrowser';
+import { Textarea } from '@/components/ui/textarea';
 
 interface MediaSidebarProps {
   activeTab: string;
@@ -124,7 +125,10 @@ const MediaSidebar: React.FC<MediaSidebarProps> = ({
           </TabsContent>
           
           <TabsContent value="generator" className="flex-1 overflow-hidden m-0 border-0 p-0">
-            <AudioExtractor onAddToTimeline={onAddToTimeline} selectedVideo={selectedVideo} />
+            <AudioExtractor 
+              onAddToTimeline={onAddToTimeline} 
+              selectedVideo={selectedVideo}
+            />
           </TabsContent>
         </Tabs>
       </TabsContent>
@@ -139,12 +143,11 @@ const MediaSidebar: React.FC<MediaSidebarProps> = ({
             
             <div className="space-y-3">
               <ScrollArea className="h-28">
-                <Input
+                <Textarea
                   placeholder="Describe your idea..."
                   value={promptText}
                   onChange={(e) => setPromptText(e.target.value)}
-                  className="bg-editor-bg/80 border-white/10 text-white/90"
-                  multiline={true}
+                  className="bg-editor-bg/80 border-white/10 text-white/90 min-h-24"
                 />
               </ScrollArea>
               

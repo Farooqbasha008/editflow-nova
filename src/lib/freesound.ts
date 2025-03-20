@@ -39,11 +39,20 @@ const CLIENT_ID = 'YOUR_CLIENT_ID'; // This is a public client ID for demo purpo
  */
 export const searchFreeSounds = async (params: Omit<FreeSoundParams, 'token'>): Promise<FreeSoundResponse> => {
   try {
-    const searchParams = new URLSearchParams({
-      ...params,
+    // Create a record of strings for URLSearchParams
+    const searchParamsObj: Record<string, string> = {
       token: CLIENT_ID,
       fields: params.fields || 'id,name,url,previews,duration,username,license,description,tags',
-    });
+    };
+    
+    // Add optional parameters if they exist
+    if (params.query) searchParamsObj.query = params.query;
+    if (params.page) searchParamsObj.page = params.page.toString();
+    if (params.page_size) searchParamsObj.page_size = params.page_size.toString();
+    if (params.filter) searchParamsObj.filter = params.filter;
+    if (params.sort) searchParamsObj.sort = params.sort;
+    
+    const searchParams = new URLSearchParams(searchParamsObj);
     
     const response = await fetch(`${API_URL}/search/text/?${searchParams.toString()}`);
     
