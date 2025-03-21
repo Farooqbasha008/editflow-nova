@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { FileText, Edit, ArrowRight, Download, Play, ChevronRight } from 'lucide-react';
+import { FileText, Edit, ArrowRight, Download, Play, ChevronRight, Twitter, Facebook, Instagram, Linkedin, Github, Mail } from 'lucide-react';
 
 const LandingPage = () => {
   return (
@@ -166,38 +166,82 @@ const LandingPage = () => {
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-white/10 py-8 mt-10">
+      <footer className="border-t border-white/10 py-12 mt-16 bg-[#151514]/60">
         <div className="container mx-auto px-4">
-          <div className="flex flex-col md:flex-row justify-between items-center">
-            <div className="mb-6 md:mb-0">
-              <h2 className="text-xl font-bold text-[#D7F266] mb-2">EditFlow</h2>
-              <p className="text-sm text-[#F7F8F6]/60 max-w-md">Create professional videos with AI. Generate, edit, and share your content in minutes.</p>
-            </div>
-            <div className="flex flex-col sm:flex-row gap-8">
-              <div>
-                <h3 className="font-medium mb-3 text-[#F7F8F6]">Product</h3>
-                <ul className="space-y-2">
-                  <li><a href="#" className="text-sm text-[#F7F8F6]/60 hover:text-[#D7F266] transition-colors">Features</a></li>
-                  <li><a href="#" className="text-sm text-[#F7F8F6]/60 hover:text-[#D7F266] transition-colors">Pricing</a></li>
-                  <li><a href="#" className="text-sm text-[#F7F8F6]/60 hover:text-[#D7F266] transition-colors">Tutorials</a></li>
-                </ul>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-12">
+            {/* Company Info */}
+            <div className="col-span-1 md:col-span-1">
+              <h2 className="text-2xl font-bold text-[#D7F266] mb-4">EditFlow</h2>
+              <p className="text-sm text-[#F7F8F6]/70 max-w-md leading-relaxed mb-6">Create professional videos with AI. Generate, edit, and share your content in minutes.</p>
+              <div className="flex space-x-4">
+                <a href="#" className="w-9 h-9 rounded-full bg-[#1E1E1E] flex items-center justify-center text-[#F7F8F6]/70 hover:text-[#D7F266] hover:bg-[#1E1E1E]/80 transition-all duration-300">
+                  <Twitter size={18} />
+                </a>
+                <a href="#" className="w-9 h-9 rounded-full bg-[#1E1E1E] flex items-center justify-center text-[#F7F8F6]/70 hover:text-[#D7F266] hover:bg-[#1E1E1E]/80 transition-all duration-300">
+                  <Facebook size={18} />
+                </a>
+                <a href="#" className="w-9 h-9 rounded-full bg-[#1E1E1E] flex items-center justify-center text-[#F7F8F6]/70 hover:text-[#D7F266] hover:bg-[#1E1E1E]/80 transition-all duration-300">
+                  <Instagram size={18} />
+                </a>
+                <a href="#" className="w-9 h-9 rounded-full bg-[#1E1E1E] flex items-center justify-center text-[#F7F8F6]/70 hover:text-[#D7F266] hover:bg-[#1E1E1E]/80 transition-all duration-300">
+                  <Linkedin size={18} />
+                </a>
               </div>
-              <div>
-                <h3 className="font-medium mb-3 text-[#F7F8F6]">Company</h3>
-                <ul className="space-y-2">
-                  <li><a href="#" className="text-sm text-[#F7F8F6]/60 hover:text-[#D7F266] transition-colors">About</a></li>
-                  <li><a href="#" className="text-sm text-[#F7F8F6]/60 hover:text-[#D7F266] transition-colors">Blog</a></li>
-                  <li><a href="#" className="text-sm text-[#F7F8F6]/60 hover:text-[#D7F266] transition-colors">Contact</a></li>
-                </ul>
+            </div>
+            
+            {/* Product Links */}
+            <div className="col-span-1">
+              <h3 className="font-semibold text-lg mb-4 text-[#F7F8F6]">Product</h3>
+              <ul className="space-y-3">
+                <li><a href="#" className="text-sm text-[#F7F8F6]/70 hover:text-[#D7F266] transition-colors duration-300 flex items-center"><ChevronRight size={14} className="mr-1 text-[#D7F266]/70" />Features</a></li>
+                <li><a href="#" className="text-sm text-[#F7F8F6]/70 hover:text-[#D7F266] transition-colors duration-300 flex items-center"><ChevronRight size={14} className="mr-1 text-[#D7F266]/70" />Pricing</a></li>
+                <li><a href="#" className="text-sm text-[#F7F8F6]/70 hover:text-[#D7F266] transition-colors duration-300 flex items-center"><ChevronRight size={14} className="mr-1 text-[#D7F266]/70" />Tutorials</a></li>
+                <li><a href="#" className="text-sm text-[#F7F8F6]/70 hover:text-[#D7F266] transition-colors duration-300 flex items-center"><ChevronRight size={14} className="mr-1 text-[#D7F266]/70" />Roadmap</a></li>
+                <li><a href="#" className="text-sm text-[#F7F8F6]/70 hover:text-[#D7F266] transition-colors duration-300 flex items-center"><ChevronRight size={14} className="mr-1 text-[#D7F266]/70" />Status</a></li>
+              </ul>
+            </div>
+            
+            {/* Company Links */}
+            <div className="col-span-1">
+              <h3 className="font-semibold text-lg mb-4 text-[#F7F8F6]">Company</h3>
+              <ul className="space-y-3">
+                <li><a href="#" className="text-sm text-[#F7F8F6]/70 hover:text-[#D7F266] transition-colors duration-300 flex items-center"><ChevronRight size={14} className="mr-1 text-[#D7F266]/70" />About</a></li>
+                <li><a href="#" className="text-sm text-[#F7F8F6]/70 hover:text-[#D7F266] transition-colors duration-300 flex items-center"><ChevronRight size={14} className="mr-1 text-[#D7F266]/70" />Blog</a></li>
+                <li><a href="#" className="text-sm text-[#F7F8F6]/70 hover:text-[#D7F266] transition-colors duration-300 flex items-center"><ChevronRight size={14} className="mr-1 text-[#D7F266]/70" />Careers</a></li>
+                <li><a href="#" className="text-sm text-[#F7F8F6]/70 hover:text-[#D7F266] transition-colors duration-300 flex items-center"><ChevronRight size={14} className="mr-1 text-[#D7F266]/70" />Contact</a></li>
+                <li><a href="#" className="text-sm text-[#F7F8F6]/70 hover:text-[#D7F266] transition-colors duration-300 flex items-center"><ChevronRight size={14} className="mr-1 text-[#D7F266]/70" />Press</a></li>
+              </ul>
+            </div>
+            
+            {/* Contact & Newsletter */}
+            <div className="col-span-1">
+              <h3 className="font-semibold text-lg mb-4 text-[#F7F8F6]">Stay Updated</h3>
+              <p className="text-sm text-[#F7F8F6]/70 mb-4">Subscribe to our newsletter for the latest updates and features.</p>
+              <div className="flex">
+                <input type="email" placeholder="Your email" className="bg-[#1E1E1E] text-sm rounded-l-md px-4 py-2 w-full focus:outline-none focus:ring-1 focus:ring-[#D7F266] border border-[#F7F8F6]/10" />
+                <button className="bg-[#D7F266] hover:bg-[#D7F266]/90 text-[#151514] px-4 py-2 rounded-r-md transition-colors duration-300 font-medium text-sm">Subscribe</button>
+              </div>
+              <div className="mt-6">
+                <a href="mailto:contact@editflow.ai" className="text-sm text-[#F7F8F6]/70 hover:text-[#D7F266] transition-colors duration-300 flex items-center">
+                  <Mail size={16} className="mr-2" />
+                  contact@editflow.ai
+                </a>
               </div>
             </div>
           </div>
-          <div className="border-t border-white/10 mt-8 pt-8 flex flex-col md:flex-row justify-between items-center">
-            <p className="text-sm text-[#F7F8F6]/40 mb-4 md:mb-0">© 2023 EditFlow. All rights reserved.</p>
-            <div className="flex space-x-6">
-              <a href="#" className="text-[#F7F8F6]/60 hover:text-[#D7F266] transition-colors">Terms</a>
-              <a href="#" className="text-[#F7F8F6]/60 hover:text-[#D7F266] transition-colors">Privacy</a>
-              <a href="#" className="text-[#F7F8F6]/60 hover:text-[#D7F266] transition-colors">Cookies</a>
+          
+          {/* Bottom Section */}
+          <div className="border-t border-white/10 pt-8 flex flex-col md:flex-row justify-between items-center">
+            <p className="text-sm text-[#F7F8F6]/50 mb-4 md:mb-0">© {new Date().getFullYear()} EditFlow. All rights reserved.</p>
+            <div className="flex flex-wrap justify-center md:justify-end gap-x-6 gap-y-2">
+              <a href="#" className="text-sm text-[#F7F8F6]/60 hover:text-[#D7F266] transition-colors">Terms</a>
+              <a href="#" className="text-sm text-[#F7F8F6]/60 hover:text-[#D7F266] transition-colors">Privacy</a>
+              <a href="#" className="text-sm text-[#F7F8F6]/60 hover:text-[#D7F266] transition-colors">Cookies</a>
+              <a href="#" className="text-sm text-[#F7F8F6]/60 hover:text-[#D7F266] transition-colors">Accessibility</a>
+              <a href="#" className="text-sm text-[#F7F8F6]/60 hover:text-[#D7F266] transition-colors">
+                <Github size={16} className="inline mr-1" />
+                GitHub
+              </a>
             </div>
           </div>
         </div>
