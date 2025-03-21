@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Film, Music, TextIcon, Mic, Image, Sparkles } from 'lucide-react';
+import { Film, Music, Mic, Sparkles } from 'lucide-react';
 import MediaLibrary from './MediaLibrary';
 import { TimelineItem } from './VideoEditor';
 import { Button } from '@/components/ui/button';
@@ -47,12 +47,6 @@ const MediaSidebar: React.FC<MediaSidebarProps> = ({
           <Music size={16} />
         </button>
         <button 
-          className={`p-2 rounded-full flex items-center justify-center ${activeTab === 'text' ? 'bg-[#D7F266] text-[#151514]' : 'bg-white/10 text-white'}`}
-          onClick={() => setActiveTab('text')}
-        >
-          <TextIcon size={16} />
-        </button>
-        <button 
           className={`p-2 rounded-full flex items-center justify-center ${activeTab === 'voiceover' ? 'bg-[#D7F266] text-[#151514]' : 'bg-white/10 text-white'}`}
           onClick={() => setActiveTab('voiceover')}
         >
@@ -79,17 +73,9 @@ const MediaSidebar: React.FC<MediaSidebarProps> = ({
           </div>
         )}
         
-        {activeTab === 'text' && (
-          <div className="flex flex-col items-center justify-center h-full p-4 text-white/70">
-            <TextIcon size={32} className="mb-2" />
-            <p className="text-sm">Text elements coming soon</p>
-          </div>
-        )}
-        
         {activeTab === 'voiceover' && (
           <div className="flex flex-col items-center justify-center h-full p-4 text-white/70">
             <Mic size={32} className="mb-2" />
-            <p className="text-sm">Record voiceover coming soon</p>
           </div>
         )}
         

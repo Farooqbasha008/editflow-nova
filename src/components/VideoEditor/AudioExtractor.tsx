@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { FileAudio, Play, Pause, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -15,6 +15,23 @@ const AudioExtractor: React.FC<AudioExtractorProps> = ({ videoItem, onAddExtract
   const [isPlaying, setIsPlaying] = useState(false);
   const [extractedAudioUrl, setExtractedAudioUrl] = useState<string | null>(null);
   const audioRef = React.useRef<HTMLAudioElement | null>(null);
+  const canvasRef = React.useRef<HTMLCanvasElement | null>(null);
+  const videoRef = React.useRef<HTMLVideoElement | null>(null);
+  const audioContextRef = React.useRef<AudioContext | null>(null);
+  const destinationRef = React.useRef<MediaStreamAudioDestinationNode | null>(null);
+
+  useEffect(() => {
+    // Clean up resources when component unmounts
+    return () => {
+      if (extractedAudioUrl && extractedAudioUrl.startsWith('blob:')) {
+        URL.revokeObjectURL(extractedAudioUrl);
+      }
+      
+      if (audioContextRef.current) {
+        audioContextRef.current.close();
+      }
+    };
+  }, [extractedAudioUrl]);
 
   const extractAudio = async () => {
     if (!videoItem || !videoItem.src) {
@@ -26,25 +43,88 @@ const AudioExtractor: React.FC<AudioExtractorProps> = ({ videoItem, onAddExtract
     toast.info('Extracting audio from video...');
 
     try {
-      // In a real implementation, you would use a proper audio extraction library
-      // For this demo, we'll simulate extraction by using the video's audio track directly
-      // as most video elements also contain audio that can be played
+      // Create video element to process
+      const video = document.createElement('video');
+      video.src = videoItem.src;
+      video.muted = true;
       
-      // Simulate a processing delay
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      // Use the same source for audio (in reality, you'd extract the audio track)
-      setExtractedAudioUrl(videoItem.src);
-      
-      toast.success('Audio extracted successfully!', {
-        description: `Extracted from ${videoItem.name}`
+      // Wait for video metadata to load
+      await new Promise<void>((resolve, reject) => {
+        video.onloadedmetadata = () => resolve();
+        video.onerror = () => reject(new Error('Failed to load video'));
+        video.load();
       });
+
+      // Create audio context and connect to destination
+      const audioContext = new AudioContext();
+      audioContextRef.current = audioContext;
+      
+      // Create media stream destination to collect audio
+      const destination = audioContext.createMediaStreamDestination();
+      destinationRef.current = destination;
+      
+      // Connect video source to audio destination
+      const source = audioContext.createMediaElementSource(video);
+      source.connect(destination);
+      source.connect(audioContext.destination);
+      
+      // Create a media recorder to capture the audio
+      const mediaRecorder = new MediaRecorder(destination.stream);
+      const audioChunks: BlobPart[] = [];
+      
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunks.push(event.data);
+        }
+      };
+      
+      mediaRecorder.onstop = () => {
+        if (audioChunks.length === 0) {
+          toast.error('No audio data was captured from the video');
+          setIsExtracting(false);
+          return;
+        }
+        
+        // Create a blob from the audio chunks
+        const audioBlob = new Blob(audioChunks, { type: 'audio/mp3' });
+        
+        // Clean up previous URL if exists
+        if (extractedAudioUrl && extractedAudioUrl.startsWith('blob:')) {
+          URL.revokeObjectURL(extractedAudioUrl);
+        }
+        
+        // Create a URL for the blob
+        const audioUrl = URL.createObjectURL(audioBlob);
+        setExtractedAudioUrl(audioUrl);
+        
+        toast.success('Audio extracted successfully!', {
+          description: `Extracted from ${videoItem.name}`
+        });
+        
+        setIsExtracting(false);
+      };
+      
+      // Start recording
+      mediaRecorder.start();
+      
+      // Play the video (muted) to process audio
+      video.currentTime = 0;
+      await video.play();
+      
+      // Stop recording when video ends or after 30 seconds (safety)
+      const recordingDuration = Math.min(video.duration * 1000, 30000);
+      
+      setTimeout(() => {
+        mediaRecorder.stop();
+        video.pause();
+        video.src = '';
+      }, recordingDuration);
+      
     } catch (error) {
       console.error('Error extracting audio:', error);
       toast.error('Failed to extract audio', {
         description: 'An error occurred during audio extraction.',
       });
-    } finally {
       setIsExtracting(false);
     }
   };
@@ -159,6 +239,10 @@ const AudioExtractor: React.FC<AudioExtractorProps> = ({ videoItem, onAddExtract
           Select a video to extract audio
         </div>
       )}
+      
+      {/* Hidden elements for processing */}
+      <canvas ref={canvasRef} className="hidden" width="1" height="1"></canvas>
+      <video ref={videoRef} className="hidden"></video>
     </div>
   );
 };
