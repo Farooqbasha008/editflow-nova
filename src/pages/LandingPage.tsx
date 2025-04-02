@@ -36,17 +36,13 @@ const LandingPage = () => {
           <p className="text-xl md:text-2xl text-[#F7F8F6]/80 max-w-3xl mx-auto mb-10 leading-relaxed">
             Generate, edit, and share professional content in minutes with the power of AI.
           </p>
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 max-w-md mx-auto">
+          <div className="flex justify-center max-w-md mx-auto">
             <Link to="/editor" className="w-full">
               <Button className="bg-[#D7F266] hover:bg-[#D7F266]/90 text-[#151514] w-full rounded-full transition-all duration-300 h-12 text-lg font-medium">
                 <Play size={18} className="mr-2" />
                 Get Started
               </Button>
             </Link>
-            <Button variant="outline" className="w-full rounded-full h-12 text-lg border-[#F7F8F6]/40 hover:bg-[#1E1E1E] text-[#F7F8F6] transition-all duration-300 font-medium">
-              Watch Demo
-              <ChevronRight size={18} className="ml-1" />
-            </Button>
           </div>
         </section>
 
@@ -64,9 +60,11 @@ const LandingPage = () => {
               </div>
               <h4 className="text-xl font-bold mb-2">Generate complete video</h4>
               <p className="text-[#F7F8F6]/80 mb-6">from script or topic</p>
-              <Button className="bg-[#D7F266] hover:bg-[#D7F266]/90 text-[#151514] w-full rounded-full transition-all duration-300">
-                Start Creating
-              </Button>
+              <Link to="/video-generation" className="w-full">
+                <Button className="bg-[#D7F266] hover:bg-[#D7F266]/90 text-[#151514] w-full rounded-full transition-all duration-300">
+                  Start Creating
+                </Button>
+              </Link>
             </div>
 
             {/* Explore from Scratch Card */}
