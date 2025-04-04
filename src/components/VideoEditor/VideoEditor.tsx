@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import Header from './Header';
 import MediaLibrary from './MediaLibrary';
@@ -9,6 +10,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import MediaSidebar from './MediaSidebar';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
+import { v4 as uuidv4 } from 'uuid';
 
 export interface TimelineItem {
   id: string;
@@ -24,6 +28,7 @@ export interface TimelineItem {
 }
 
 const VideoEditor: React.FC = () => {
+  const { user } = useAuth();
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(600); // Total timeline duration in seconds (10 minutes)
   const [isPlaying, setIsPlaying] = useState(false);
@@ -37,7 +42,75 @@ const VideoEditor: React.FC = () => {
   const [history, setHistory] = useState<TimelineItem[][]>([[]]);
   const [historyIndex, setHistoryIndex] = useState(0);
   const [selectedItem, setSelectedItem] = useState<TimelineItem | null>(null);
+  const [currentProjectId, setCurrentProjectId] = useState<string | null>(null);
+  const [isLoadingProject, setIsLoadingProject] = useState(false);
   
+  // Initialize or load user preferences
+  useEffect(() => {
+    if (user) {
+      const loadUserPreferences = async () => {
+        const { data, error } = await supabase
+          .from('user_preferences')
+          .select('*')
+          .eq('user_id', user.id)
+          .single();
+        
+        if (error && error.code !== 'PGRST116') {
+          toast.error('Failed to load preferences');
+          console.error('Error loading user preferences:', error);
+          return;
+        }
+        
+        if (data) {
+          if (data.default_volume !== null) setVolume(data.default_volume);
+          if (data.timeline_scale !== null) setTimelineScale(data.timeline_scale);
+        } else {
+          // Create default preferences if none exist
+          const { error: insertError } = await supabase
+            .from('user_preferences')
+            .insert({
+              user_id: user.id,
+              default_volume: volume,
+              timeline_scale: timelineScale,
+              theme: 'dark'
+            });
+            
+          if (insertError) {
+            console.error('Error creating user preferences:', insertError);
+          }
+        }
+      };
+      
+      loadUserPreferences();
+    }
+  }, [user]);
+  
+  // Save user preferences when they change
+  useEffect(() => {
+    if (user) {
+      const saveUserPreferences = async () => {
+        const { error } = await supabase
+          .from('user_preferences')
+          .upsert({
+            user_id: user.id,
+            default_volume: volume,
+            timeline_scale: timelineScale,
+            theme: 'dark'
+          });
+          
+        if (error) {
+          console.error('Error saving user preferences:', error);
+        }
+      };
+      
+      const debounceTimer = setTimeout(() => {
+        saveUserPreferences();
+      }, 1000);
+      
+      return () => clearTimeout(debounceTimer);
+    }
+  }, [user, volume, timelineScale]);
+
   useEffect(() => {
     if (JSON.stringify(timelineItems) !== JSON.stringify(history[historyIndex])) {
       const newHistory = history.slice(0, historyIndex + 1);
@@ -94,18 +167,86 @@ const VideoEditor: React.FC = () => {
     setCurrentTime(time);
   };
 
-  const handleSave = () => {
-    const projectData = {
-      name: projectName,
-      timeline: timelineItems,
-      duration: duration
-    };
+  const handleSave = async () => {
+    if (!user) {
+      toast.error('You need to be logged in to save projects');
+      return;
+    }
     
-    localStorage.setItem('editflow_project', JSON.stringify(projectData));
-    
-    toast.success('Project saved', {
-      description: `${projectName} has been saved.`,
-    });
+    try {
+      let projectId = currentProjectId;
+      
+      // Create or update project
+      if (!projectId) {
+        // Create new project
+        const { data, error } = await supabase
+          .from('projects')
+          .insert({
+            user_id: user.id,
+            name: projectName,
+            duration: duration
+          })
+          .select()
+          .single();
+          
+        if (error) throw error;
+        projectId = data.id;
+        setCurrentProjectId(projectId);
+      } else {
+        // Update existing project
+        const { error } = await supabase
+          .from('projects')
+          .update({
+            name: projectName,
+            duration: duration,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', projectId);
+          
+        if (error) throw error;
+      }
+      
+      // Delete existing timeline items
+      if (projectId) {
+        const { error: deleteError } = await supabase
+          .from('timeline_items')
+          .delete()
+          .eq('project_id', projectId);
+          
+        if (deleteError) throw deleteError;
+        
+        // Insert new timeline items
+        if (timelineItems.length > 0) {
+          const itemsToInsert = timelineItems.map(item => ({
+            project_id: projectId,
+            track_id: item.trackId,
+            item_type: item.type,
+            name: item.name,
+            start: item.start,
+            duration: item.duration,
+            color: item.color,
+            src: item.src,
+            thumbnail: item.thumbnail,
+            volume: item.volume
+          }));
+          
+          const { error: insertError } = await supabase
+            .from('timeline_items')
+            .insert(itemsToInsert);
+            
+          if (insertError) throw insertError;
+        }
+      }
+      
+      toast.success('Project saved', {
+        description: `${projectName} has been saved.`,
+      });
+    } catch (error: any) {
+      console.error('Error saving project:', error);
+      toast.error('Failed to save project', {
+        description: error.message,
+      });
+    }
   };
 
   const handleExport = () => {
@@ -254,10 +395,13 @@ const VideoEditor: React.FC = () => {
   useEffect(() => {
     const handleVideoVolumeChange = (e: CustomEvent<{id: string, volume: number}>) => {
       if (e.detail && e.detail.id) {
-        handleUpdateTimelineItem({
-          ...timelineItems.find(item => item.id === e.detail.id)!,
-          volume: e.detail.volume
-        });
+        const item = timelineItems.find(item => item.id === e.detail.id);
+        if (item) {
+          handleUpdateTimelineItem({
+            ...item,
+            volume: e.detail.volume
+          });
+        }
       }
     };
     
@@ -267,6 +411,65 @@ const VideoEditor: React.FC = () => {
       window.removeEventListener('video-volume-change', handleVideoVolumeChange as EventListener);
     };
   }, [timelineItems]);
+  
+  const loadProject = async (projectId: string) => {
+    try {
+      setIsLoadingProject(true);
+      
+      // Fetch project details
+      const { data: projectData, error: projectError } = await supabase
+        .from('projects')
+        .select('*')
+        .eq('id', projectId)
+        .single();
+        
+      if (projectError) throw projectError;
+      
+      // Set project details
+      setProjectName(projectData.name);
+      setDuration(projectData.duration);
+      setCurrentProjectId(projectId);
+      
+      // Fetch timeline items
+      const { data: itemsData, error: itemsError } = await supabase
+        .from('timeline_items')
+        .select('*')
+        .eq('project_id', projectId);
+        
+      if (itemsError) throw itemsError;
+      
+      // Transform and set timeline items
+      const items: TimelineItem[] = itemsData.map(item => ({
+        id: item.id,
+        trackId: item.track_id,
+        type: item.item_type as 'video' | 'audio' | 'image',
+        name: item.name,
+        start: Number(item.start),
+        duration: Number(item.duration),
+        color: item.color || '#FFFFFF',
+        src: item.src,
+        thumbnail: item.thumbnail,
+        volume: item.volume || 1
+      }));
+      
+      setTimelineItems(items);
+      
+      // Reset history
+      setHistory([[...items]]);
+      setHistoryIndex(0);
+      
+      toast.success('Project loaded', {
+        description: `Opened project: ${projectData.name}`,
+      });
+    } catch (error: any) {
+      console.error('Error loading project:', error);
+      toast.error('Failed to load project', {
+        description: error.message,
+      });
+    } finally {
+      setIsLoadingProject(false);
+    }
+  };
   
   const selectedVideo = selectedItem?.type === 'video' ? selectedItem : 
     timelineItems.find(item => item.type === 'video' && item.id === selectedItem?.id) || null;
@@ -278,6 +481,9 @@ const VideoEditor: React.FC = () => {
         onRename={handleRename}
         onSave={handleSave}
         onExport={handleExport}
+        currentProjectId={currentProjectId}
+        onLoadProject={loadProject}
+        isLoadingProject={isLoadingProject}
       />
       
       <div className="flex flex-1 overflow-hidden">
