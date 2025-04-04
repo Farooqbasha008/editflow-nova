@@ -9,6 +9,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { toast } from 'sonner';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 const authSchema = z.object({
   email: z.string().email('Please enter a valid email address'),
@@ -20,6 +21,7 @@ type AuthFormValues = z.infer<typeof authSchema>;
 const Auth = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin');
+  const [authError, setAuthError] = useState<string | null>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -53,6 +55,8 @@ const Auth = () => {
 
   const handleSubmit = async (values: AuthFormValues) => {
     setIsLoading(true);
+    setAuthError(null);
+    
     try {
       if (authMode === 'signin') {
         const { error } = await supabase.auth.signInWithPassword({
@@ -60,7 +64,13 @@ const Auth = () => {
           password: values.password,
         });
         
-        if (error) throw error;
+        if (error) {
+          if (error.message.includes('Email') && error.message.includes('disabled')) {
+            throw new Error('Email logins are disabled in Supabase. Please enable them in the Supabase dashboard: Authentication > Providers > Email.');
+          }
+          throw error;
+        }
+        
         toast.success('Signed in successfully!');
       } else {
         const { error } = await supabase.auth.signUp({
@@ -69,10 +79,12 @@ const Auth = () => {
         });
         
         if (error) throw error;
+        
         toast.success('Account created! Please check your email to confirm your account.');
       }
     } catch (error: any) {
-      toast.error(error.message || 'Authentication failed');
+      setAuthError(error.message);
+      toast.error('Authentication failed');
     } finally {
       setIsLoading(false);
     }
@@ -91,6 +103,14 @@ const Auth = () => {
               : 'Create an account to start editing videos'}
           </p>
         </div>
+
+        {authError && (
+          <Alert variant="destructive" className="bg-red-900/20 border-red-900/50 text-red-100">
+            <AlertDescription>
+              {authError}
+            </AlertDescription>
+          </Alert>
+        )}
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
@@ -159,6 +179,12 @@ const Auth = () => {
             >
               {authMode === 'signin' ? 'Sign Up' : 'Sign In'}
             </button>
+          </p>
+        </div>
+
+        <div className="mt-6 pt-5 border-t border-gray-800">
+          <p className="text-xs text-gray-500 text-center">
+            Note: You may need to enable email authentication in the Supabase dashboard under Authentication > Providers > Email if you haven't already.
           </p>
         </div>
       </div>
