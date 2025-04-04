@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import Header from './Header';
 import MediaLibrary from './MediaLibrary';
@@ -65,7 +64,6 @@ const VideoEditor: React.FC = () => {
           if (data.default_volume !== null) setVolume(data.default_volume);
           if (data.timeline_scale !== null) setTimelineScale(data.timeline_scale);
         } else {
-          // Create default preferences if none exist
           const { error: insertError } = await supabase
             .from('user_preferences')
             .insert({
@@ -176,9 +174,7 @@ const VideoEditor: React.FC = () => {
     try {
       let projectId = currentProjectId;
       
-      // Create or update project
       if (!projectId) {
-        // Create new project
         const { data, error } = await supabase
           .from('projects')
           .insert({
@@ -193,7 +189,6 @@ const VideoEditor: React.FC = () => {
         projectId = data.id;
         setCurrentProjectId(projectId);
       } else {
-        // Update existing project
         const { error } = await supabase
           .from('projects')
           .update({
@@ -206,7 +201,6 @@ const VideoEditor: React.FC = () => {
         if (error) throw error;
       }
       
-      // Delete existing timeline items
       if (projectId) {
         const { error: deleteError } = await supabase
           .from('timeline_items')
@@ -215,7 +209,6 @@ const VideoEditor: React.FC = () => {
           
         if (deleteError) throw deleteError;
         
-        // Insert new timeline items
         if (timelineItems.length > 0) {
           const itemsToInsert = timelineItems.map(item => ({
             project_id: projectId,
@@ -416,7 +409,6 @@ const VideoEditor: React.FC = () => {
     try {
       setIsLoadingProject(true);
       
-      // Fetch project details
       const { data: projectData, error: projectError } = await supabase
         .from('projects')
         .select('*')
@@ -425,12 +417,10 @@ const VideoEditor: React.FC = () => {
         
       if (projectError) throw projectError;
       
-      // Set project details
       setProjectName(projectData.name);
       setDuration(projectData.duration);
       setCurrentProjectId(projectId);
       
-      // Fetch timeline items
       const { data: itemsData, error: itemsError } = await supabase
         .from('timeline_items')
         .select('*')
@@ -438,7 +428,6 @@ const VideoEditor: React.FC = () => {
         
       if (itemsError) throw itemsError;
       
-      // Transform and set timeline items
       const items: TimelineItem[] = itemsData.map(item => ({
         id: item.id,
         trackId: item.track_id,
@@ -454,7 +443,6 @@ const VideoEditor: React.FC = () => {
       
       setTimelineItems(items);
       
-      // Reset history
       setHistory([[...items]]);
       setHistoryIndex(0);
       

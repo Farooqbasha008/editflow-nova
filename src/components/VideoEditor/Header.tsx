@@ -71,6 +71,7 @@ const Header: React.FC<HeaderProps> = ({
     
     setIsLoading(true);
     try {
+      // Fixed TypeScript error by using correct typing for the query
       const { data, error } = await supabase
         .from('projects')
         .select('id, name, created_at, updated_at')
