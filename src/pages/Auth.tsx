@@ -184,7 +184,7 @@ const Auth = () => {
 
         <div className="mt-6 pt-5 border-t border-gray-800">
           <p className="text-xs text-gray-500 text-center">
-            Note: You may need to enable email authentication in the Supabase dashboard under Authentication > Providers > Email if you haven't already.
+            Note: You may need to enable email authentication in the Supabase dashboard under Authentication {'>'}{'>'} Providers {'>'}{'>'} Email if you haven&apos;t already.
           </p>
         </div>
       </div>
