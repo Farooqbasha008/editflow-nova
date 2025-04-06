@@ -1,9 +1,8 @@
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
-import { Slider } from '@/components/ui/slider';
 import { Label } from '@/components/ui/label';
 import { Mic, Loader2, Play, Plus } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -14,14 +13,35 @@ interface VoiceoverGeneratorProps {
   onAddToTimeline: (item: TimelineItem) => void;
 }
 
-// Available voices in Groq's PlayAI TTS
+// Updated voice list with Fritz and new voices
 const VOICES = [
   { id: 'Fritz-PlayAI', name: 'Fritz' },
-  { id: 'Mary-PlayAI', name: 'Mary' },
-  { id: 'Chloe-PlayAI', name: 'Chloe' },
-  { id: 'Mike-PlayAI', name: 'Mike' },
-  { id: 'David-PlayAI', name: 'David' },
-  { id: 'Amy-PlayAI', name: 'Amy' }
+  { id: 'Aaliyah-PlayAI', name: 'Aaliyah' },
+  { id: 'Adelaide-PlayAI', name: 'Adelaide' },
+  { id: 'Angelo-PlayAI', name: 'Angelo' },
+  { id: 'Arista-PlayAI', name: 'Arista' },
+  { id: 'Atlas-PlayAI', name: 'Atlas' },
+  { id: 'Basil-PlayAI', name: 'Basil' },
+  { id: 'Briggs-PlayAI', name: 'Briggs' },
+  { id: 'Calum-PlayAI', name: 'Calum' },
+  { id: 'Celeste-PlayAI', name: 'Celeste' },
+  { id: 'Cheyenne-PlayAI', name: 'Cheyenne' },
+  { id: 'Chip-PlayAI', name: 'Chip' },
+  { id: 'Cillian-PlayAI', name: 'Cillian' },
+  { id: 'Deedee-PlayAI', name: 'Deedee' },
+  { id: 'Eleanor-PlayAI', name: 'Eleanor' },
+  { id: 'Gail-PlayAI', name: 'Gail' },
+  { id: 'Indigo-PlayAI', name: 'Indigo' },
+  { id: 'Jennifer-PlayAI', name: 'Jennifer' },
+  { id: 'Judy-PlayAI', name: 'Judy' },
+  { id: 'Mamaw-PlayAI', name: 'Mamaw' },
+  { id: 'Mason-PlayAI', name: 'Mason' },
+  { id: 'Mikail-PlayAI', name: 'Mikail' },
+  { id: 'Mitch-PlayAI', name: 'Mitch' },
+  { id: 'Nia-PlayAI', name: 'Nia' },
+  { id: 'Quinn-PlayAI', name: 'Quinn' },
+  { id: 'Ruby-PlayAI', name: 'Ruby' },
+  { id: 'Thunder-PlayAI', name: 'Thunder' }
 ];
 
 const VoiceoverGenerator: React.FC<VoiceoverGeneratorProps> = ({ onAddToTimeline }) => {
@@ -30,9 +50,28 @@ const VoiceoverGenerator: React.FC<VoiceoverGeneratorProps> = ({ onAddToTimeline
   const [voice, setVoice] = useState<string>('Fritz-PlayAI');
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const [generatedVoiceovers, setGeneratedVoiceovers] = useState<Array<{ id: string; src: string; text: string; voiceName: string }>>([]);
+  const [generatedVoiceovers, setGeneratedVoiceovers] = useState<Array<{ id: string; src: string; text: string; voiceName: string; duration?: number }>>([]);
   const [currentlyPlaying, setCurrentlyPlaying] = useState<string | null>(null);
-  const audioRef = React.useRef<HTMLAudioElement | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const audioDurationRef = useRef<Record<string, number>>({});
+  
+  // Function to calculate audio duration
+  const getAudioDuration = async (audioUrl: string): Promise<number> => {
+    return new Promise((resolve) => {
+      const audio = new Audio(audioUrl);
+      audio.addEventListener('loadedmetadata', () => {
+        resolve(audio.duration);
+      });
+      
+      // Fallback if metadata doesn't load
+      audio.addEventListener('error', () => {
+        // Estimate duration based on text length (as fallback)
+        // Roughly 0.5 seconds per word
+        const wordCount = text.trim().split(/\s+/).length;
+        resolve(Math.max(wordCount * 0.5, 1.5));
+      });
+    });
+  };
 
   const handleGenerate = async () => {
     if (!apiKey) {
@@ -57,11 +96,16 @@ const VoiceoverGenerator: React.FC<VoiceoverGeneratorProps> = ({ onAddToTimeline
       const selectedVoice = VOICES.find(v => v.id === voice);
       const voiceName = selectedVoice ? selectedVoice.name : 'Unknown';
       
+      // Get actual audio duration
+      const audioDuration = await getAudioDuration(audioUrl);
+      audioDurationRef.current[`voice-${Date.now()}`] = audioDuration;
+      
       const newVoiceover = {
         id: `voice-${Date.now()}`,
         src: audioUrl,
         text: text,
-        voiceName: voiceName
+        voiceName: voiceName,
+        duration: audioDuration
       };
 
       setGeneratedVoiceovers(prev => [newVoiceover, ...prev]);
@@ -90,17 +134,38 @@ const VoiceoverGenerator: React.FC<VoiceoverGeneratorProps> = ({ onAddToTimeline
     }
   };
 
-  const handleAddToTimeline = (voiceover: { id: string; src: string; text: string; voiceName: string }) => {
+  const handleAddToTimeline = (voiceover: { id: string; src: string; text: string; voiceName: string; duration?: number }) => {
+    // Use actual duration if available, otherwise estimate
+    const duration = voiceover.duration || 5;
+    
     onAddToTimeline({
       id: voiceover.id,
       type: 'audio',
       name: `Voiceover: ${voiceover.text.substring(0, 20)}${voiceover.text.length > 20 ? '...' : ''}`,
       src: voiceover.src,
       start: 0,
-      duration: 5, // Estimated duration - in a real app would calculate from audio file
+      duration: duration, // Use actual audio duration
       trackId: `audio-${Date.now()}`,
-      color: '#9B51E0' // Purple color for voiceovers
+      color: '#D7F266' // Green color for voiceovers
     });
+  };
+  
+  // Make voiceover items draggable
+  const handleDragStart = (e: React.DragEvent, voiceover: { id: string; src: string; text: string; voiceName: string; duration?: number }) => {
+    // Use actual duration if available, otherwise estimate
+    const duration = voiceover.duration || 5;
+    
+    const timelineItem = {
+      id: voiceover.id,
+      type: 'audio',
+      name: `Voiceover: ${voiceover.text.substring(0, 20)}${voiceover.text.length > 20 ? '...' : ''}`,
+      src: voiceover.src,
+      duration: duration,
+      color: '#D7F266' // Green color
+    };
+    
+    e.dataTransfer.setData('application/json', JSON.stringify(timelineItem));
+    e.dataTransfer.effectAllowed = 'copy';
   };
 
   return (
@@ -175,7 +240,12 @@ const VoiceoverGenerator: React.FC<VoiceoverGeneratorProps> = ({ onAddToTimeline
         ) : (
           <div className="space-y-2 max-h-60 overflow-y-auto">
             {generatedVoiceovers.map((voiceover) => (
-              <div key={voiceover.id} className="flex items-center bg-[#252525] p-2 rounded">
+              <div 
+                key={voiceover.id} 
+                className="flex items-center bg-[#252525] p-2 rounded"
+                draggable="true"
+                onDragStart={(e) => handleDragStart(e, voiceover)}
+              >
                 <Button 
                   size="icon" 
                   variant="ghost" 
@@ -187,15 +257,28 @@ const VoiceoverGenerator: React.FC<VoiceoverGeneratorProps> = ({ onAddToTimeline
                 <div className="flex-1 overflow-hidden">
                   <div className="truncate text-sm">{voiceover.text}</div>
                   <div className="text-xs text-gray-400">Voice: {voiceover.voiceName}</div>
+                  {voiceover.duration && (
+                    <div className="text-xs text-gray-400">
+                      Duration: {Math.floor(voiceover.duration / 60)}:{Math.floor(voiceover.duration % 60).toString().padStart(2, '0')}
+                    </div>
+                  )}
                 </div>
-                <Button 
-                  size="sm" 
-                  variant="outline" 
-                  onClick={() => handleAddToTimeline(voiceover)}
-                  className="ml-2"
-                >
-                  <Plus size={16} />
-                </Button>
+                <div className="flex items-center gap-2">
+                  <div 
+                    className="w-6 h-6 bg-[#D7F266] rounded-sm flex items-center justify-center cursor-pointer"
+                    title="Drag to timeline"
+                  >
+                    <div className="w-4 h-4 bg-[#F2FCE2] rounded-sm" />
+                  </div>
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    onClick={() => handleAddToTimeline(voiceover)}
+                    className="ml-2"
+                  >
+                    <Plus size={16} />
+                  </Button>
+                </div>
               </div>
             ))}
           </div>
