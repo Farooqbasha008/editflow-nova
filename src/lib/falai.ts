@@ -2,7 +2,7 @@
 /**
  * Fal.ai API integration for text-to-video generation
  */
-import * as fal from "@fal-ai/client";
+import * as fal from "@fal-ai/serverless-client";
 
 // Default model to use for text-to-video generation
 const DEFAULT_MODEL = "fal-ai/wan/v2.1/1.3b/text-to-video";

@@ -61,9 +61,11 @@ const SoundEffectGenerator: React.FC<SoundEffectGeneratorProps> = ({ onAddToTime
       id: sound.id,
       type: 'audio',
       name: `Sound Effect: ${sound.description.substring(0, 20)}${sound.description.length > 20 ? '...' : ''}`,
-      url: sound.url,
+      src: sound.url, // Changed from 'url' to 'src' to match TimelineItem interface
       start: 0,
       duration: duration,
+      trackId: `audio-${Date.now()}`, // Adding required trackId property
+      color: '#4AAEE8' // Adding a default color for audio items
     });
   };
 
