@@ -8,6 +8,8 @@ import { Label } from '@/components/ui/label';
 import { Music, Loader2 } from 'lucide-react';
 import { generateSound } from '@/lib/elevenlabs';
 import { TimelineItem } from './VideoEditor';
+import { toast } from 'sonner';
+import { v4 as uuidv4 } from 'uuid';
 
 interface SoundEffectGeneratorProps {
   onAddToTimeline: (item: TimelineItem) => void;
@@ -49,6 +51,7 @@ const SoundEffectGenerator: React.FC<SoundEffectGeneratorProps> = ({ onAddToTime
 
       setGeneratedSounds(prev => [newSound, ...prev]);
       setDescription('');
+      toast.success('Sound effect generated successfully');
     } catch (err) {
       setError(`Error generating sound effect: ${err instanceof Error ? err.message : String(err)}`);
     } finally {
@@ -61,12 +64,28 @@ const SoundEffectGenerator: React.FC<SoundEffectGeneratorProps> = ({ onAddToTime
       id: sound.id,
       type: 'audio',
       name: `Sound Effect: ${sound.description.substring(0, 20)}${sound.description.length > 20 ? '...' : ''}`,
-      src: sound.url, // Changed from 'url' to 'src' to match TimelineItem interface
+      src: sound.url,
       start: 0,
       duration: duration,
-      trackId: `audio-${Date.now()}`, // Adding required trackId property
-      color: '#4AAEE8' // Adding a default color for audio items
+      trackId: `track2`, // Using audio track
+      color: '#4AAEE8' // Blue color for audio items
     });
+    
+    toast.success('Sound effect added to timeline');
+  };
+
+  const handleDragStart = (e: React.DragEvent, sound: { id: string; url: string; description: string }) => {
+    const timelineItem = {
+      id: sound.id || uuidv4(),
+      type: 'audio',
+      name: `Sound Effect: ${sound.description.substring(0, 20)}${sound.description.length > 20 ? '...' : ''}`,
+      src: sound.url,
+      duration: duration,
+      color: '#4AAEE8' // Blue color for audio items
+    };
+    
+    e.dataTransfer.setData('application/json', JSON.stringify(timelineItem));
+    e.dataTransfer.effectAllowed = 'copy';
   };
 
   return (
@@ -140,11 +159,22 @@ const SoundEffectGenerator: React.FC<SoundEffectGeneratorProps> = ({ onAddToTime
         ) : (
           <div className="space-y-2 max-h-60 overflow-y-auto">
             {generatedSounds.map((sound) => (
-              <div key={sound.id} className="flex items-center justify-between bg-[#252525] p-2 rounded">
+              <div 
+                key={sound.id} 
+                className="flex items-center justify-between bg-[#252525] p-2 rounded"
+                draggable="true"
+                onDragStart={(e) => handleDragStart(e, sound)}
+              >
                 <div className="truncate flex-1 mr-2">
                   {sound.description}
                 </div>
-                <div className="flex space-x-2">
+                <div className="flex items-center gap-2">
+                  <div 
+                    className="w-6 h-6 bg-[#4AAEE8] rounded-sm flex items-center justify-center cursor-pointer"
+                    title="Drag to timeline"
+                  >
+                    <div className="w-4 h-4 bg-[#252525] rounded-sm" />
+                  </div>
                   <Button size="sm" variant="outline" onClick={() => handleAddToTimeline(sound)}>
                     Add to Timeline
                   </Button>

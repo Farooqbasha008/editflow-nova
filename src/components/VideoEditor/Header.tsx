@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Download, Save, Edit2, ArrowLeft, FolderOpen } from "lucide-react";
@@ -71,7 +70,6 @@ const Header: React.FC<HeaderProps> = ({
     
     setIsLoading(true);
     try {
-      // Fixed TypeScript error by using correct typing for the query
       const { data, error } = await supabase
         .from('projects')
         .select('id, name, created_at, updated_at')
@@ -91,6 +89,10 @@ const Header: React.FC<HeaderProps> = ({
   const formatDate = (dateString: string | null) => {
     if (!dateString) return 'Unknown';
     return new Date(dateString).toLocaleString();
+  };
+
+  const handleExport = () => {
+    onExport();
   };
 
   return (
@@ -158,7 +160,7 @@ const Header: React.FC<HeaderProps> = ({
         </Button>
         <Button 
           className="bg-[#D7F266] hover:bg-[#D7F266]/90 text-[#151514] flex items-center gap-2 rounded-full transition-all duration-300"
-          onClick={onExport}
+          onClick={handleExport}
         >
           <Download size={16} />
           Download

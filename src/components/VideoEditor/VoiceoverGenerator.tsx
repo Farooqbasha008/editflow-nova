@@ -8,6 +8,7 @@ import { Mic, Loader2, Play, Plus } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { TimelineItem } from './VideoEditor';
 import { generateSpeech } from '@/lib/groq';
+import { toast } from 'sonner';
 
 interface VoiceoverGeneratorProps {
   onAddToTimeline: (item: TimelineItem) => void;
@@ -145,9 +146,11 @@ const VoiceoverGenerator: React.FC<VoiceoverGeneratorProps> = ({ onAddToTimeline
       src: voiceover.src,
       start: 0,
       duration: duration, // Use actual audio duration
-      trackId: `audio-${Date.now()}`,
+      trackId: `track3`, // Use voiceover track
       color: '#D7F266' // Green color for voiceovers
     });
+    
+    toast.success('Voiceover added to timeline');
   };
   
   // Make voiceover items draggable
@@ -268,7 +271,7 @@ const VoiceoverGenerator: React.FC<VoiceoverGeneratorProps> = ({ onAddToTimeline
                     className="w-6 h-6 bg-[#D7F266] rounded-sm flex items-center justify-center cursor-pointer"
                     title="Drag to timeline"
                   >
-                    <div className="w-4 h-4 bg-[#F2FCE2] rounded-sm" />
+                    <div className="w-4 h-4 bg-[#252525] rounded-sm" />
                   </div>
                   <Button 
                     size="sm" 
