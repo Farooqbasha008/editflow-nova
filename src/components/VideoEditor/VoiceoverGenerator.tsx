@@ -14,35 +14,14 @@ interface VoiceoverGeneratorProps {
   onAddToTimeline: (item: TimelineItem) => void;
 }
 
-// Updated voices list based on requirements
+// Available voices in Groq's PlayAI TTS
 const VOICES = [
   { id: 'Fritz-PlayAI', name: 'Fritz' },
-  { id: 'Aaliyah-PlayAI', name: 'Aaliyah' },
-  { id: 'Adelaide-PlayAI', name: 'Adelaide' },
-  { id: 'Angelo-PlayAI', name: 'Angelo' },
-  { id: 'Arista-PlayAI', name: 'Arista' },
-  { id: 'Atlas-PlayAI', name: 'Atlas' },
-  { id: 'Basil-PlayAI', name: 'Basil' },
-  { id: 'Briggs-PlayAI', name: 'Briggs' },
-  { id: 'Calum-PlayAI', name: 'Calum' },
-  { id: 'Celeste-PlayAI', name: 'Celeste' },
-  { id: 'Cheyenne-PlayAI', name: 'Cheyenne' },
-  { id: 'Chip-PlayAI', name: 'Chip' },
-  { id: 'Cillian-PlayAI', name: 'Cillian' },
-  { id: 'Deedee-PlayAI', name: 'Deedee' },
-  { id: 'Eleanor-PlayAI', name: 'Eleanor' },
-  { id: 'Gail-PlayAI', name: 'Gail' },
-  { id: 'Indigo-PlayAI', name: 'Indigo' },
-  { id: 'Jennifer-PlayAI', name: 'Jennifer' },
-  { id: 'Judy-PlayAI', name: 'Judy' },
-  { id: 'Mamaw-PlayAI', name: 'Mamaw' },
-  { id: 'Mason-PlayAI', name: 'Mason' },
-  { id: 'Mikail-PlayAI', name: 'Mikail' },
-  { id: 'Mitch-PlayAI', name: 'Mitch' },
-  { id: 'Nia-PlayAI', name: 'Nia' },
-  { id: 'Quinn-PlayAI', name: 'Quinn' },
-  { id: 'Ruby-PlayAI', name: 'Ruby' },
-  { id: 'Thunder-PlayAI', name: 'Thunder' }
+  { id: 'Mary-PlayAI', name: 'Mary' },
+  { id: 'Chloe-PlayAI', name: 'Chloe' },
+  { id: 'Mike-PlayAI', name: 'Mike' },
+  { id: 'David-PlayAI', name: 'David' },
+  { id: 'Amy-PlayAI', name: 'Amy' }
 ];
 
 const VoiceoverGenerator: React.FC<VoiceoverGeneratorProps> = ({ onAddToTimeline }) => {
@@ -124,22 +103,6 @@ const VoiceoverGenerator: React.FC<VoiceoverGeneratorProps> = ({ onAddToTimeline
     });
   };
 
-  // Make voiceover items draggable
-  const handleDragStart = (e: React.DragEvent, voiceover: { id: string; src: string; text: string; voiceName: string }) => {
-    const timelineItem = {
-      id: voiceover.id,
-      type: 'audio',
-      name: `Voiceover: ${voiceover.text.substring(0, 20)}${voiceover.text.length > 20 ? '...' : ''}`,
-      src: voiceover.src,
-      start: 0,
-      duration: 5, // Estimated duration
-      trackId: '',
-      color: '#9B51E0' // Purple color for voiceovers
-    };
-    
-    e.dataTransfer.setData('application/json', JSON.stringify(timelineItem));
-  };
-
   return (
     <div className="p-4 space-y-4">
       <div className="space-y-2">
@@ -160,7 +123,7 @@ const VoiceoverGenerator: React.FC<VoiceoverGeneratorProps> = ({ onAddToTimeline
           <SelectTrigger className="w-full bg-[#1E1E1E]">
             <SelectValue placeholder="Select a voice" />
           </SelectTrigger>
-          <SelectContent className="max-h-[15rem] overflow-y-auto">
+          <SelectContent>
             {VOICES.map((voice) => (
               <SelectItem key={voice.id} value={voice.id}>
                 {voice.name}
@@ -212,12 +175,7 @@ const VoiceoverGenerator: React.FC<VoiceoverGeneratorProps> = ({ onAddToTimeline
         ) : (
           <div className="space-y-2 max-h-60 overflow-y-auto">
             {generatedVoiceovers.map((voiceover) => (
-              <div 
-                key={voiceover.id} 
-                className="flex items-center bg-[#252525] p-2 rounded"
-                draggable
-                onDragStart={(e) => handleDragStart(e, voiceover)}
-              >
+              <div key={voiceover.id} className="flex items-center bg-[#252525] p-2 rounded">
                 <Button 
                   size="icon" 
                   variant="ghost" 
