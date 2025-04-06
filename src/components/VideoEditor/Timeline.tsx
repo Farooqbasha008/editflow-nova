@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Play, Pause, Volume2, Scissors, Plus, Trash2, ZoomIn, ZoomOut, Clock, Undo, Redo, ChevronLeft, ChevronRight, ArrowLeft, ArrowRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -138,9 +137,9 @@ const Timeline = ({
     document.addEventListener('mouseup', handleItemDragEnd);
   };
   
-  // Handle item drag move
+  // Handle item drag move - Updated to fix dragging issues
   const handleItemDragMove = (e: MouseEvent) => {
-    if (!isDragging || !draggedItem || !timelineRef.current) return;
+    if (!isDragging || !draggedItem || !timelineRef.current || !onUpdateItem) return;
     
     const dx = e.clientX - dragStartX;
     const dy = e.clientY - dragStartY;
@@ -153,8 +152,9 @@ const Timeline = ({
     const trackHeight = 40; // Height of each track in pixels
     const trackOffset = Math.round(dy / trackHeight);
     const tracksCount = tracks.length;
-    const trackIndex = Math.max(0, Math.min(tracksCount - 1, parseInt(dragStartPos.trackId.replace('track', '')) - 1 + trackOffset));
-    const newTrackId = `track${trackIndex + 1}`;
+    const currentTrackIndex = parseInt(dragStartPos.trackId.replace('track', '')) - 1;
+    const newTrackIndex = Math.max(0, Math.min(tracksCount - 1, currentTrackIndex + trackOffset));
+    const newTrackId = `track${newTrackIndex + 1}`;
     
     // Check for overlapping items in the target track
     const overlappingItems = items.filter(item => 
@@ -164,17 +164,15 @@ const Timeline = ({
       (newStart + draggedItem.duration) > item.start
     );
     
+    // If no overlap, update the item position
     if (overlappingItems.length === 0) {
-      // Update the dragged item position visually
       const updatedItem = {
         ...draggedItem,
         start: newStart,
         trackId: newTrackId
       };
       
-      if (onUpdateItem) {
-        onUpdateItem(updatedItem);
-      }
+      onUpdateItem(updatedItem);
     }
   };
   
@@ -347,7 +345,7 @@ const Timeline = ({
     e.currentTarget.classList.remove('bg-editor-hover/30');
   };
   
-  // Handle drop on timeline track
+  // Handle drop on timeline track - Updated to improve dragging from voiceovers
   const handleTrackDrop = (e: React.DragEvent, trackId: string) => {
     e.preventDefault();
     e.currentTarget.classList.remove('bg-editor-hover/30');
@@ -440,33 +438,36 @@ const Timeline = ({
         }
       }
       
-      // If the item is from the media library (has src property)
+      // If the item is from the media library (has src property) or voiceover
       if (droppedItem.src) {
-        // Choose color based on track type
+        // Choose color based on track type and/or source type
         let color, type;
         
         if (isVideoTrack) {
           type = 'video';
           color = 'bg-yellow-400/70';
+        } else if (droppedItem.name && droppedItem.name.startsWith('Voiceover:')) {
+          type = 'audio';
+          color = '#9B51E0'; // Purple for voiceovers
         } else {
           type = 'audio';
           color = 'bg-blue-400/70';
         }
         
         // Set duration (use provided or default)
-        const durationInSeconds = parseInt(droppedItem.duration?.split(':')[1]) || 5;
+        const durationInSeconds = droppedItem.duration || 5;
         
         const newItem: TimelineItem = {
-          id: `timeline-${Date.now()}`,
+          id: droppedItem.id || `timeline-${Date.now()}`,
           trackId,
           start: dropTime,
           duration: durationInSeconds,
-          type,
-          name: droppedItem.name,
-          color,
+          type: droppedItem.type || type,
+          name: droppedItem.name || "New Media",
+          color: droppedItem.color || color,
           src: droppedItem.src,
           thumbnail: droppedItem.thumbnail,
-          volume: 1.0
+          volume: droppedItem.volume || 1.0
         };
         
         // Check for overlapping items in the same track
