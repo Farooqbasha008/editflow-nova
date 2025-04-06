@@ -2,7 +2,7 @@
 /**
  * Fal.ai API integration for text-to-video generation
  */
-import { fal } from "@fal-ai/serverless-client";
+import { createClient } from "@fal-ai/serverless-client";
 
 // Default model to use for text-to-video generation
 const DEFAULT_MODEL = "fal-ai/wan/v2.1/1.3b/text-to-video";
@@ -35,9 +35,8 @@ export async function generateVideo(
   const model = options.model || DEFAULT_MODEL;
 
   try {
-    fal.config({
-      credentials: apiKey
-    });
+    // Create the client with the API key
+    const fal = createClient({ credentials: apiKey });
 
     console.log(`Generating video with prompt: ${prompt}`);
 
