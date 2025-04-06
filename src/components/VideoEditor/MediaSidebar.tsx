@@ -7,8 +7,8 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import AudioExtractor from './AudioExtractor';
-import ImageGenerator from './ImageGenerator';
 import VideoGenerator from './VideoGenerator';
+import SoundEffectGenerator from './SoundEffectGenerator';
 
 interface MediaSidebarProps {
   activeTab: string;
@@ -29,8 +29,6 @@ const MediaSidebar: React.FC<MediaSidebarProps> = ({
   onGenerate,
   selectedVideo
 }) => {
-  const [generatorTab, setGeneratorTab] = useState<string>("image");
-  
   return (
     <div className="flex flex-col h-full bg-[#151514]">
       {/* Media Type Icons */}
@@ -59,16 +57,12 @@ const MediaSidebar: React.FC<MediaSidebarProps> = ({
       <div className="flex-1 overflow-hidden">
         {activeTab === 'visuals' && (
           <Tabs defaultValue="media" className="w-full h-full">
-            <TabsList className="w-full grid grid-cols-3 bg-editor-panel/50 p-1 h-8">
+            <TabsList className="w-full grid grid-cols-2 bg-editor-panel/50 p-1 h-8">
               <TabsTrigger value="media" className="text-xs h-6">Media Library</TabsTrigger>
-              <TabsTrigger value="image" className="text-xs h-6">Generate Image</TabsTrigger>
               <TabsTrigger value="video" className="text-xs h-6">Generate Video</TabsTrigger>
             </TabsList>
             <TabsContent value="media" className="h-[calc(100%-2rem)] overflow-y-auto">
               <MediaLibrary onAddToTimeline={onAddToTimeline} mediaType="video" />
-            </TabsContent>
-            <TabsContent value="image" className="h-[calc(100%-2rem)] overflow-y-auto">
-              <ImageGenerator onAddToTimeline={onAddToTimeline} />
             </TabsContent>
             <TabsContent value="video" className="h-[calc(100%-2rem)] overflow-y-auto">
               <VideoGenerator onAddToTimeline={onAddToTimeline} />
@@ -77,10 +71,19 @@ const MediaSidebar: React.FC<MediaSidebarProps> = ({
         )}
         
         {activeTab === 'audio' && (
-          <div className="flex flex-col h-full">
-            <MediaLibrary onAddToTimeline={onAddToTimeline} mediaType="audio" />
-            <AudioExtractor videoItem={selectedVideo} onAddExtractedAudio={onAddToTimeline} />
-          </div>
+          <Tabs defaultValue="media" className="w-full h-full">
+            <TabsList className="w-full grid grid-cols-2 bg-editor-panel/50 p-1 h-8">
+              <TabsTrigger value="media" className="text-xs h-6">Media Library</TabsTrigger>
+              <TabsTrigger value="sfx" className="text-xs h-6">Sound Effects</TabsTrigger>
+            </TabsList>
+            <TabsContent value="media" className="h-[calc(100%-2rem)] overflow-y-auto">
+              <MediaLibrary onAddToTimeline={onAddToTimeline} mediaType="audio" />
+              <AudioExtractor videoItem={selectedVideo} onAddExtractedAudio={onAddToTimeline} />
+            </TabsContent>
+            <TabsContent value="sfx" className="h-[calc(100%-2rem)] overflow-y-auto">
+              <SoundEffectGenerator onAddToTimeline={onAddToTimeline} />
+            </TabsContent>
+          </Tabs>
         )}
         
         {activeTab === 'voiceover' && (
