@@ -1,16 +1,18 @@
+
 /**
  * Fal.ai API integration for text-to-video generation
  */
+import { fal } from "@fal-ai/serverless-client";
 
 // Default model to use for text-to-video generation
-const DEFAULT_MODEL = 'fal-ai/fast-sdxl-turbo';
+const DEFAULT_MODEL = "fal-ai/wan/v2.1/1.3b/text-to-video";
 
 /**
  * Generate a video clip using Fal.ai's text-to-video API
  * @param prompt The text prompt to generate a video from
  * @param apiKey The Fal.ai API key
  * @param options Additional options for video generation
- * @returns A Promise that resolves to a video URL or base64 string
+ * @returns A Promise that resolves to a video URL
  */
 export interface VideoGenerationOptions {
   negativePrompt?: string;
@@ -31,49 +33,35 @@ export async function generateVideo(
   }
 
   const model = options.model || DEFAULT_MODEL;
-  const duration = options.duration || 3; // Default 3 seconds
-  const fps = options.fps || 24; // Default 24 frames per second
-  const width = options.width || 512;
-  const height = options.height || 512;
 
   try {
-    // For now, we'll simulate the API call with a placeholder
-    // In a real implementation, this would make an actual API call to Fal.ai
-    console.log(`Generating video with prompt: ${prompt}`);
-    
-    // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
-    // Return a placeholder video URL
-    // In production, this would be the actual video URL from Fal.ai
-    return 'https://example.com/generated-video.mp4';
-    
-    // Actual implementation would look something like this:
-    /*
-    const response = await fetch('https://api.fal.ai/text-to-video', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        prompt,
-        negative_prompt: options.negativePrompt || '',
-        duration,
-        fps,
-        width,
-        height
-      })
+    fal.config({
+      credentials: apiKey
     });
 
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(`Fal.ai API error: ${errorData.message || response.statusText}`);
-    }
+    console.log(`Generating video with prompt: ${prompt}`);
 
-    const data = await response.json();
-    return data.video_url; // Or data.video_base64 depending on the API response
-    */
+    const result = await fal.subscribe(model, {
+      input: {
+        prompt,
+        negative_prompt: options.negativePrompt || ""
+      },
+      logs: true,
+      onQueueUpdate: (update) => {
+        if (update.status === "IN_PROGRESS") {
+          update.logs.map((log) => log.message).forEach(console.log);
+        }
+      },
+    });
+
+    console.log("Video generation complete:", result.data);
+    
+    // Return video URL from the result data
+    if (result.data && result.data.video_url) {
+      return result.data.video_url;
+    } else {
+      throw new Error("No video URL returned from Fal.ai");
+    }
   } catch (error) {
     console.error('Error generating video:', error);
     throw error;
