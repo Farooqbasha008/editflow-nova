@@ -23,6 +23,18 @@ export interface VideoGenerationOptions {
   model?: string;
 }
 
+// Define interfaces for the fal.ai API response
+interface FalVideoData {
+  video_url: string;
+  [key: string]: any;
+}
+
+interface FalResponse {
+  data: FalVideoData;
+  logs?: string[];
+  [key: string]: any;
+}
+
 export async function generateVideo(
   prompt: string,
   apiKey: string,
@@ -53,7 +65,7 @@ export async function generateVideo(
           update.logs.map((log) => log.message).forEach(console.log);
         }
       },
-    });
+    }) as FalResponse;
 
     console.log("Video generation complete:", result.data);
     
