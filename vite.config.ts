@@ -21,9 +21,14 @@ export default defineConfig(({ mode }) => ({
     },
   },
   define: {
-    // Add a process.env polyfill for the browser
+    // Add a complete process.env polyfill for the browser
     'process.env': {},
     'process.browser': true,
-    'process': { env: {}, browser: true }
+    'process.version': '"v16.0.0"',  // Add Node.js version
+    'process': {
+      env: {},
+      browser: true,
+      version: '"v16.0.0"'
+    }
   }
 }));
