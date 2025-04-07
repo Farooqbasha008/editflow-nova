@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { Film, Music, Mic } from 'lucide-react';
 import MediaLibrary from './MediaLibrary';
-import { TimelineItem } from './VideoEditor';
+import { TimelineItem } from './types';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';

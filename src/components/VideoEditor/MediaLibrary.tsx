@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { Upload, Film, Music, Image as ImageIcon, Mic, Video, Search } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { TimelineItem } from './VideoEditor';
+import { TimelineItem } from './types';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 

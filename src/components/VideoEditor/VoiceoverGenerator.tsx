@@ -1,168 +1,171 @@
-
 import React, { useState } from 'react';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
-import { Mic, Loader2 } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
+import { Play, Pause, Download, Plus } from 'lucide-react';
 import { generateSpeech } from '@/lib/groq';
-import { TimelineItem } from './VideoEditor';
+import { TimelineItem } from './types';
 
 interface VoiceoverGeneratorProps {
   onAddToTimeline: (item: TimelineItem) => void;
 }
 
-const AVAILABLE_VOICES = [
-  'Aaliyah', 'Adelaide', 'Angelo', 'Arista', 'Atlas', 'Basil', 'Briggs', 
-  'Calum', 'Celeste', 'Cheyenne', 'Chip', 'Cillian', 'Deedee', 'Eleanor', 
-  'Fritz', 'Gail', 'Indigo', 'Jennifer', 'Judy', 'Mamaw', 'Mason', 
-  'Mikail', 'Mitch', 'Nia', 'Quinn', 'Ruby', 'Thunder'
-];
-
 const VoiceoverGenerator: React.FC<VoiceoverGeneratorProps> = ({ onAddToTimeline }) => {
-  const [apiKey, setApiKey] = useState<string>('');
-  const [text, setText] = useState<string>('');
-  const [voice, setVoice] = useState<string>('Fritz');
-  const [isGenerating, setIsGenerating] = useState<boolean>(false);
-  const [error, setError] = useState<string | null>(null);
-  const [generatedVoiceovers, setGeneratedVoiceovers] = useState<Array<{ id: string; src: string; text: string; voice: string }>>([]);
+  const [text, setText] = useState("");
+  const [voice, setVoice] = useState("nova");
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [generatedAudioUrl, setGeneratedAudioUrl] = useState<string | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const audioRef = React.useRef<HTMLAudioElement | null>(null);
 
   const handleGenerate = async () => {
-    if (!apiKey) {
-      setError('Please enter your Groq API key');
+    if (!text.trim()) {
+      toast.error('Please enter some text to generate voiceover');
       return;
     }
 
-    if (!text) {
-      setError('Please enter text for the voiceover');
-      return;
-    }
-
-    setError(null);
     setIsGenerating(true);
+    toast.info('Generating voiceover...', {
+      description: 'This might take a few moments'
+    });
 
     try {
-      const audioUrl = await generateSpeech(text, apiKey, {
-        voiceId: voice,
-        model: "playai-tts"
+      const audioUrl = await generateSpeech(text, voice);
+      setGeneratedAudioUrl(audioUrl);
+      toast.success('Voiceover generated successfully!');
+    } catch (error) {
+      console.error('Error generating voiceover:', error);
+      toast.error('Failed to generate voiceover', {
+        description: error instanceof Error ? error.message : 'An error occurred while communicating with the AI model.',
       });
-
-      const newVoiceover = {
-        id: `voiceover-${Date.now()}`,
-        src: audioUrl,
-        text: text,
-        voice: voice
-      };
-
-      setGeneratedVoiceovers(prev => [newVoiceover, ...prev]);
-      setText('');
-    } catch (err) {
-      setError(`Error generating voiceover: ${err instanceof Error ? err.message : String(err)}`);
     } finally {
       setIsGenerating(false);
     }
   };
 
-  const handleAddToTimeline = (voiceover: { id: string; src: string; text: string; voice: string }) => {
-    onAddToTimeline({
-      id: voiceover.id,
-      type: 'audio',
-      name: `Voiceover: ${voiceover.text.substring(0, 20)}${voiceover.text.length > 20 ? '...' : ''}`,
-      src: voiceover.src,
+  const handlePlayPause = () => {
+    if (!audioRef.current || !generatedAudioUrl) return;
+    
+    if (isPlaying) {
+      audioRef.current.pause();
+    } else {
+      audioRef.current.play().catch(err => {
+        console.error('Failed to play audio:', err);
+        toast.error('Failed to play audio');
+      });
+    }
+    setIsPlaying(!isPlaying);
+  };
+
+  const handleAddToTimeline = () => {
+    if (!generatedAudioUrl) return;
+    
+    const newAudioItem: TimelineItem = {
+      id: `audio-${Date.now()}`,
+      trackId: 'track3', // First audio track
       start: 0,
-      duration: 5, // Default duration, could be calculated based on text length
-      trackId: 'audio-1', // Default track ID
-      color: '#4CAF50', // Green color for voiceovers
+      duration: 5, // Default 5 seconds duration for audio
+      type: 'audio',
+      name: `Voiceover: ${text.substring(0, 15)}${text.length > 15 ? '...' : ''}`,
+      color: 'bg-blue-400/70',
+      src: generatedAudioUrl,
+      thumbnail: '',
+      volume: 1.0,
+    };
+    
+    onAddToTimeline(newAudioItem);
+    toast.success('Voiceover added to timeline', {
+      description: `Added to Audio Track 1`
     });
   };
 
+  const downloadAudio = () => {
+    if (!generatedAudioUrl) return;
+    
+    const a = document.createElement('a');
+    a.href = generatedAudioUrl;
+    a.download = `voiceover_${Date.now()}.mp3`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    
+    toast.success('Audio download started');
+  };
+
   return (
-    <div className="p-4 space-y-4">
+    <div className="space-y-3 p-3">
       <div className="space-y-2">
-        <Label htmlFor="api-key">Groq API Key</Label>
-        <Input
-          id="api-key"
-          type="password"
-          value={apiKey}
-          onChange={(e) => setApiKey(e.target.value)}
-          placeholder="Enter your Groq API key"
-          className="bg-[#1E1E1E]"
+        <Label htmlFor="text" className="text-xs text-[#F7F8F6]">Text</Label>
+        <Textarea
+          id="text"
+          placeholder="Enter the text for the voiceover..."
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          className="h-24 text-xs bg-transparent border-white/20 resize-none focus-visible:ring-[#D7F266]"
         />
       </div>
-
+      
       <div className="space-y-2">
-        <Label htmlFor="voice">Voice</Label>
+        <Label htmlFor="voice" className="text-xs text-[#F7F8F6]">Voice</Label>
         <Select value={voice} onValueChange={setVoice}>
-          <SelectTrigger className="bg-[#1E1E1E]">
-            <SelectValue placeholder="Select voice" />
+          <SelectTrigger className="text-xs bg-transparent border-white/20 focus-visible:ring-[#D7F266]">
+            <SelectValue placeholder="Select a voice" />
           </SelectTrigger>
           <SelectContent>
-            {AVAILABLE_VOICES.map((v) => (
-              <SelectItem key={v} value={v}>{v}</SelectItem>
-            ))}
+            <SelectItem value="nova">Nova (Realistic Female)</SelectItem>
+            <SelectItem value="quinn">Quinn (Energetic Female)</SelectItem>
+            <SelectItem value="atlas">Atlas (Deep Male)</SelectItem>
+            <SelectItem value="echo">Echo (Calm Male)</SelectItem>
+            <SelectItem value="onyx">Onyx (Smooth Male)</SelectItem>
           </SelectContent>
         </Select>
       </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="text">Text for Voiceover</Label>
-        <Textarea
-          id="text"
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          placeholder="Enter text for the voiceover..."
-          className="h-24 bg-[#1E1E1E]"
-        />
-      </div>
-
-      {error && (
-        <div className="text-red-500 text-sm">{error}</div>
-      )}
-
+      
       <Button
         onClick={handleGenerate}
-        disabled={isGenerating || !apiKey || !text}
-        className="w-full bg-[#D7F266] hover:bg-[#c5e150] text-black"
+        disabled={isGenerating || !text.trim()}
+        className="w-full bg-[#D7F266] hover:bg-[#D7F266]/90 text-[#151514] rounded-full transition-all duration-300 text-sm h-8"
       >
-        {isGenerating ? (
-          <>
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            Generating...
-          </>
-        ) : (
-          <>
-            <Mic className="mr-2 h-4 w-4" />
-            Generate Voiceover
-          </>
-        )}
+        {isGenerating ? 'Generating...' : 'Generate Voiceover'}
       </Button>
-
-      <div className="space-y-2 mt-4">
-        <Label>Generated Voiceovers</Label>
-        {generatedVoiceovers.length === 0 ? (
-          <div className="text-center py-4 text-gray-400">
-            No voiceovers generated yet
+      
+      {generatedAudioUrl && (
+        <div className="mt-3 space-y-2">
+          <div className="flex items-center gap-2 bg-editor-panel/50 p-2 rounded">
+            <button
+              className="p-1 bg-editor-hover rounded-full"
+              onClick={handlePlayPause}
+            >
+              {isPlaying ? <Pause size={12} /> : <Play size={12} />}
+            </button>
+            <div className="text-xs text-[#F7F8F6]/90 truncate flex-1">
+              {text.substring(0, 20)}{text.length > 20 ? '...' : ''}
+            </div>
+            <Button
+              size="xs"
+              variant="outline"
+              className="h-6 text-[0.6rem] flex items-center gap-1 bg-editor-panel border-white/20 hover:bg-editor-hover"
+              onClick={downloadAudio}
+            >
+              <Download size={12} />
+            </Button>
           </div>
-        ) : (
-          <div className="space-y-2 max-h-60 overflow-y-auto">
-            {generatedVoiceovers.map((voiceover) => (
-              <div key={voiceover.id} className="flex items-center justify-between bg-[#252525] p-2 rounded">
-                <div className="truncate flex-1 mr-2">
-                  <div className="font-medium">{voiceover.voice}</div>
-                  <div className="text-sm text-gray-400 truncate">{voiceover.text}</div>
-                </div>
-                <div className="flex space-x-2">
-                  <audio controls src={voiceover.src} className="h-8 w-32" />
-                  <Button size="sm" variant="outline" onClick={() => handleAddToTimeline(voiceover)}>
-                    Add to Timeline
-                  </Button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+          
+          <Button
+            size="sm"
+            onClick={handleAddToTimeline}
+            className="w-full h-8 text-xs bg-editor-panel border border-white/20 hover:bg-editor-hover text-[#F7F8F6]"
+            variant="outline"
+          >
+            <Plus size={14} className="mr-1" /> Add to Timeline
+          </Button>
+          
+          <audio ref={audioRef} src={generatedAudioUrl} onEnded={() => setIsPlaying(false)} className="hidden" />
+        </div>
+      )}
     </div>
   );
 };

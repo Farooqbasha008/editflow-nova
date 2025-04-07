@@ -5,8 +5,12 @@
 import { supabase } from "@/integrations/supabase/client";
 import { downloadMedia, saveProject } from "./Header";
 
-// Get all exported functions and components from the original VideoEditor file
-export * from "@/components/VideoEditor/VideoEditor";
+// Re-export the TimelineItem type from our types file
+export { TimelineItem } from "./types";
+
+// Create a default export component for VideoEditor
+import { default as OriginalVideoEditor } from "@/components/VideoEditor/VideoEditor";
+export default OriginalVideoEditor;
 
 // Add our custom event handlers
 document.addEventListener("videoeditor:download", async (e: any) => {
