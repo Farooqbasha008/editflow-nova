@@ -9,7 +9,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import AudioExtractor from './AudioExtractor';
 import VideoGenerator from './VideoGenerator';
 import SoundEffectGenerator from './SoundEffectGenerator';
-import VoiceoverGenerator from './VoiceoverGenerator';
 
 interface MediaSidebarProps {
   activeTab: string;
@@ -58,15 +57,11 @@ const MediaSidebar: React.FC<MediaSidebarProps> = ({
       <div className="flex-1 overflow-hidden">
         {activeTab === 'visuals' && (
           <Tabs defaultValue="media" className="w-full h-full">
-            <TabsList className="w-full grid grid-cols-2 bg-editor-panel/50 p-1 h-8">
+            <TabsList className="w-full grid grid-cols-1 bg-editor-panel/50 p-1 h-8">
               <TabsTrigger value="media" className="text-xs h-6">Media Library</TabsTrigger>
-              <TabsTrigger value="video" className="text-xs h-6">Generate Video</TabsTrigger>
             </TabsList>
             <TabsContent value="media" className="h-[calc(100%-2rem)] overflow-y-auto">
               <MediaLibrary onAddToTimeline={onAddToTimeline} mediaType="video" />
-            </TabsContent>
-            <TabsContent value="video" className="h-[calc(100%-2rem)] overflow-y-auto">
-              <VideoGenerator onAddToTimeline={onAddToTimeline} />
             </TabsContent>
           </Tabs>
         )}
@@ -88,8 +83,8 @@ const MediaSidebar: React.FC<MediaSidebarProps> = ({
         )}
         
         {activeTab === 'voiceover' && (
-          <div className="h-full overflow-y-auto">
-            <VoiceoverGenerator onAddToTimeline={onAddToTimeline} />
+          <div className="flex flex-col items-center justify-center h-full p-4 text-white/70">
+            <Mic size={32} className="mb-2" />
           </div>
         )}
       </div>

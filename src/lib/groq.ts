@@ -4,10 +4,10 @@
 
 // Default models to use
 const DEFAULT_LLM_MODEL = 'qwen-qwq-32b';
-const DEFAULT_TTS_MODEL = 'playai-tts';
+const DEFAULT_TTS_MODEL = 'llama3-8b-8192';
 
 // Default voice ID for TTS
-const DEFAULT_VOICE = 'Fritz-PlayAI'; // PlayAI voices include: Fritz-PlayAI, Mary-PlayAI, Chloe-PlayAI, etc.
+const DEFAULT_VOICE = 'alloy'; // Groq supports various voices like alloy, echo, fable, onyx, nova, and shimmer
 
 /*
  * Interface for image generation parameters
@@ -46,7 +46,9 @@ export async function generateSpeech(
 
   const voiceId = options.voiceId || DEFAULT_VOICE;
   const model = options.model || DEFAULT_TTS_MODEL;
-  
+  const speed = options.speed || 1.0;
+  const stability = options.stability || 0.5;
+
   try {
     // Make the API call to Groq for text-to-speech
     const response = await fetch(`https://api.groq.com/openai/v1/audio/speech`, {
@@ -59,7 +61,7 @@ export async function generateSpeech(
         model: model,
         input: text,
         voice: voiceId,
-        response_format: 'mp3',
+        speed: speed,
         // Additional parameters can be added as Groq's API evolves
       })
     });
