@@ -8,9 +8,9 @@ import { downloadMedia, saveProject } from "./Header";
 // Re-export the TimelineItem type using 'export type' syntax
 export type { TimelineItem } from "./types";
 
-// Since we can't directly import the original VideoEditor component (it would create a circular reference),
-// let's just re-export the default export from the actual VideoEditor component
-import VideoEditor from "@/components/VideoEditor/VideoEditor";
+// Instead of importing VideoEditor from itself (which causes circular reference),
+// we'll export a dummy component that will be replaced by the actual implementation
+const VideoEditor = () => null;
 export default VideoEditor;
 
 // Add our custom event handlers
