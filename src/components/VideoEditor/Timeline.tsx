@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Play, Pause, Volume2, Scissors, Plus, Trash2, ZoomIn, ZoomOut, Clock, Undo, Redo, ChevronLeft, ChevronRight, ArrowLeft, ArrowRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -439,36 +440,33 @@ const Timeline = ({
         }
       }
       
-      // If the item is from the media library or generated (has src property)
+      // If the item is from the media library (has src property)
       if (droppedItem.src) {
-        // Choose color based on track/item type
-        let color;
+        // Choose color based on track type
+        let color, type;
         
-        if (droppedItem.color) {
-          // Use the color provided in the dragged item if it exists
-          color = droppedItem.color;
-        } else if (itemType === 'video') {
+        if (isVideoTrack) {
+          type = 'video';
           color = 'bg-yellow-400/70';
-        } else if (itemType === 'audio') {
-          color = 'bg-blue-400/70';
         } else {
-          color = 'bg-green-400/70';
+          type = 'audio';
+          color = 'bg-blue-400/70';
         }
         
         // Set duration (use provided or default)
-        const durationInSeconds = droppedItem.duration || 5;
+        const durationInSeconds = parseInt(droppedItem.duration?.split(':')[1]) || 5;
         
         const newItem: TimelineItem = {
-          id: droppedItem.id || `timeline-${Date.now()}`,
+          id: `timeline-${Date.now()}`,
           trackId,
           start: dropTime,
           duration: durationInSeconds,
-          type: itemType || 'video', // default to video if type is undefined
-          name: droppedItem.name || 'Untitled Media',
+          type,
+          name: droppedItem.name,
           color,
           src: droppedItem.src,
-          thumbnail: droppedItem.thumbnail || droppedItem.src,
-          volume: droppedItem.volume || 1.0
+          thumbnail: droppedItem.thumbnail,
+          volume: 1.0
         };
         
         // Check for overlapping items in the same track

@@ -44,6 +44,7 @@ const VideoEditor: React.FC = () => {
   const [currentProjectId, setCurrentProjectId] = useState<string | null>(null);
   const [isLoadingProject, setIsLoadingProject] = useState(false);
   
+  // Initialize or load user preferences
   useEffect(() => {
     if (user) {
       const loadUserPreferences = async () => {
@@ -82,6 +83,7 @@ const VideoEditor: React.FC = () => {
     }
   }, [user]);
   
+  // Save user preferences when they change
   useEffect(() => {
     if (user) {
       const saveUserPreferences = async () => {
@@ -241,37 +243,23 @@ const VideoEditor: React.FC = () => {
   };
 
   const handleExport = () => {
-    if (timelineItems.length === 0) {
-      toast.error('Nothing to export', {
-        description: 'Add some content to your timeline first.',
-      });
-      return;
-    }
-    
     toast.success('Export started', {
       description: 'Your video is being prepared for download.',
     });
     
     setTimeout(() => {
-      const mediaItems = timelineItems.filter(item => item.type === 'video' || item.type === 'image')
-        .sort((a, b) => a.start - b.start);
-      
-      if (mediaItems.length === 0) {
-        toast.error('No visual content to export', {
-          description: 'Add videos or images to your timeline.',
-        });
-        return;
-      }
-      
-      const firstMediaItem = mediaItems[0];
-      
       toast.success('Export complete', {
         description: 'Your video is ready to download.',
       });
       
       const a = document.createElement('a');
-      a.href = firstMediaItem.src || '';
-      a.download = `${projectName.replace(/\s+/g, '_')}_export.${firstMediaItem.type === 'video' ? 'mp4' : 'jpg'}`;
+      a.href = '#';
+      a.download = `${projectName.replace(/\s+/g, '_')}_export.mp4`;
+      a.textContent = 'Download';
+      a.addEventListener('click', (e) => {
+        e.preventDefault();
+        toast.info('This is a simulated download in the demo');
+      });
       
       document.body.appendChild(a);
       a.click();
