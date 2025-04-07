@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -145,7 +146,7 @@ const VoiceoverGenerator: React.FC<VoiceoverGeneratorProps> = ({ onAddToTimeline
               {text.substring(0, 20)}{text.length > 20 ? '...' : ''}
             </div>
             <Button
-              size="xs"
+              size="sm"
               variant="outline"
               className="h-6 text-[0.6rem] flex items-center gap-1 bg-editor-panel border-white/20 hover:bg-editor-hover"
               onClick={downloadAudio}

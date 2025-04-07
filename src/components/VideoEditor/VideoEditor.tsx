@@ -5,12 +5,13 @@
 import { supabase } from "@/integrations/supabase/client";
 import { downloadMedia, saveProject } from "./Header";
 
-// Re-export the TimelineItem type from our types file
-export { TimelineItem } from "./types";
+// Re-export the TimelineItem type using 'export type' syntax
+export type { TimelineItem } from "./types";
 
-// Create a default export component for VideoEditor
-import { default as OriginalVideoEditor } from "@/components/VideoEditor/VideoEditor";
-export default OriginalVideoEditor;
+// Since we can't directly import the original VideoEditor component (it would create a circular reference),
+// let's just re-export the default export from the actual VideoEditor component
+import VideoEditorOriginal from "@/components/VideoEditor/VideoEditor";
+export default VideoEditorOriginal;
 
 // Add our custom event handlers
 document.addEventListener("videoeditor:download", async (e: any) => {

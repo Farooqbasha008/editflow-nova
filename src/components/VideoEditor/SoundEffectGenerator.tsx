@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -5,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { generateSoundEffect } from '@/lib/elevenlabs';
+import { generateSound } from '@/lib/elevenlabs';
 import { TimelineItem } from './types';
 
 interface SoundEffectGeneratorProps {
@@ -46,7 +47,7 @@ const SoundEffectGenerator: React.FC<SoundEffectGeneratorProps> = ({ onAddToTime
 
     try {
       // Use the ElevenLabs API to generate a sound effect
-      const audioUrl = await generateSoundEffect(prompt, apiKey);
+      const audioUrl = await generateSound(prompt, apiKey);
       setGeneratedAudio(audioUrl);
       toast.success('Sound effect generated successfully!');
     } catch (error) {

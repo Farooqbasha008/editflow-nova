@@ -7,7 +7,16 @@ import * as fal from "@fal-ai/serverless-client";
 // Default model to use for text-to-video generation
 const DEFAULT_MODEL = "fal-ai/wan/v2.1/1.3b/text-to-video";
 
-export async function generateVideo(prompt: string, apiKey: string, options: any = {}) {
+// Define interface for video generation options
+export interface VideoGenerationOptions {
+  model?: string;
+  negativePrompt?: string;
+  duration?: number;
+  width?: number;
+  height?: number;
+}
+
+export async function generateVideo(prompt: string, apiKey: string, options: VideoGenerationOptions = {}) {
     if (!apiKey) {
         throw new Error('Fal.ai API key is required');
     }
@@ -35,11 +44,14 @@ export async function generateVideo(prompt: string, apiKey: string, options: any
             }
         });
         
-        console.log("Video generation complete:", result.data);
+        console.log("Video generation complete:", result);
+        
+        // Make sure we properly type check result.data
+        const responseData = result as { data?: { video_url?: string } };
         
         // Return video URL from the result data
-        if (result.data && result.data.video_url) {
-            return result.data.video_url;
+        if (responseData.data && responseData.data.video_url) {
+            return responseData.data.video_url;
         } else {
             throw new Error("No video URL returned from Fal.ai");
         }
