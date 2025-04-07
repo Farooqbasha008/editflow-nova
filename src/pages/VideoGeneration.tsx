@@ -14,10 +14,17 @@ interface Message {
 }
 
 import { generateScript, GeneratedScript, ScriptScene } from '@/lib/gemini';
-import { generateVideo, VideoGenerationOptions } from '@/lib/falai';
+import { generateVideo } from '@/lib/falai';
 import { generateSpeech as generateElevenLabsSpeech } from '@/lib/elevenlabs';
 import { generateSound } from '@/lib/elevenlabs';
 import { generateSpeech as generateGroqSpeech } from '@/lib/groq';
+
+interface VideoGenerationOptions {
+  duration?: number;
+  width?: number;
+  height?: number;
+  negativePrompt?: string;
+}
 
 interface VideoDetails {
   title: string;
@@ -47,28 +54,23 @@ const VideoGeneration = () => {
   const [style, setStyle] = useState('cinematic');
   const [generatedVideo, setGeneratedVideo] = useState<VideoDetails | null>(null);
   
-  // User input collection state
   const [userInputData, setUserInputData] = useState<UserInputData | null>(null);
   const [inputCollectionStep, setInputCollectionStep] = useState<'story' | 'settings' | 'complete'>('story');
   
-  // API Keys
   const [geminiApiKey, setGeminiApiKey] = useState('');
   const [falaiApiKey, setFalaiApiKey] = useState('');
   const [groqApiKey, setGroqApiKey] = useState('');
   const [elevenlabsApiKey, setElevenlabsApiKey] = useState('');
   
-  // Generation progress
   const [generationStep, setGenerationStep] = useState<string>('');
   const [generationProgress, setGenerationProgress] = useState<number>(0);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
-  // Scroll to bottom of messages
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
   
-  // Load API keys from environment variables
   useEffect(() => {
     const geminiKey = import.meta.env.VITE_GEMINI_API_KEY;
     const falaiKey = import.meta.env.VITE_FALAI_API_KEY;
@@ -84,7 +86,6 @@ const VideoGeneration = () => {
   const handleSendMessage = () => {
     if (!inputValue.trim()) return;
     
-    // Add user message
     const userMessage: Message = {
       role: 'user',
       content: inputValue
@@ -94,7 +95,6 @@ const VideoGeneration = () => {
     setInputValue('');
     setIsGenerating(true);
     
-    // Check if API keys are set
     if (!geminiApiKey) {
       const assistantMessage: Message = {
         role: 'assistant',
@@ -107,7 +107,6 @@ const VideoGeneration = () => {
       return;
     }
     
-    // Check if all API keys are set for full video generation
     const hasAllKeys = geminiApiKey && falaiApiKey && groqApiKey && elevenlabsApiKey;
     if (!hasAllKeys && inputCollectionStep === 'complete') {
       const assistantMessage: Message = {
@@ -121,19 +120,15 @@ const VideoGeneration = () => {
       return;
     }
     
-    // Collect story input first
     if (inputCollectionStep === 'story') {
-      // Store the story input
       setUserInputData({
         story: inputValue.trim(),
         duration: duration,
         style: style
       });
       
-      // Move to settings step
       setInputCollectionStep('settings');
       
-      // Prompt user to adjust settings
       const assistantMessage: Message = {
         role: 'assistant',
         content: 'Thanks for sharing your story idea! Now, let\'s adjust the duration and style for your video. Please use the settings panel to customize these options.'
@@ -145,7 +140,6 @@ const VideoGeneration = () => {
       return;
     }
     
-    // If we're already past the input collection steps
     const assistantMessage: Message = {
       role: 'assistant',
       content: 'I\'ve analyzed your request. Would you like to adjust the duration or style before I generate the video script?'
@@ -156,11 +150,9 @@ const VideoGeneration = () => {
     setShowSettings(true);
   };
 
-  // State for script preview and confirmation dialog
   const [scriptPreview, setScriptPreview] = useState<GeneratedScript | null>(null);
   const [showScriptConfirmation, setShowScriptConfirmation] = useState(false);
 
-  // Function to generate script only
   const handleGenerateScript = async () => {
     try {
       setIsGenerating(true);
@@ -168,7 +160,6 @@ const VideoGeneration = () => {
       setGenerationStep('script');
       setGenerationProgress(0);
       
-      // Update user input data with current settings
       if (userInputData) {
         setUserInputData({
           ...userInputData,
@@ -176,7 +167,6 @@ const VideoGeneration = () => {
           style: style
         });
       } else {
-        // Fallback if somehow userInputData is null
         const userMessages = messages.filter(m => m.role === 'user');
         const lastMessage = userMessages[userMessages.length - 1].content;
         setUserInputData({
@@ -186,10 +176,8 @@ const VideoGeneration = () => {
         });
       }
       
-      // Mark input collection as complete
       setInputCollectionStep('complete');
       
-      // Prepare the input data in JSON format
       const inputJson = JSON.stringify({
         story: userInputData?.story || '',
         duration: duration,
@@ -198,7 +186,6 @@ const VideoGeneration = () => {
       
       console.log('User input data collected:', inputJson);
       
-      // Add a message about generating script
       const processingMessage: Message = {
         role: 'assistant',
         content: `Generating a script for your ${duration} second ${style} video...`
@@ -206,7 +193,6 @@ const VideoGeneration = () => {
       
       setMessages(prev => [...prev, processingMessage]);
       
-      // Generate script using Gemini with the collected story
       setGenerationProgress(50);
       const script = await generateScript(userInputData?.story || '', geminiApiKey, {
         format: 'openclap',
@@ -215,7 +201,6 @@ const VideoGeneration = () => {
       
       setGenerationProgress(100);
       
-      // Update message with script generation completion
       const scriptCompleteMessage: Message = {
         role: 'assistant',
         content: `I've created a script for your video. Please review it and confirm if you'd like to proceed with generating the video and audio.`
@@ -224,7 +209,6 @@ const VideoGeneration = () => {
       setMessages(prev => [...prev, scriptCompleteMessage]);
       setIsGenerating(false);
       
-      // Set the script preview and show confirmation dialog
       setScriptPreview(script);
       setShowScriptConfirmation(true);
       
@@ -241,14 +225,12 @@ const VideoGeneration = () => {
     }
   };
 
-  // Function to generate video after script confirmation
   const handleGenerateVideo = async () => {
     try {
       if (!scriptPreview) {
         throw new Error('Script preview is not available');
       }
       
-      // Check if all required API keys are available for video generation
       if (!falaiApiKey || !groqApiKey || !elevenlabsApiKey) {
         const missingKeys = [];
         if (!falaiApiKey) missingKeys.push('Fal.ai');
@@ -272,7 +254,6 @@ const VideoGeneration = () => {
       setGenerationStep('video');
       setGenerationProgress(0);
       
-      // Add a message about generating video
       const processingMessage: Message = {
         role: 'assistant',
         content: `Generating a ${duration} second ${style} video based on the confirmed script...\n\nStep 1/3: Generating video scenes...`
@@ -280,21 +261,17 @@ const VideoGeneration = () => {
       
       setMessages(prev => [...prev, processingMessage]);
       
-      // Use the confirmed script
       const script = scriptPreview;
       
-      // Step 1: Generate video for each scene using Fal.ai
       setGenerationStep('video');
       const videoUrls: Record<number, string> = {};
       
-      // Process each scene
       for (let i = 0; i < script.scenes.length; i++) {
         const scene = script.scenes[i];
         setGenerationProgress((i / script.scenes.length) * 33);
         
-        // Generate video for this scene
         const videoUrl = await generateVideo(scene.visualPrompt, falaiApiKey, {
-          duration: Math.min(5, duration / script.scenes.length), // Limit each scene to 5 seconds or less
+          duration: Math.min(5, duration / script.scenes.length),
           width: 512,
           height: 512,
           negativePrompt: 'blurry, low quality, distorted faces'
@@ -305,7 +282,6 @@ const VideoGeneration = () => {
       
       setGenerationProgress(33);
       
-      // Update message with video generation completion
       const videoCompleteMessage: Message = {
         role: 'assistant',
         content: `Step 1/3: Video scenes generated!\n\nStep 2/3: Creating voiceovers using Groq's advanced text-to-speech technology...`
@@ -313,24 +289,19 @@ const VideoGeneration = () => {
       
       setMessages(prev => [...prev, videoCompleteMessage]);
       
-      // Step 2: Generate speech for dialogue using Groq or ElevenLabs
       setGenerationStep('speech');
       const audioUrls: Record<string, string> = {};
       
-      // Process dialogue for each scene
       for (let i = 0; i < script.scenes.length; i++) {
         const scene = script.scenes[i];
         setGenerationProgress(33 + (i / script.scenes.length) * 33);
         
-        // Generate speech for each dialogue line
         for (let j = 0; j < scene.dialogue.length; j++) {
           const dialogue = scene.dialogue[j];
           const key = `scene${scene.sceneNumber}_${dialogue.character}_${j}`;
           
-          // Generate speech using Groq API for dialogue
           const speechUrl = await generateGroqSpeech(dialogue.line, groqApiKey, {
-            // You could map character names to specific voice IDs here
-            voiceId: dialogue.character === 'Narrator' ? 'nova' : 'alloy' // Use different voices for different characters
+            voiceId: dialogue.character === 'Narrator' ? 'nova' : 'alloy'
           });
           
           audioUrls[key] = speechUrl;
@@ -339,7 +310,6 @@ const VideoGeneration = () => {
       
       setGenerationProgress(66);
       
-      // Update message with speech generation completion
       const speechCompleteMessage: Message = {
         role: 'assistant',
         content: `Step 2/3: Voiceovers created with Groq!\n\nStep 3/3: Adding sound effects and background music using ElevenLabs...`
@@ -347,15 +317,12 @@ const VideoGeneration = () => {
       
       setMessages(prev => [...prev, speechCompleteMessage]);
       
-      // Step 3: Generate sound effects and background music using ElevenLabs
       setGenerationStep('sound');
       
-      // Process sound effects and music for each scene
       for (let i = 0; i < script.scenes.length; i++) {
         const scene = script.scenes[i];
         setGenerationProgress(66 + (i / script.scenes.length) * 34);
         
-        // Generate sound effects if available
         if (scene.audioDescription) {
           const sfxKey = `scene${scene.sceneNumber}_sfx`;
           const sfxUrl = await generateSound(scene.audioDescription, elevenlabsApiKey, {
@@ -366,7 +333,6 @@ const VideoGeneration = () => {
           audioUrls[sfxKey] = sfxUrl;
         }
         
-        // Generate background music if available
         if (scene.musicDescription) {
           const bgmKey = `scene${scene.sceneNumber}_bgm`;
           const bgmUrl = await generateSound(scene.musicDescription, elevenlabsApiKey, {
@@ -380,10 +346,6 @@ const VideoGeneration = () => {
       
       setGenerationProgress(100);
       
-      // Final assembly would happen here in a real implementation
-      // For now, we'll just collect all the generated assets
-      
-      // Update with completion message
       const completionMessage: Message = {
         role: 'assistant',
         content: 'Your video has been generated based on the script you approved! You can now preview it, edit it further, or download it.'
@@ -392,13 +354,12 @@ const VideoGeneration = () => {
       setMessages(prev => [...prev, completionMessage]);
       setIsGenerating(false);
       
-      // Set the generated video details
       setGeneratedVideo({
         title: script.title,
         script: script,
         duration: duration,
         style: style,
-        videoUrl: videoUrls[1], // Just use the first scene's video for preview
+        videoUrl: videoUrls[1],
         audioUrls: audioUrls
       });
       
@@ -413,7 +374,7 @@ const VideoGeneration = () => {
       setMessages(prev => [...prev, errorMessage]);
       setIsGenerating(false);
     }
-  }; // Close handleGenerateVideo function
+  };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -424,7 +385,6 @@ const VideoGeneration = () => {
 
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col">
-      {/* Header */}
       <header className="flex items-center justify-between p-4 border-b border-white/10">
         <div className="flex items-center">
           <Link to="/" className="mr-4">
@@ -450,11 +410,8 @@ const VideoGeneration = () => {
         )}
       </header>
 
-      {/* Main Content */}
       <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
-        {/* Chat Section */}
         <div className="flex-1 flex flex-col h-full overflow-hidden border-r border-white/10">
-          {/* Messages */}
           <div className="flex-1 overflow-y-auto p-4 space-y-4">
             {messages.map((message, index) => (
               <div 
@@ -493,7 +450,6 @@ const VideoGeneration = () => {
             <div ref={messagesEndRef} />
           </div>
 
-          {/* API Keys Dialog */}
           <Dialog open={showApiKeys} onOpenChange={setShowApiKeys}>
             <DialogContent className="bg-[#1E1E1E] border border-white/10">
               <DialogHeader>
@@ -589,7 +545,6 @@ const VideoGeneration = () => {
             </DialogContent>
           </Dialog>
           
-          {/* Settings Dialog */}
           <Dialog open={showSettings} onOpenChange={setShowSettings}>
             <DialogContent className="bg-[#1E1E1E] border border-white/10">
               <DialogHeader>
@@ -647,7 +602,6 @@ const VideoGeneration = () => {
             </DialogContent>
           </Dialog>
           
-          {/* Script Confirmation Dialog */}
           <Dialog open={showScriptConfirmation} onOpenChange={setShowScriptConfirmation}>
             <DialogContent className="bg-[#1E1E1E] border border-white/10 max-w-3xl max-h-[80vh] overflow-y-auto">
               <DialogHeader>
@@ -734,10 +688,8 @@ const VideoGeneration = () => {
                     <Button 
                       className="bg-[#D7F266] hover:bg-[#D7F266]/90 text-[#151514] flex items-center gap-1" 
                       onClick={() => {
-                        // Close the confirmation dialog
                         setShowScriptConfirmation(false);
                         
-                        // Add a message about script generation completion
                         const scriptCompleteMessage: Message = {
                           role: 'assistant',
                           content: `Your script has been generated successfully! You can now download it or add the remaining API keys to generate the full video.`
@@ -755,7 +707,6 @@ const VideoGeneration = () => {
             </DialogContent>
           </Dialog>
 
-          {/* Input Area */}
           <div className="p-4 border-t border-white/10">
             <div className="flex items-end gap-2">
               <Textarea 
@@ -780,7 +731,6 @@ const VideoGeneration = () => {
           </div>
         </div>
 
-        {/* Preview Section (shown when video is generated) */}
         {generatedVideo && (
           <div className="w-full md:w-2/5 lg:w-1/3 border-t md:border-t-0 border-white/10 flex flex-col overflow-hidden">
             <div className="p-4 border-b border-white/10">
@@ -798,4 +748,28 @@ const VideoGeneration = () => {
                 <h3 className="font-medium text-sm text-[#D7F266] mb-2">Generated Script</h3>
                 <div className="space-y-4">
                   <p className="text-sm font-medium">{generatedVideo.script.title}</p>
-                  <p className="text-xs text-white/
+                  <p className="text-xs text-white/70">{generatedVideo.script.logline}</p>
+                </div>
+              </div>
+              
+              {generatedVideo.videoUrl && (
+                <div className="mt-4 bg-[#1E1E1E] rounded-lg p-4 border border-white/10">
+                  <h3 className="font-medium text-sm text-[#D7F266] mb-2">Preview</h3>
+                  <div className="aspect-video bg-black rounded overflow-hidden">
+                    <video 
+                      src={generatedVideo.videoUrl} 
+                      controls
+                      className="w-full h-full object-contain"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default VideoGeneration;

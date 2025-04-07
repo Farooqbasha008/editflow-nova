@@ -46,7 +46,7 @@ export async function generateVideo(prompt: string, apiKey: string, options: Vid
         
         console.log("Video generation complete:", result);
         
-        // Make sure we properly type check result.data
+        // Properly handle type checking for result
         const responseData = result as { data?: { video_url?: string } };
         
         // Return video URL from the result data

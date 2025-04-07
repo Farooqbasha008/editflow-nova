@@ -10,8 +10,8 @@ export type { TimelineItem } from "./types";
 
 // Since we can't directly import the original VideoEditor component (it would create a circular reference),
 // let's just re-export the default export from the actual VideoEditor component
-import VideoEditorOriginal from "@/components/VideoEditor/VideoEditor";
-export default VideoEditorOriginal;
+import VideoEditor from "@/components/VideoEditor/VideoEditor";
+export default VideoEditor;
 
 // Add our custom event handlers
 document.addEventListener("videoeditor:download", async (e: any) => {
