@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import AudioExtractor from './AudioExtractor';
 import VideoGenerator from './VideoGenerator';
 import SoundEffectGenerator from './SoundEffectGenerator';
+import VoiceoverGenerator from './VoiceoverGenerator';
 
 interface MediaSidebarProps {
   activeTab: string;
@@ -87,8 +88,8 @@ const MediaSidebar: React.FC<MediaSidebarProps> = ({
         )}
         
         {activeTab === 'voiceover' && (
-          <div className="flex flex-col items-center justify-center h-full p-4 text-white/70">
-            <Mic size={32} className="mb-2" />
+          <div className="h-[calc(100%-2rem)] overflow-y-auto">
+            <VoiceoverGenerator onAddToTimeline={onAddToTimeline} />
           </div>
         )}
       </div>

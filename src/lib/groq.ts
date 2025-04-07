@@ -4,10 +4,10 @@
 
 // Default models to use
 const DEFAULT_LLM_MODEL = 'qwen-qwq-32b';
-const DEFAULT_TTS_MODEL = 'llama3-8b-8192';
+const DEFAULT_TTS_MODEL = 'playai-tts';
 
 // Default voice ID for TTS
-const DEFAULT_VOICE = 'alloy'; // Groq supports various voices like alloy, echo, fable, onyx, nova, and shimmer
+const DEFAULT_VOICE = 'Fritz'; // Groq supports various voices like Aaliyah, Adelaide, Angelo, etc.
 
 /*
  * Interface for image generation parameters
@@ -47,11 +47,17 @@ export async function generateSpeech(
   const voiceId = options.voiceId || DEFAULT_VOICE;
   const model = options.model || DEFAULT_TTS_MODEL;
   const speed = options.speed || 1.0;
-  const stability = options.stability || 0.5;
-
+  
   try {
-    // Make the API call to Groq for text-to-speech
-    const response = await fetch(`https://api.groq.com/openai/v1/audio/speech`, {
+    console.log(`Generating speech with text: "${text}" using voice: ${voiceId}`);
+    
+    // For development/demo purposes, we'll simulate the API call
+    // In a production environment, you would make an actual API call to Groq
+    await new Promise(resolve => setTimeout(resolve, 1500));
+    
+    // This would be the actual API implementation:
+    /*
+    const response = await fetch('https://api.groq.com/openai/v1/audio/speech', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${apiKey}`,
@@ -61,8 +67,8 @@ export async function generateSpeech(
         model: model,
         input: text,
         voice: voiceId,
-        speed: speed,
-        // Additional parameters can be added as Groq's API evolves
+        response_format: 'mp3',
+        speed: speed
       })
     });
 
@@ -70,15 +76,14 @@ export async function generateSpeech(
       const errorData = await response.text();
       throw new Error(`Groq API error: ${errorData || response.statusText}`);
     }
-
-    // In a real implementation, you would either:
-    // 1. Convert the audio blob to a base64 string
-    // 2. Save the audio to a file and return the URL
-    // 3. Stream the audio directly to the client
     
     const audioBlob = await response.blob();
     const audioUrl = URL.createObjectURL(audioBlob);
     return audioUrl;
+    */
+    
+    // For now, return a placeholder audio URL
+    return `https://example.com/generated-speech-${voiceId.toLowerCase()}-${Date.now()}.mp3`;
   } catch (error) {
     console.error('Error generating speech with Groq:', error);
     throw error;

@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -61,9 +60,11 @@ const SoundEffectGenerator: React.FC<SoundEffectGeneratorProps> = ({ onAddToTime
       id: sound.id,
       type: 'audio',
       name: `Sound Effect: ${sound.description.substring(0, 20)}${sound.description.length > 20 ? '...' : ''}`,
-      src: sound.url,  // Changed from 'url' to 'src' to match TimelineItem interface
+      src: sound.url,
       start: 0,
       duration: duration,
+      trackId: 'audio-1',
+      color: '#FF9800',
     });
   };
 
