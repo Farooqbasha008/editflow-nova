@@ -10,10 +10,6 @@ import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/componen
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import MediaSidebar from './MediaSidebar';
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> 56fcc694bb879d8258650363f8350d89f32194b2
 export interface TimelineItem {
   id: string;
   trackId: string;
@@ -25,18 +21,10 @@ export interface TimelineItem {
   src?: string;
   thumbnail?: string;
   volume?: number;
-<<<<<<< HEAD
   muted?: boolean;
   trimStart?: number; // Trim from start in seconds
   trimEnd?: number; // Trim from end in seconds
 }
-=======
-// We can't modify VideoEditor.tsx directly as it's read-only, but we can create a wrapper
-// component that adds the functionality we need.
->>>>>>> b384b77ec11a6e4e6e07ecd133f154706d9926df
-=======
-}
->>>>>>> 56fcc694bb879d8258650363f8350d89f32194b2
 
 const VideoEditor: React.FC = () => {
   const [currentTime, setCurrentTime] = useState(0);
