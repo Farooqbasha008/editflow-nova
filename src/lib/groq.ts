@@ -1,5 +1,6 @@
 import { generateSpeech } from './groqTTS';
 /**
+<<<<<<< HEAD
  * Groq API integration for LLM capabilities and script generation
  */
 
@@ -53,6 +54,13 @@ const DEFAULT_TTS_MODEL = 'playai-tts';
 // Default voice ID for TTS
 const DEFAULT_VOICE = 'Fritz'; // Groq supports various voices like Aaliyah, Adelaide, Angelo, etc.
 >>>>>>> b384b77ec11a6e4e6e07ecd133f154706d9926df
+=======
+ * Groq API integration for LLM capabilities
+ */
+
+// Default model to use for LLM
+const DEFAULT_MODEL = 'qwen-qwq-32b';
+>>>>>>> 56fcc694bb879d8258650363f8350d89f32194b2
 
 /*
  * Interface for image generation parameters
@@ -63,6 +71,7 @@ interface ImageGenerationParams {
   cfgScale: number;
 }
 
+<<<<<<< HEAD
 // TTS functionality moved to groqTTS.ts
 export { generateSpeech };
 export type { SpeechGenerationOptions } from './groqTTS';
@@ -144,6 +153,8 @@ export async function generateScript(
   }
 }
 
+=======
+>>>>>>> 56fcc694bb879d8258650363f8350d89f32194b2
 /**
  * Get optimized parameters for image generation using Groq LLM
  * @param prompt The text prompt for image generation
@@ -155,7 +166,7 @@ export async function getOptimizedParams(
   prompt: string,
   dimensions: string,
   apiKey: string,
-  model: string = DEFAULT_LLM_MODEL
+  model: string = DEFAULT_MODEL
 ): Promise<ImageGenerationParams> {
   if (!apiKey) {
     // Return default parameters if no API key is provided
@@ -171,8 +182,12 @@ export async function getOptimizedParams(
     const systemMessage = "You are an AI assistant specialized in optimizing parameters for image generation. Based on the user's prompt and desired image dimensions, suggest the best parameters for stable diffusion image generation.";
     
     const userPrompt = `Given the following prompt: "${prompt}" and dimensions: ${dimensions}, provide the optimal parameters for image generation. Return only a JSON object with these fields: negativePrompt (string), steps (number between 20-50), and cfgScale (number between 5-10).`;
+<<<<<<< HEAD
 >>>>>>> b384b77ec11a6e4e6e07ecd133f154706d9926df
     
+=======
+
+>>>>>>> 56fcc694bb879d8258650363f8350d89f32194b2
     // Make the API call to Groq
     const response = await fetch(`https://api.groq.com/openai/v1/chat/completions`, {
       method: 'POST',
@@ -183,6 +198,7 @@ export async function getOptimizedParams(
       body: JSON.stringify({
         model: model,
         messages: [
+<<<<<<< HEAD
           {
             role: 'system',
             content: systemPrompt
@@ -194,17 +210,24 @@ export async function getOptimizedParams(
         ],
         temperature: temperature,
         max_tokens: maxTokens
+=======
+          { role: 'system', content: systemMessage },
+          { role: 'user', content: userPrompt }
+        ],
+        temperature: 0.3,
+        max_tokens: 300
+>>>>>>> 56fcc694bb879d8258650363f8350d89f32194b2
       })
     });
 
     if (!response.ok) {
-      const errorData = await response.text();
-      throw new Error(`Groq API error: ${errorData || response.statusText}`);
+      throw new Error(`Groq API error: ${response.status} ${response.statusText}`);
     }
 
     const data = await response.json();
     const content = data.choices[0].message.content;
     
+<<<<<<< HEAD
     // Parse the response to extract the script
     return parseScriptFromResponse(content, format);
   } catch (error) {
@@ -426,6 +449,32 @@ function parseScriptFromResponse(response: string, format: string): GeneratedScr
       });
     }
     
+=======
+    // Parse the JSON response from the LLM
+    try {
+      // Extract JSON object from the response if it's wrapped in text
+      const jsonMatch = content.match(/\{[\s\S]*\}/);
+      const jsonStr = jsonMatch ? jsonMatch[0] : content;
+      const params = JSON.parse(jsonStr);
+      
+      return {
+        negativePrompt: params.negativePrompt || '',
+        steps: Math.min(Math.max(params.steps || 30, 20), 50), // Ensure steps is between 20-50
+        cfgScale: Math.min(Math.max(params.cfgScale || 7.5, 5), 10) // Ensure cfgScale is between 5-10
+      };
+    } catch (parseError) {
+      console.error('Error parsing LLM response:', parseError);
+      // Return default parameters if parsing fails
+      return {
+        negativePrompt: '',
+        steps: 30,
+        cfgScale: 7.5
+      };
+    }
+  } catch (error) {
+    console.error('Error calling Groq API:', error);
+    // Return default parameters if API call fails
+>>>>>>> 56fcc694bb879d8258650363f8350d89f32194b2
     return {
       title,
       logline,
@@ -445,6 +494,7 @@ function parseScriptFromResponse(response: string, format: string): GeneratedScr
       }]
     };
   }
+<<<<<<< HEAD
 }
 <<<<<<< HEAD
 
@@ -457,3 +507,6 @@ function parseScriptFromResponse(response: string, format: string): GeneratedScr
  */
 =======
 >>>>>>> b384b77ec11a6e4e6e07ecd133f154706d9926df
+=======
+}
+>>>>>>> 56fcc694bb879d8258650363f8350d89f32194b2

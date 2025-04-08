@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+<<<<<<< HEAD
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
@@ -18,6 +19,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 // Default model to use for script generation
 const DEFAULT_MODEL = 'meta-llama/llama-4-scout-17b-16e-instruct';
+=======
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { ArrowLeft, Send, Sparkles, Clock, Film, Loader2, Download, Play, ChevronRight, Pencil } from 'lucide-react';
+>>>>>>> 56fcc694bb879d8258650363f8350d89f32194b2
 
 interface Message {
   role: 'user' | 'assistant' | 'system';
@@ -25,6 +30,7 @@ interface Message {
   timestamp: Date;
 }
 
+<<<<<<< HEAD
 <<<<<<< HEAD
 interface VideoScriptParams {
   prompt: string;
@@ -59,9 +65,12 @@ interface VideoGenerationOptions {
   negativePrompt?: string;
 }
 
+=======
+>>>>>>> 56fcc694bb879d8258650363f8350d89f32194b2
 interface VideoDetails {
 >>>>>>> b384b77ec11a6e4e6e07ecd133f154706d9926df
   title: string;
+<<<<<<< HEAD
   logline: string;
   style: string;
   duration: string;
@@ -205,6 +214,36 @@ const VideoGeneration: React.FC = () => {
     // Add user message to chat
 =======
 >>>>>>> b384b77ec11a6e4e6e07ecd133f154706d9926df
+=======
+  script: string;
+  duration: number;
+  style: string;
+}
+
+const VideoGeneration = () => {
+  const [messages, setMessages] = useState<Message[]>([{
+    role: 'assistant',
+    content: 'Hi there! I can help you create a video. Describe your story, desired duration, and any specific style preferences. The more details you provide, the better the result will be!'
+  }]);
+  const [inputValue, setInputValue] = useState('');
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const [duration, setDuration] = useState(60); // Default 60 seconds
+  const [style, setStyle] = useState('cinematic');
+  const [generatedVideo, setGeneratedVideo] = useState<VideoDetails | null>(null);
+  
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  
+  // Scroll to bottom of messages
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
+  const handleSendMessage = () => {
+    if (!inputValue.trim()) return;
+    
+    // Add user message
+>>>>>>> 56fcc694bb879d8258650363f8350d89f32194b2
     const userMessage: Message = {
       role: 'user',
       content: inputMessage,
@@ -217,57 +256,36 @@ const VideoGeneration: React.FC = () => {
     setIsTyping(true);
     
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
     if (!geminiApiKey) {
+=======
+    // Simulate AI response after a delay
+    setTimeout(() => {
+      // This would be replaced with actual API call to an LLM
+>>>>>>> 56fcc694bb879d8258650363f8350d89f32194b2
       const assistantMessage: Message = {
         role: 'assistant',
-        content: 'Before we can generate your script, I need your Gemini API key. Please provide it in the API Keys section.'
-      };
-      
-      setMessages(prev => [...prev, assistantMessage]);
-      setIsGenerating(false);
-      setShowApiKeys(true);
-      return;
-    }
-    
-    const hasAllKeys = geminiApiKey && falaiApiKey && groqApiKey && elevenlabsApiKey;
-    if (!hasAllKeys && inputCollectionStep === 'complete') {
-      const assistantMessage: Message = {
-        role: 'assistant',
-        content: 'Note: You only have the Gemini API key set. You can generate scripts, but you\'ll need to add the other API keys (Fal.ai, Groq, and ElevenLabs) to generate the complete video.'
-      };
-      
-      setMessages(prev => [...prev, assistantMessage]);
-      setIsGenerating(false);
-      setShowApiKeys(true);
-      return;
-    }
-    
-    if (inputCollectionStep === 'story') {
-      setUserInputData({
-        story: inputValue.trim(),
-        duration: duration,
-        style: style
-      });
-      
-      setInputCollectionStep('settings');
-      
-      const assistantMessage: Message = {
-        role: 'assistant',
-        content: 'Thanks for sharing your story idea! Now, let\'s adjust the duration and style for your video. Please use the settings panel to customize these options.'
+        content: 'I\'ve analyzed your request. Would you like to adjust the duration or style before I generate the video script?'
       };
       
       setMessages(prev => [...prev, assistantMessage]);
       setIsGenerating(false);
       setShowSettings(true);
-      return;
-    }
+    }, 1500);
+  };
+
+  const handleGenerateVideo = () => {
+    setIsGenerating(true);
+    setShowSettings(false);
     
-    const assistantMessage: Message = {
+    // Add a message about generating
+    const processingMessage: Message = {
       role: 'assistant',
-      content: 'I\'ve analyzed your request. Would you like to adjust the duration or style before I generate the video script?'
+      content: `Generating a ${duration} second ${style} video based on your description...`
     };
     
+<<<<<<< HEAD
     setMessages(prev => [...prev, assistantMessage]);
     setIsGenerating(false);
     setShowSettings(true);
@@ -574,34 +592,28 @@ REASONING RULES:
       
       setGenerationProgress(100);
       
+=======
+    setMessages(prev => [...prev, processingMessage]);
+    
+    // Simulate video generation (would be an actual API call)
+    setTimeout(() => {
+>>>>>>> 56fcc694bb879d8258650363f8350d89f32194b2
       const completionMessage: Message = {
         role: 'assistant',
-        content: 'Your video has been generated based on the script you approved! You can now preview it, edit it further, or download it.'
+        content: 'Your video has been generated! You can now preview it, edit it further, or download it.'
       };
       
       setMessages(prev => [...prev, completionMessage]);
       setIsGenerating(false);
       
+      // Mock generated video details
       setGeneratedVideo({
-        title: script.title,
-        script: script,
+        title: 'Your Generated Video',
+        script: 'This is a sample script generated based on your description. It would include detailed scenes, dialogue, and directions for a professional video.',
         duration: duration,
-        style: style,
-        videoUrl: videoUrls[1],
-        audioUrls: audioUrls
+        style: style
       });
-      
-    } catch (error) {
-      console.error('Error generating video:', error);
-      
-      const errorMessage: Message = {
-        role: 'assistant',
-        content: `There was an error generating your video: ${error instanceof Error ? error.message : 'Unknown error'}.\n\nPlease check your API keys and try again.`
-      };
-      
-      setMessages(prev => [...prev, errorMessage]);
-      setIsGenerating(false);
-    }
+    }, 3000);
   };
 
 >>>>>>> b384b77ec11a6e4e6e07ecd133f154706d9926df
@@ -681,6 +693,7 @@ REASONING RULES:
       <header className="flex items-center justify-between p-4 border-b border-white/10 bg-[#1A1A1A]">
 =======
     <div className="min-h-screen bg-background text-foreground flex flex-col">
+      {/* Header */}
       <header className="flex items-center justify-between p-4 border-b border-white/10">
 >>>>>>> b384b77ec11a6e4e6e07ecd133f154706d9926df
         <div className="flex items-center">
@@ -712,6 +725,7 @@ REASONING RULES:
       </header>
 
 <<<<<<< HEAD
+<<<<<<< HEAD
       {/* Main Content */}
       <div className="flex-1 flex overflow-hidden">
         {/* Chat Area - Always visible */}
@@ -724,8 +738,13 @@ REASONING RULES:
             <div className="space-y-4 max-w-3xl mx-auto">
               {messages.filter(m => m.role !== 'system').map((message, index) => (
 =======
+=======
+      {/* Main Content */}
+>>>>>>> 56fcc694bb879d8258650363f8350d89f32194b2
       <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
+        {/* Chat Section */}
         <div className="flex-1 flex flex-col h-full overflow-hidden border-r border-white/10">
+          {/* Messages */}
           <div className="flex-1 overflow-y-auto p-4 space-y-4">
             {messages.map((message, index) => (
               <div 
@@ -772,101 +791,7 @@ REASONING RULES:
             <div ref={messagesEndRef} />
           </div>
 
-          <Dialog open={showApiKeys} onOpenChange={setShowApiKeys}>
-            <DialogContent className="bg-[#1E1E1E] border border-white/10">
-              <DialogHeader>
-                <DialogTitle className="text-[#D7F266]">API Keys</DialogTitle>
-                <DialogDescription>
-                  Enter your API keys for the AI services. Only Gemini API key is required for script generation.
-                </DialogDescription>
-              </DialogHeader>
-              <div className="space-y-4 py-4">
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center">
-                      <Key className="h-4 w-4 mr-2 text-[#D7F266]" />
-                      <span>Gemini API Key</span>
-                    </div>
-                    <span className="text-xs font-medium text-[#D7F266]">Required for Script</span>
-                  </div>
-                  <Input
-                    value={geminiApiKey}
-                    onChange={(e) => setGeminiApiKey(e.target.value)}
-                    placeholder="Enter your Gemini API key"
-                    className="bg-[#1E1E1E] border-white/20"
-                    type="password"
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center">
-                      <Video className="h-4 w-4 mr-2 text-[#D7F266]" />
-                      <span>Fal.ai API Key</span>
-                    </div>
-                    <span className="text-xs text-white/70">Required for Video</span>
-                  </div>
-                  <Input
-                    value={falaiApiKey}
-                    onChange={(e) => setFalaiApiKey(e.target.value)}
-                    placeholder="Enter your Fal.ai API key"
-                    className="bg-[#1E1E1E] border-white/20"
-                    type="password"
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center">
-                      <Mic className="h-4 w-4 mr-2 text-[#D7F266]" />
-                      <span>Groq API Key</span>
-                    </div>
-                    <span className="text-xs text-white/70">Required for Video</span>
-                  </div>
-                  <Input
-                    value={groqApiKey}
-                    onChange={(e) => setGroqApiKey(e.target.value)}
-                    placeholder="Enter your Groq API key"
-                    className="bg-[#1E1E1E] border-white/20"
-                    type="password"
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center">
-                      <Music className="h-4 w-4 mr-2 text-[#D7F266]" />
-                      <span>ElevenLabs API Key</span>
-                    </div>
-                    <span className="text-xs text-white/70">Required for Video</span>
-                  </div>
-                  <Input
-                    value={elevenlabsApiKey}
-                    onChange={(e) => setElevenlabsApiKey(e.target.value)}
-                    placeholder="Enter your ElevenLabs API key"
-                    className="bg-[#1E1E1E] border-white/20"
-                    type="password"
-                  />
-                </div>
-              </div>
-              <DialogFooter className="flex-col space-y-2 sm:space-y-0">
-                <div className="text-xs text-white/70 text-right mb-2">
-                  {geminiApiKey ? 
-                    (falaiApiKey && groqApiKey && elevenlabsApiKey ? 
-                      'All keys provided. Full video generation available.' : 
-                      'Script generation available. Add remaining keys for video generation.') : 
-                    'Add at least Gemini API key to generate scripts.'}
-                </div>
-                <Button 
-                  className="bg-[#D7F266] hover:bg-[#D7F266]/90 text-[#151514]" 
-                  onClick={() => setShowApiKeys(false)}
-                >
-                  Save Keys
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-          
+          {/* Settings Dialog */}
           <Dialog open={showSettings} onOpenChange={setShowSettings}>
             <DialogContent className="bg-[#1E1E1E] border border-white/10">
               <DialogHeader>
@@ -916,13 +841,14 @@ REASONING RULES:
                 <Button variant="outline" onClick={() => setShowSettings(false)}>Cancel</Button>
                 <Button 
                   className="bg-[#D7F266] hover:bg-[#D7F266]/90 text-[#151514]" 
-                  onClick={handleGenerateScript}
+                  onClick={handleGenerateVideo}
                 >
-                  Generate Script
+                  Generate Video
                 </Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
+<<<<<<< HEAD
           
           <Dialog open={showScriptConfirmation} onOpenChange={setShowScriptConfirmation}>
             <DialogContent className="bg-[#1E1E1E] border border-white/10 max-w-3xl max-h-[80vh] overflow-y-auto">
@@ -1085,7 +1011,10 @@ REASONING RULES:
               </DialogFooter>
             </DialogContent>
           </Dialog>
+=======
+>>>>>>> 56fcc694bb879d8258650363f8350d89f32194b2
 
+          {/* Input Area */}
           <div className="p-4 border-t border-white/10">
             <div className="flex items-end gap-2">
               <Textarea 
@@ -1108,6 +1037,7 @@ REASONING RULES:
           </div>
         </div>
 
+<<<<<<< HEAD
 <<<<<<< HEAD
         {/* Sidebar - Conditionally visible */}
         <div 
@@ -1230,6 +1160,9 @@ REASONING RULES:
                     />
                   </div>
 =======
+=======
+        {/* Preview Section (shown when video is generated) */}
+>>>>>>> 56fcc694bb879d8258650363f8350d89f32194b2
         {generatedVideo && (
           <div className="w-full md:w-2/5 lg:w-1/3 border-t md:border-t-0 border-white/10 flex flex-col overflow-hidden">
             <div className="p-4 border-b border-white/10">
@@ -1245,6 +1178,7 @@ REASONING RULES:
             <div className="flex-1 overflow-y-auto p-4">
               <div className="bg-[#1E1E1E] rounded-lg p-4 border border-white/10">
                 <h3 className="font-medium text-sm text-[#D7F266] mb-2">Generated Script</h3>
+<<<<<<< HEAD
                 <div className="space-y-4">
                   <p className="text-sm font-medium">{generatedVideo.script.title}</p>
                   <p className="text-xs text-white/70">{generatedVideo.script.logline}</p>
@@ -1385,8 +1319,39 @@ REASONING RULES:
                       className="w-full h-full object-contain"
                     />
                   </div>
+=======
+                <p className="whitespace-pre-wrap text-sm">{generatedVideo.script}</p>
+              </div>
+              
+              <div className="mt-6">
+                <h3 className="font-medium text-sm text-[#D7F266] mb-3">What's next?</h3>
+                <div className="space-y-3">
+                  <Button variant="outline" className="w-full justify-between" size="sm">
+                    <span className="flex items-center">
+                      <Play className="h-4 w-4 mr-2" />
+                      Preview Video
+                    </span>
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                  <Link to="/editor" className="w-full">
+                    <Button variant="outline" className="w-full justify-between" size="sm">
+                      <span className="flex items-center">
+                        <Pencil className="h-4 w-4 mr-2" />
+                        Edit in Timeline
+                      </span>
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                  </Link>
+                  <Button variant="outline" className="w-full justify-between" size="sm">
+                    <span className="flex items-center">
+                      <Download className="h-4 w-4 mr-2" />
+                      Download Script
+                    </span>
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+>>>>>>> 56fcc694bb879d8258650363f8350d89f32194b2
                 </div>
-              )}
+              </div>
             </div>
 >>>>>>> b384b77ec11a6e4e6e07ecd133f154706d9926df
           </div>
