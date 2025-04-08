@@ -164,6 +164,7 @@ const VideoGeneration: React.FC = () => {
   // Load API keys from localStorage
   useEffect(() => {
     const savedGroqApiKey = localStorage.getItem('groq_api_key');
+    const savedFalaiApiKey = localStorage.getItem('falai_api_key');
     const savedSupabaseUrl = localStorage.getItem('supabase_url');
     const savedSupabaseKey = localStorage.getItem('supabase_key');
     
@@ -174,6 +175,10 @@ const VideoGeneration: React.FC = () => {
     } else {
       setShowApiKeyInput(true);
       setSidebarTab('settings');
+    }
+
+    if (savedFalaiApiKey) {
+      setFalaiApiKey(savedFalaiApiKey);
     }
     
     if (savedSupabaseUrl) {
@@ -189,10 +194,16 @@ const VideoGeneration: React.FC = () => {
     if (apiKey.trim()) {
       localStorage.setItem('groq_api_key', apiKey);
       setShowApiKeyInput(false);
-      toast.success('API key saved');
+      toast.success('API keys saved');
       setSidebarTab('chat');
     } else {
-      toast.error('Please enter a valid API key');
+      toast.error('Please enter a valid Groq API key');
+      return;
+    }
+    
+    // Save FAL.ai API key if provided
+    if (falaiApiKey.trim()) {
+      localStorage.setItem('falai_api_key', falaiApiKey);
     }
     
     // Save Supabase credentials if provided
@@ -766,9 +777,9 @@ REASONING RULES:
               {showApiKeyInput ? (
                 <div className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="api-key">Groq API Key</Label>
+                    <Label htmlFor="groq-api-key">Groq API Key</Label>
                     <Input 
-                      id="api-key"
+                      id="groq-api-key"
                       type="password" 
                       placeholder="Enter your Groq API key" 
                       value={apiKey} 
@@ -779,11 +790,22 @@ REASONING RULES:
                       Your API key is stored locally and never sent to our servers.
                     </p>
                   </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="falai-api-key">FAL.ai API Key</Label>
+                    <Input 
+                      id="falai-api-key"
+                      type="password" 
+                      placeholder="Enter your FAL.ai API key" 
+                      value={falaiApiKey} 
+                      onChange={(e) => setFalaiApiKey(e.target.value)}
+                      className="bg-[#0E0E0E] border-white/20"
+                    />
+                  </div>
                   <Button 
                     onClick={handleApiKeySubmit}
                     className="bg-[#D7F266] hover:bg-[#D7F266]/90 text-[#151514]"
                   >
-                    Save API Key
+                    Save API Keys
                   </Button>
                 </div>
               ) : (
@@ -955,6 +977,18 @@ REASONING RULES:
                       placeholder="Enter your Groq API key" 
                       value={apiKey} 
                       onChange={(e) => setApiKey(e.target.value)}
+                      className="bg-[#0E0E0E] border-white/20 text-white"
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="falai-api-key-settings" className="text-white">FAL.ai API Key</Label>
+                    <Input 
+                      id="falai-api-key-settings"
+                      type="password" 
+                      placeholder="Enter your FAL.ai API key" 
+                      value={falaiApiKey} 
+                      onChange={(e) => setFalaiApiKey(e.target.value)}
                       className="bg-[#0E0E0E] border-white/20 text-white"
                     />
                   </div>
