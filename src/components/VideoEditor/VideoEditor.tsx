@@ -21,6 +21,9 @@ export interface TimelineItem {
   src?: string;
   thumbnail?: string;
   volume?: number;
+  muted?: boolean;
+  trimStart?: number; // Trim from start in seconds
+  trimEnd?: number; // Trim from end in seconds
 }
 
 const VideoEditor: React.FC = () => {

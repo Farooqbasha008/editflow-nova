@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Play, Pause, Volume2, Scissors, Plus, Trash2, ZoomIn, ZoomOut, Clock, Undo, Redo, ChevronLeft, ChevronRight, ArrowLeft, ArrowRight } from 'lucide-react';
+import { Play, Pause, Volume2, VolumeX, Scissors, Plus, Trash2, ZoomIn, ZoomOut, Clock, Undo, Redo, ChevronLeft, ChevronRight, ArrowLeft, ArrowRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { TimelineItem } from './VideoEditor';
 import { Slider } from '@/components/ui/slider';
@@ -47,6 +47,7 @@ const Timeline = ({
   const [dragStartPos, setDragStartPos] = useState({ start: 0, trackId: '' });
   const [draggedItem, setDraggedItem] = useState<TimelineItem | null>(null);
   const [showVolumeControl, setShowVolumeControl] = useState<string | null>(null);
+  const [showTrimControl, setShowTrimControl] = useState<string | null>(null);
   const [isResizing, setIsResizing] = useState(false);
   const [resizeDirection, setResizeDirection] = useState<'start' | 'end' | null>(null);
   const [resizeItem, setResizeItem] = useState<TimelineItem | null>(null);
@@ -529,6 +530,53 @@ const Timeline = ({
   // Toggle volume control for an item
   const toggleVolumeControl = (id: string) => {
     setShowVolumeControl(prev => prev === id ? null : id);
+    // Close trim control if open
+    if (showTrimControl === id) {
+      setShowTrimControl(null);
+    }
+  };
+  
+  // Toggle mute for an item
+  const handleToggleMute = (id: string) => {
+    const item = items.find(i => i.id === id);
+    if (item && onUpdateItem) {
+      onUpdateItem({
+        ...item,
+        muted: !item.muted
+      });
+      
+      toast.success(`${item.muted ? 'Unmuted' : 'Muted'} ${item.type}`, {
+        description: item.muted ? 'Audio enabled' : 'Audio disabled'
+      });
+    }
+  };
+  
+  // Toggle trim control for an item
+  const toggleTrimControl = (id: string) => {
+    setShowTrimControl(prev => prev === id ? null : id);
+    // Close volume control if open
+    if (showVolumeControl === id) {
+      setShowVolumeControl(null);
+    }
+  };
+  
+  // Handle trim adjustment
+  const handleTrimChange = (id: string, type: 'start' | 'end', value: number) => {
+    const item = items.find(i => i.id === id);
+    if (item && onUpdateItem) {
+      const updatedItem = { ...item };
+      
+      if (type === 'start') {
+        updatedItem.trimStart = value;
+      } else {
+        updatedItem.trimEnd = value;
+      }
+      
+      onUpdateItem(updatedItem);
+      toast.success(`Trim ${type} adjusted`, {
+        description: `${type.charAt(0).toUpperCase() + type.slice(1)} trim set to ${value.toFixed(1)}s`
+      });
+    }
   };
   
   // Handle keyboard shortcuts for fine-tuning selected item position
@@ -792,15 +840,38 @@ const Timeline = ({
                     <p className="text-xs font-medium truncate">{item.name}</p>
                     <div className="flex items-center gap-1">
                       {(item.type === 'audio' || item.type === 'video') && (
-                        <button 
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            toggleVolumeControl(item.id);
-                          }}
-                          className="text-white/70 hover:text-white"
-                        >
-                          <Volume2 size={12} />
-                        </button>
+                        <>
+                          <button 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggleVolumeControl(item.id);
+                            }}
+                            className="text-white/70 hover:text-white"
+                            title="Adjust volume"
+                          >
+                            <Volume2 size={12} />
+                          </button>
+                          <button 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleToggleMute(item.id);
+                            }}
+                            className={`${item.muted ? 'text-[#D7F266]/70' : 'text-white/70'} hover:text-white`}
+                            title={item.muted ? 'Unmute' : 'Mute'}
+                          >
+                            {item.muted ? <VolumeX size={12} /> : <Volume2 size={12} className="opacity-50" />}
+                          </button>
+                          <button 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggleTrimControl(item.id);
+                            }}
+                            className="text-white/70 hover:text-white"
+                            title="Trim audio"
+                          >
+                            <Scissors size={12} />
+                          </button>
+                        </>
                       )}
                       <button 
                         onClick={(e) => {
@@ -808,6 +879,7 @@ const Timeline = ({
                           handleItemDelete(item.id);
                         }}
                         className="text-white/70 hover:text-white"
+                        title="Delete"
                       >
                         <Trash2 size={12} />
                       </button>
@@ -838,6 +910,41 @@ const Timeline = ({
                       />
                       <div className="text-[10px] text-white/80 text-center mt-0.5">
                         {Math.round((item.volume || 1) * 100)}%
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Trim controls */}
+                  {(item.type === 'audio' || item.type === 'video') && showTrimControl === item.id && (
+                    <div className="mt-1 px-1 space-y-2">
+                      <div>
+                        <div className="flex justify-between text-[10px] text-white/80 mb-0.5">
+                          <span>Trim Start: {(item.trimStart || 0).toFixed(1)}s</span>
+                        </div>
+                        <Slider
+                          value={[item.trimStart || 0]}
+                          min={0}
+                          max={Math.max(item.duration / 2, 5)}
+                          step={0.1}
+                          onValueChange={(value) => handleTrimChange(item.id, 'start', value[0])}
+                          className="h-1"
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                      </div>
+                      
+                      <div>
+                        <div className="flex justify-between text-[10px] text-white/80 mb-0.5">
+                          <span>Trim End: {(item.trimEnd || 0).toFixed(1)}s</span>
+                        </div>
+                        <Slider
+                          value={[item.trimEnd || 0]}
+                          min={0}
+                          max={Math.max(item.duration / 2, 5)}
+                          step={0.1}
+                          onValueChange={(value) => handleTrimChange(item.id, 'end', value[0])}
+                          className="h-1"
+                          onClick={(e) => e.stopPropagation()}
+                        />
                       </div>
                     </div>
                   )}

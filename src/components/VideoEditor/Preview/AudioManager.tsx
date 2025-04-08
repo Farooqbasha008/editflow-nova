@@ -28,12 +28,38 @@ const AudioManager: React.FC<AudioManagerProps> = ({
         audioRefs.current.set(audio.id, audioElement);
       }
       
+      // Calculate position with trim adjustments
+      const trimStart = audio.trimStart || 0;
       const relativePosition = currentTime - audio.start;
-      if (Math.abs(audioElement.currentTime - relativePosition) > 0.5) {
-        audioElement.currentTime = Math.max(0, relativePosition);
+      
+      // Apply trim start - only play audio after the trim start point
+      if (relativePosition < trimStart) {
+        if (!audioElement.paused) {
+          audioElement.pause();
+        }
+        return;
       }
       
-      const clipVolume = (audio.volume || 1) * (muted ? 0 : volume);
+      // Apply trim end - stop playing when we reach the trim end point
+      const trimEnd = audio.trimEnd || 0;
+      const effectiveDuration = audio.duration - trimStart - trimEnd;
+      if (relativePosition > trimStart + effectiveDuration) {
+        if (!audioElement.paused) {
+          audioElement.pause();
+        }
+        return;
+      }
+      
+      // Set the correct position in the audio file (accounting for trim)
+      const audioPosition = relativePosition - trimStart;
+      if (Math.abs(audioElement.currentTime - audioPosition) > 0.5) {
+        audioElement.currentTime = Math.max(0, audioPosition);
+      }
+      
+      // Apply volume and mute settings
+      // Check both global mute and individual audio mute
+      const isAudioMuted = muted || audio.muted;
+      const clipVolume = (audio.volume || 1) * (isAudioMuted ? 0 : volume);
       audioElement.volume = clipVolume;
       
       if (isPlaying && audioElement.paused) {
