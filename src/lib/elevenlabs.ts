@@ -1,3 +1,4 @@
+
 /**
  * ElevenLabs API integration for speech and sound generation
  */
@@ -119,20 +120,41 @@ export async function generateSound(
   const duration = options.duration || 5; // Default 5 seconds
 
   try {
-    // For now, we'll simulate the API call with a placeholder
-    // In a real implementation, this would make an actual API call to ElevenLabs or another sound generation API
     console.log(`Generating ${type} with description: ${description}`);
     
-    // Simulate API delay
+    // In a real implementation, this would make an actual API call to the ElevenLabs sound effect API
+    // For now, we simulate the API call with a delay
     await new Promise(resolve => setTimeout(resolve, 1500));
     
+    // ElevenLabs SFX API implementation would look something like this:
+    /*
+    const response = await fetch('https://api.elevenlabs.io/v1/sound-effects/generate', {
+      method: 'POST',
+      headers: {
+        'Accept': 'audio/mpeg',
+        'xi-api-key': apiKey,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        text: description,
+        duration_seconds: duration,
+        type: type === 'sfx' ? 'sound_effect' : 'background_music'
+      })
+    });
+
+    if (!response.ok) {
+      const errorData = await response.text();
+      throw new Error(`ElevenLabs API error: ${errorData || response.statusText}`);
+    }
+    
+    const audioBlob = await response.blob();
+    const audioUrl = URL.createObjectURL(audioBlob);
+    return audioUrl;
+    */
+    
     // Return a placeholder audio URL
-    // In production, this would be the actual audio URL from the API
     return `https://example.com/generated-${type}.mp3`;
     
-    // Actual implementation would depend on which API is used for sound generation
-    // ElevenLabs doesn't currently have a dedicated sound effects API, but this could be
-    // implemented using their upcoming sound generation features or another service
   } catch (error) {
     console.error(`Error generating ${type}:`, error);
     throw error;

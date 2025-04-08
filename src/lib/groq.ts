@@ -3,6 +3,7 @@ import { generateSpeech } from './groqTTS';
  * Groq API integration for LLM capabilities and script generation
  */
 
+<<<<<<< HEAD
 // Default model to use
 const DEFAULT_LLM_MODEL = 'meta-llama/llama-4-scout-17b-16e-instruct';
 
@@ -44,6 +45,14 @@ export interface GeneratedScript {
   logline: string;
   scenes: ScriptScene[];
 }
+=======
+// Default models to use
+const DEFAULT_LLM_MODEL = 'qwen-qwq-32b';
+const DEFAULT_TTS_MODEL = 'playai-tts';
+
+// Default voice ID for TTS
+const DEFAULT_VOICE = 'Fritz'; // Groq supports various voices like Aaliyah, Adelaide, Angelo, etc.
+>>>>>>> b384b77ec11a6e4e6e07ecd133f154706d9926df
 
 /*
  * Interface for image generation parameters
@@ -74,6 +83,7 @@ export async function generateScript(
     throw new Error('Groq API key is required');
   }
 
+<<<<<<< HEAD
   const format = options.format || 'openclap';
   const temperature = options.temperature || 0.7;
   const maxTokens = options.maxTokens || 2048;
@@ -87,6 +97,81 @@ export async function generateScript(
     const userPrompt = `Create a professional ${format === 'openclap' ? 'OpenClap format' : ''} script for a video with the following description: ${prompt}. 
     Include detailed visual descriptions for each scene that can be used for text-to-video generation.
     Also include audio descriptions for sound effects and music suggestions for each scene.`;
+=======
+  const voiceId = options.voiceId || DEFAULT_VOICE;
+  const model = options.model || DEFAULT_TTS_MODEL;
+  const speed = options.speed || 1.0;
+  
+  try {
+    console.log(`Generating speech with text: "${text}" using voice: ${voiceId}`);
+    
+    // For development/demo purposes, we'll simulate the API call
+    // In a production environment, you would make an actual API call to Groq
+    await new Promise(resolve => setTimeout(resolve, 1500));
+    
+    // This would be the actual API implementation:
+    /*
+    const response = await fetch('https://api.groq.com/openai/v1/audio/speech', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        model: model,
+        input: text,
+        voice: voiceId,
+        response_format: 'mp3',
+        speed: speed
+      })
+    });
+
+    if (!response.ok) {
+      const errorData = await response.text();
+      throw new Error(`Groq API error: ${errorData || response.statusText}`);
+    }
+    
+    const audioBlob = await response.blob();
+    const audioUrl = URL.createObjectURL(audioBlob);
+    return audioUrl;
+    */
+    
+    // For now, return a placeholder audio URL
+    return `https://example.com/generated-speech-${voiceId.toLowerCase()}-${Date.now()}.mp3`;
+  } catch (error) {
+    console.error('Error generating speech with Groq:', error);
+    throw error;
+  }
+}
+
+/**
+ * Get optimized parameters for image generation using Groq LLM
+ * @param prompt The text prompt for image generation
+ * @param dimensions The dimensions of the image (e.g., "512x512")
+ * @param apiKey The Groq API key
+ * @returns A Promise that resolves to optimized image generation parameters
+ */
+export async function getOptimizedParams(
+  prompt: string,
+  dimensions: string,
+  apiKey: string,
+  model: string = DEFAULT_LLM_MODEL
+): Promise<ImageGenerationParams> {
+  if (!apiKey) {
+    // Return default parameters if no API key is provided
+    return {
+      negativePrompt: '',
+      steps: 30,
+      cfgScale: 7.5
+    };
+  }
+
+  try {
+    // Prepare the system message and user prompt for the LLM
+    const systemMessage = "You are an AI assistant specialized in optimizing parameters for image generation. Based on the user's prompt and desired image dimensions, suggest the best parameters for stable diffusion image generation.";
+    
+    const userPrompt = `Given the following prompt: "${prompt}" and dimensions: ${dimensions}, provide the optimal parameters for image generation. Return only a JSON object with these fields: negativePrompt (string), steps (number between 20-50), and cfgScale (number between 5-10).`;
+>>>>>>> b384b77ec11a6e4e6e07ecd133f154706d9926df
     
     // Make the API call to Groq
     const response = await fetch(`https://api.groq.com/openai/v1/chat/completions`, {
@@ -361,6 +446,7 @@ function parseScriptFromResponse(response: string, format: string): GeneratedScr
     };
   }
 }
+<<<<<<< HEAD
 
 /**
  * Get optimized parameters for image generation using Groq LLM
@@ -369,3 +455,5 @@ function parseScriptFromResponse(response: string, format: string): GeneratedScr
  * @param apiKey The Groq API key
  * @returns A Promise that resolves to optimized image generation parameters
  */
+=======
+>>>>>>> b384b77ec11a6e4e6e07ecd133f154706d9926df

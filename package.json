@@ -11,7 +11,11 @@
     "preview": "vite preview"
   },
   "dependencies": {
+<<<<<<< HEAD
     "@google/generative-ai": "^0.24.0",
+=======
+    "@fal-ai/serverless-client": "^0.4.0",
+>>>>>>> b384b77ec11a6e4e6e07ecd133f154706d9926df
     "@hookform/resolvers": "^3.9.0",
     "@radix-ui/react-accordion": "^1.2.0",
     "@radix-ui/react-alert-dialog": "^1.1.1",
@@ -40,8 +44,13 @@
     "@radix-ui/react-toggle": "^1.1.0",
     "@radix-ui/react-toggle-group": "^1.1.0",
     "@radix-ui/react-tooltip": "^1.1.4",
+<<<<<<< HEAD
     "@supabase/supabase-js": "^2.39.0",
+=======
+    "@supabase/supabase-js": "^2.49.4",
+>>>>>>> b384b77ec11a6e4e6e07ecd133f154706d9926df
     "@tanstack/react-query": "^5.56.2",
+    "@types/uuid": "^10.0.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.0.0",
@@ -60,6 +69,7 @@
     "sonner": "^1.5.0",
     "tailwind-merge": "^2.5.2",
     "tailwindcss-animate": "^1.0.7",
+    "uuid": "^10.0.0",
     "vaul": "^0.9.3",
     "zod": "^3.23.8"
   },

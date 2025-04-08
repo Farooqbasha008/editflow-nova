@@ -1,14 +1,20 @@
 import React, { useState } from 'react';
 import { Film, Music, Mic } from 'lucide-react';
 import MediaLibrary from './MediaLibrary';
-import { TimelineItem } from './VideoEditor';
+import { TimelineItem } from './types';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import AudioExtractor from './AudioExtractor';
+<<<<<<< HEAD
 import VoiceoverGenerator from './VoiceoverGenerator';
 
 import SoundEffectsGenerator from './SoundEffectsGenerator';
+=======
+import VideoGenerator from './VideoGenerator';
+import SoundEffectGenerator from './SoundEffectGenerator';
+import VoiceoverGenerator from './VoiceoverGenerator';
+>>>>>>> b384b77ec11a6e4e6e07ecd133f154706d9926df
 
 interface MediaSidebarProps {
   activeTab: string;
@@ -29,8 +35,6 @@ const MediaSidebar: React.FC<MediaSidebarProps> = ({
   onGenerate,
   selectedVideo
 }) => {
-  const [generatorTab, setGeneratorTab] = useState<string>("prompt");
-  
   return (
     <div className="flex flex-col h-full bg-[#151514]">
       {/* Media Type Icons */}
@@ -53,16 +57,31 @@ const MediaSidebar: React.FC<MediaSidebarProps> = ({
         >
           <Mic size={16} />
         </button>
+<<<<<<< HEAD
 
+=======
+>>>>>>> b384b77ec11a6e4e6e07ecd133f154706d9926df
       </div>
       
       {/* Media Library */}
       <div className="flex-1 overflow-hidden">
         {activeTab === 'visuals' && (
-          <MediaLibrary onAddToTimeline={onAddToTimeline} mediaType="video" />
+          <Tabs defaultValue="media" className="w-full h-full">
+            <TabsList className="w-full grid grid-cols-2 bg-editor-panel/50 p-1 h-8">
+              <TabsTrigger value="media" className="text-xs h-6">Media Library</TabsTrigger>
+              <TabsTrigger value="video" className="text-xs h-6">Generate Video</TabsTrigger>
+            </TabsList>
+            <TabsContent value="media" className="h-[calc(100%-2rem)] overflow-y-auto">
+              <MediaLibrary onAddToTimeline={onAddToTimeline} mediaType="video" />
+            </TabsContent>
+            <TabsContent value="video" className="h-[calc(100%-2rem)] overflow-y-auto">
+              <VideoGenerator onAddToTimeline={onAddToTimeline} />
+            </TabsContent>
+          </Tabs>
         )}
         
         {activeTab === 'audio' && (
+<<<<<<< HEAD
           <Tabs defaultValue="library" className="w-full h-full">
             <TabsList className="w-full grid grid-cols-2 bg-editor-panel/50 p-1 h-8">
               <TabsTrigger value="library" className="text-xs h-6">Audio Library</TabsTrigger>
@@ -76,15 +95,35 @@ const MediaSidebar: React.FC<MediaSidebarProps> = ({
             </TabsContent>
             <TabsContent value="effects" className="h-[calc(100%-2rem)] overflow-y-auto">
               <SoundEffectsGenerator onAddToTimeline={onAddToTimeline} />
+=======
+          <Tabs defaultValue="media" className="w-full h-full">
+            <TabsList className="w-full grid grid-cols-2 bg-editor-panel/50 p-1 h-8">
+              <TabsTrigger value="media" className="text-xs h-6">Media Library</TabsTrigger>
+              <TabsTrigger value="sfx" className="text-xs h-6">Sound Effects</TabsTrigger>
+            </TabsList>
+            <TabsContent value="media" className="h-[calc(100%-2rem)] overflow-y-auto">
+              <MediaLibrary onAddToTimeline={onAddToTimeline} mediaType="audio" />
+              <AudioExtractor videoItem={selectedVideo} onAddExtractedAudio={onAddToTimeline} />
+            </TabsContent>
+            <TabsContent value="sfx" className="h-[calc(100%-2rem)] overflow-y-auto">
+              <SoundEffectGenerator onAddToTimeline={onAddToTimeline} />
+>>>>>>> b384b77ec11a6e4e6e07ecd133f154706d9926df
             </TabsContent>
           </Tabs>
         )}
         
         {activeTab === 'voiceover' && (
+<<<<<<< HEAD
           <VoiceoverGenerator onAddToTimeline={onAddToTimeline} />
         )}
         
 
+=======
+          <div className="h-[calc(100%-2rem)] overflow-y-auto">
+            <VoiceoverGenerator onAddToTimeline={onAddToTimeline} />
+          </div>
+        )}
+>>>>>>> b384b77ec11a6e4e6e07ecd133f154706d9926df
       </div>
     </div>
   );
