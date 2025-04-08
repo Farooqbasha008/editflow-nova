@@ -1,4 +1,6 @@
-import React, { useState, useRef, useEffect } from 'react';
+/** @jsxImportSource react */
+import * as React from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -16,6 +18,11 @@ import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
+// Import third-party integrations
+import { generateVideo } from '../lib/falai';
+import { generateSound, generateSpeech as generateElevenLabsSpeech } from '../lib/elevenlabs';
+import { generateSpeech as generateGroqSpeech } from '../lib/groq';
+
 // Default model to use for script generation
 const DEFAULT_MODEL = 'meta-llama/llama-4-scout-17b-16e-instruct';
 
@@ -24,12 +31,6 @@ interface Message {
   content: string;
   timestamp: Date;
 }
-
-// ScriptScene interface is now defined locally instead of importing from gemini
-import { generateVideo } from '@/lib/falai';
-import { generateSpeech as generateElevenLabsSpeech } from '@/lib/elevenlabs';
-import { generateSound } from '@/lib/elevenlabs';
-import { generateSpeech as generateGroqSpeech } from '@/lib/groq';
 
 interface VideoScriptParams {
   prompt: string;
@@ -817,73 +818,11 @@ REASONING RULES:
                   </Button>
                 </div>
               )}
-              <div ref={messagesEndRef} />
-            </div>
-          </ScrollArea>
-
-          {/* Input Area */}
-          <div className="p-4 border-t border-white/10 bg-[#1A1A1A]">
-            <div className="max-w-3xl mx-auto">
-              {showApiKeyInput ? (
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="api-key">Groq API Key</Label>
-                    <Input 
-                      id="api-key"
-                      type="password" 
-                      placeholder="Enter your Groq API key" 
-                      value={apiKey} 
-                      onChange={(e) => setApiKey(e.target.value)}
-                      className="bg-[#0E0E0E] border-white/20"
-                    />
-                    <p className="text-xs text-[#F7F8F6]/60">
-                      Your API key is stored locally and never sent to our servers.
-                    </p>
-                  </div>
-                  <Button 
-                    onClick={handleApiKeySubmit}
-                    className="bg-[#D7F266] hover:bg-[#D7F266]/90 text-[#151514]"
-                  >
-                    Save API Key
-                  </Button>
-                </div>
-              ) : (
-                <div className="flex space-x-2 items-end">
-                  <div className="relative flex-1">
-                    <Textarea
-                      placeholder="Type your message..."
-                      value={inputMessage}
-                      onChange={handleInputChange}
-                      onKeyDown={handleKeyDown}
-                      className="min-h-[60px] max-h-[200px] resize-none pr-12 bg-[#0E0E0E] border-white/20 rounded-xl focus-visible:ring-[#D7F266] text-white"
-                    />
-                    <Button 
-                      onClick={handleSubmit} 
-                      disabled={isLoading || !inputMessage.trim()}
-                      className="absolute right-2 bottom-2 h-8 w-8 p-0 rounded-full bg-[#D7F266] hover:bg-[#D7F266]/90 text-[#151514]"
-                    >
-                      {isLoading ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <Send className="h-4 w-4" />
-                      )}
-                    </Button>
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() => setSidebarTab('chat')}
-                    className="h-10 w-10 rounded-xl border-white/20 text-white hover:text-[#D7F266] hover:border-[#D7F266]"
-                  >
-                    <Sliders className="h-4 w-4" />
-                  </Button>
-                </div>
-              )}
             </div>
           </div>
         </div>
 
-        {/* Sidebar - Conditionally visible */}
+        {/* Sidebar */}
         <div 
           className={cn(
             "fixed inset-y-0 right-0 w-full md:w-80 border-l border-white/10 bg-[#1A1A1A] p-4 overflow-y-auto transition-transform duration-300 ease-in-out z-20",
@@ -1129,9 +1068,6 @@ REASONING RULES:
             </Tabs>
           </div>
         </div>
-      </div>
-    </div>
-      </div>
       </div>
     </div>
   );
