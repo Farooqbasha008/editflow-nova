@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { Image as ImageIcon, Download, Plus } from 'lucide-react';
@@ -7,7 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
-import { TimelineItem } from './types';
+import { TimelineItem } from './VideoEditor';
 import { generateImage } from '@/lib/huggingface';
 import { getOptimizedParams } from '@/lib/groq';
 
@@ -24,6 +25,7 @@ const ImageGenerator: React.FC<ImageGeneratorProps> = ({ onAddToTimeline }) => {
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
   const [apiKey, setApiKey] = useState<string>("");
   
+  // Get the API key from environment variables
   useEffect(() => {
     const hfApiKey = import.meta.env.VITE_HF_API_KEY;
     if (hfApiKey) {
@@ -50,10 +52,13 @@ const ImageGenerator: React.FC<ImageGeneratorProps> = ({ onAddToTimeline }) => {
     });
 
     try {
+      // Use the Hugging Face API to generate an image
       const imageUrl = await generateImage(prompt, apiKey, {
         negativePrompt,
         steps,
         cfgScale: cfg,
+        // You can specify a different model here if needed
+        // model: 'stabilityai/sdxl-turbo'
       });
       
       setGeneratedImage(imageUrl);
@@ -64,6 +69,7 @@ const ImageGenerator: React.FC<ImageGeneratorProps> = ({ onAddToTimeline }) => {
         description: error instanceof Error ? error.message : 'An error occurred while communicating with the AI model.',
       });
       
+      // Fallback to dummy image if API fails
       const dummyImageUrl = await generateDummyImage();
       setGeneratedImage(dummyImageUrl);
     } finally {
@@ -71,6 +77,7 @@ const ImageGenerator: React.FC<ImageGeneratorProps> = ({ onAddToTimeline }) => {
     }
   };
 
+  // Dummy function to generate a placeholder image
   const generateDummyImage = (): Promise<string> => {
     return new Promise((resolve) => {
       const canvas = document.createElement('canvas');
@@ -78,6 +85,7 @@ const ImageGenerator: React.FC<ImageGeneratorProps> = ({ onAddToTimeline }) => {
       canvas.height = 512;
       const ctx = canvas.getContext('2d');
       if (ctx) {
+        // Create a gradient based on the prompt to simulate different images
         const hash = prompt.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
         const hue = hash % 360;
         
@@ -88,6 +96,7 @@ const ImageGenerator: React.FC<ImageGeneratorProps> = ({ onAddToTimeline }) => {
         ctx.fillStyle = gradient;
         ctx.fillRect(0, 0, 512, 512);
         
+        // Add some visual elements to make it look more interesting
         ctx.fillStyle = `rgba(255, 255, 255, 0.2)`;
         for (let i = 0; i < 10; i++) {
           const x = Math.random() * 512;
@@ -109,9 +118,9 @@ const ImageGenerator: React.FC<ImageGeneratorProps> = ({ onAddToTimeline }) => {
     
     const newImageItem: TimelineItem = {
       id: `image-${Date.now()}`,
-      trackId: 'track1',
+      trackId: 'track1', // First video track
       start: 0,
-      duration: 5,
+      duration: 5, // Default 5 seconds duration for images
       type: 'image',
       name: `AI Generated: ${prompt.substring(0, 15)}${prompt.length > 15 ? '...' : ''}`,
       color: 'bg-green-400/70',
@@ -167,6 +176,8 @@ const ImageGenerator: React.FC<ImageGeneratorProps> = ({ onAddToTimeline }) => {
           <Label htmlFor="steps" className="text-xs text-[#F7F8F6]">Steps: {steps}</Label>
         </div>
         <Slider
+
+
           id="steps"
           min={1}
           max={50}

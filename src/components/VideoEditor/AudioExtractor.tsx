@@ -1,8 +1,9 @@
+
 import React, { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { FileAudio, Play, Pause, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { TimelineItem } from './types';
+import { TimelineItem } from './VideoEditor';
 
 interface AudioExtractorProps {
   videoItem: TimelineItem | null;
