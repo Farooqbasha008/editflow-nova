@@ -4,7 +4,7 @@ import MediaLibrary from './MediaLibrary';
 import Timeline from './Timeline';
 import Preview from './Preview';
 import { toast } from 'sonner';
-import { Film, Music, TextIcon, Mic, FolderOpen, Sparkles, ChevronLeft, ChevronRight, ZoomIn, ZoomOut } from 'lucide-react';
+import { Film, Music, TextIcon, Mic, FolderOpen, ChevronLeft, ChevronRight, ZoomIn, ZoomOut } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -36,7 +36,6 @@ const VideoEditor: React.FC = () => {
   const [muted, setMuted] = useState(false);
   const [activeTab, setActiveTab] = useState<string>("visuals");
   const [timelineScale, setTimelineScale] = useState(80); // scale for timeline (pixels per second)
-  const [promptText, setPromptText] = useState("");
   const [history, setHistory] = useState<TimelineItem[][]>([[]]);
   const [historyIndex, setHistoryIndex] = useState(0);
   const [selectedItem, setSelectedItem] = useState<TimelineItem | null>(null);
@@ -175,25 +174,6 @@ const VideoEditor: React.FC = () => {
   const handleTimelineZoomOut = () => {
     setTimelineScale(prev => Math.max(prev / 1.2, 20));
   };
-
-  const handleGenerate = () => {
-    if (!promptText.trim()) {
-      toast.error('Please enter a prompt');
-      return;
-    }
-    
-    toast.success('Generating content', {
-      description: `Creating content based on: "${promptText}"`,
-    });
-    
-    setTimeout(() => {
-      toast.info('AI generated insight', {
-        description: 'Based on your prompt, we recommend adding more transition effects between clips.',
-      });
-    }, 2000);
-    
-    setPromptText("");
-  };
   
   const handleUndo = () => {
     if (historyIndex > 0) {
@@ -289,9 +269,6 @@ const VideoEditor: React.FC = () => {
             activeTab={activeTab}
             setActiveTab={setActiveTab}
             onAddToTimeline={handleAddTimelineItem}
-            promptText={promptText}
-            setPromptText={setPromptText}
-            onGenerate={handleGenerate}
             selectedVideo={selectedVideo}
           />
         </div>
