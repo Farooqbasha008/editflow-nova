@@ -1132,6 +1132,7 @@ REASONING RULES:
       </div>
     </div>
       </div>
+      </div>
     </div>
   );
 };
