@@ -6,9 +6,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
 import { TimelineItem } from './VideoEditor';
 import { fal } from "@fal-ai/client";
+import { sceneGenerationRules } from '@/lib/videoGeneration';
 
 interface VideoGeneratorProps {
   onAddToTimeline: (item: TimelineItem) => void;
@@ -24,6 +26,8 @@ const DEFAULT_HEIGHT = 576;
 
 const VideoGenerator: React.FC<VideoGeneratorProps> = ({ onAddToTimeline }) => {
   const [prompt, setPrompt] = useState('');
+  const [enhancedPrompt, setEnhancedPrompt] = useState('');
+  const [useEnhancedPrompt, setUseEnhancedPrompt] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedVideo, setGeneratedVideo] = useState<string | null>(null);
   const [progressMessage, setProgressMessage] = useState('');
@@ -38,6 +42,61 @@ const VideoGenerator: React.FC<VideoGeneratorProps> = ({ onAddToTimeline }) => {
       setApiKey(savedApiKey);
     }
   }, []);
+
+  const enhancePrompt = (userPrompt: string) => {
+    const guidelines = [
+      // Main Subject & Action
+      "- Using present continuous tense",
+      "- Including specific details (age, clothing, expressions)",
+      // Setting & Environment
+      "- Detailed location description",
+      "- Time of day and weather conditions",
+      "- Lighting conditions and atmosphere",
+      // Camera Perspective
+      "- Specified shot type (medium/wide preferred)",
+      "- Defined camera movement",
+      "- Camera angle description",
+      // Visual Style
+      "- Color palette and tone",
+      "- Visual effects or transitions",
+      "- Cinematic quality reference"
+    ];
+
+    // Add cinematic best practices
+    const dos = sceneGenerationRules.characters.do.concat(sceneGenerationRules.environments.do);
+    const donts = sceneGenerationRules.characters.dont.concat(sceneGenerationRules.environments.dont);
+
+    let enhanced = userPrompt.trim();
+
+    // Add shot type if not specified
+    if (!enhanced.toLowerCase().includes("shot")) {
+      enhanced += ", medium shot";
+    }
+
+    // Add lighting if not specified
+    if (!enhanced.toLowerCase().includes("light")) {
+      enhanced += ", natural lighting";
+    }
+
+    // Add quality reference if not specified
+    if (!enhanced.toLowerCase().includes("cinematic") && !enhanced.toLowerCase().includes("quality")) {
+      enhanced += ", cinematic 8K quality";
+    }
+
+    // Add camera movement if not specified
+    if (!enhanced.toLowerCase().includes("tracking") && !enhanced.toLowerCase().includes("panning") && !enhanced.toLowerCase().includes("static")) {
+      enhanced += ", smooth tracking shot";
+    }
+
+    return enhanced;
+  };
+
+  useEffect(() => {
+    if (prompt) {
+      const enhanced = enhancePrompt(prompt);
+      setEnhancedPrompt(enhanced);
+    }
+  }, [prompt]);
 
   const handleGenerate = async () => {
     if (!prompt.trim()) {
@@ -59,11 +118,13 @@ const VideoGenerator: React.FC<VideoGeneratorProps> = ({ onAddToTimeline }) => {
       // Configure fal client with API key
       fal.config({ credentials: apiKey });
 
-      // Use updated parameters according to fal.ai documentation
+      // Use the enhanced prompt if enabled
+      const finalPrompt = useEnhancedPrompt ? enhancedPrompt : prompt;
+
       const result = await fal.subscribe('fal-ai/wan/v2.1/1.3b/text-to-video', {
         input: {
-          prompt: prompt,
-          negative_prompt: '', // Using empty string as default per fal.ai
+          prompt: finalPrompt,
+          negative_prompt: 'close-up faces, blurry, low quality, distorted faces, rapid movements, complex backgrounds, inconsistent lighting',
           num_inference_steps: DEFAULT_INFERENCE_STEPS,
           guidance_scale: DEFAULT_GUIDANCE_SCALE,
           sampler: DEFAULT_SAMPLER,
@@ -176,7 +237,18 @@ const VideoGenerator: React.FC<VideoGeneratorProps> = ({ onAddToTimeline }) => {
           <Label htmlFor="video-prompt" className="text-xs text-[#F7F8F6]">
             Describe your video
           </Label>
-          <div className="flex gap-2">
+          <div className="flex items-center gap-2">
+            <div className="flex items-center space-x-2">
+              <Switch
+                id="enhance-prompt"
+                checked={useEnhancedPrompt}
+                onCheckedChange={setUseEnhancedPrompt}
+                className="data-[state=checked]:bg-[#D7F266]"
+              />
+              <Label htmlFor="enhance-prompt" className="text-xs text-[#F7F8F6] cursor-pointer">
+                Enhance prompt
+              </Label>
+            </div>
             {generatedVideo && (
               <Button 
                 variant="outline" 
@@ -204,6 +276,12 @@ const VideoGenerator: React.FC<VideoGeneratorProps> = ({ onAddToTimeline }) => {
           onChange={(e) => setPrompt(e.target.value)}
           className="min-h-[80px] max-h-[160px] resize-none bg-[#0E0E0E] border-white/20 text-white text-xs"
         />
+        {useEnhancedPrompt && enhancedPrompt && (
+          <div className="mt-2 p-2 rounded bg-[#1E1E1E] border border-white/10">
+            <Label className="text-xs text-[#D7F266]">Enhanced Prompt:</Label>
+            <p className="text-xs text-white/70 mt-1">{enhancedPrompt}</p>
+          </div>
+        )}
       </div>
 
       {error && (
