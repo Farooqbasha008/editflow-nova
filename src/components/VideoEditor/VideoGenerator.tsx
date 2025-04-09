@@ -138,19 +138,14 @@ const VideoGenerator: React.FC<VideoGeneratorProps> = ({ onAddToTimeline }) => {
             setProgressMessage('Generating video...');
             if (update.logs && update.logs.length > 0) {
               const lastLog = update.logs[update.logs.length - 1];
-              // Updated progress calculation logic based on logs (assuming similar log format)
-              // Note: The exact log message format might differ for the new model.
-              // This regex attempts to find any progress indication like "step X/Y" or "frame X/Y".
               const progressMatch = lastLog.message.match(/(\d+)\/(\d+)/);
               if (progressMatch) {
                 const currentStep = parseInt(progressMatch[1]);
                 const totalSteps = parseInt(progressMatch[2]);
-                // Use totalSteps from the log if available, otherwise use inference steps
                 const estimatedTotal = totalSteps > 0 ? totalSteps : DEFAULT_INFERENCE_STEPS;
                 const newProgress = Math.min(100, Math.round((currentStep / estimatedTotal) * 100));
                 setProgress(newProgress);
               } else {
-                // Fallback if specific progress log isn't found, increment slowly
                 setProgress(prev => Math.min(95, prev + 1));
               }
             }
@@ -159,22 +154,21 @@ const VideoGenerator: React.FC<VideoGeneratorProps> = ({ onAddToTimeline }) => {
             setProgressMessage('Finalizing video...');
           } else if (update.status === "IN_QUEUE") {
             setProgressMessage(`Waiting in queue... Position: ${update.queue_position ?? 'N/A'}`);
-            setProgress(0); // Reset progress when queued
+            setProgress(0);
           }
         },
       });
 
-      // Check for video_uri instead of video_url in the response
-      if (result?.data?.[0]) {
-        setGeneratedVideo(result.data[0]);
+      // Updated response handling for fal-ai response structure
+      const videoUrl = result?.data?.[0];
+      if (videoUrl && typeof videoUrl === 'string') {
+        setGeneratedVideo(videoUrl);
         toast.success('Video generated successfully!');
         setError(null);
-        // Save API key if successful
         localStorage.setItem('falai_api_key', apiKey);
       } else {
-        // Log the actual result for debugging if the structure is different
-        console.warn('Unexpected result structure from fal.ai:', result);
-        throw new Error('No video found in the response from fal.ai.');
+        console.warn('Response structure from fal.ai:', result);
+        throw new Error('Unable to find video URL in the response. Please check the console for details.');
       }
     } catch (error) {
       console.error('Error generating video:', error);
