@@ -278,7 +278,7 @@ VISUAL PROMPT STRUCTURE:
    - Reference cinematic qualities (film grain, depth of field)
 
 PROMPT FORMAT EXAMPLE:
-"A young woman in a red dress is walking through a neon-lit city street, medium tracking shot, shallow depth of field, warm cyberpunk color palette, volumetric lighting, night time scene with rain, cinematic 8K quality"
+"A woman in a red dress is walking through a neon-lit city street, medium tracking shot, shallow depth of field, warm cyberpunk color palette, volumetric lighting, night time scene with rain, cinematic 8K quality"
 
 AVOID:
 - Abstract concepts or metaphors
