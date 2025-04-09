@@ -14,11 +14,18 @@ interface VideoGeneratorProps {
   onAddToTimeline: (item: TimelineItem) => void;
 }
 
-// Fal.ai API types based on their documentation
 interface FalQueueUpdate {
   status: 'IN_PROGRESS' | 'COMPLETED' | 'IN_QUEUE' | 'FAILED';
   queue_position?: number;
   logs?: Array<{ message: string }>;
+}
+
+interface FalResponse {
+  image: string;
+  seed: number;
+  content: {
+    video: string;
+  };
 }
 
 const VideoGenerator: React.FC<VideoGeneratorProps> = ({ onAddToTimeline }) => {
@@ -121,14 +128,11 @@ const VideoGenerator: React.FC<VideoGeneratorProps> = ({ onAddToTimeline }) => {
         },
       });
 
-      // The WAN model returns a data array where the first item is the video URL
-      const videoUrl = Array.isArray(result) && result.length > 0 
-        ? (typeof result[0] === 'string' ? result[0] : result[0]?.url)
-        : null;
+      const response = result as unknown as FalResponse;
+      const videoUrl = response.content?.video;
 
-      if (!videoUrl || typeof videoUrl !== 'string') {
-        console.warn('Unexpected response format:', result);
-        throw new Error('Unable to find video URL in the response');
+      if (!videoUrl) {
+        throw new Error('No video URL in the response. Please try again.');
       }
 
       setGeneratedVideo(videoUrl);
@@ -285,12 +289,18 @@ const VideoGenerator: React.FC<VideoGeneratorProps> = ({ onAddToTimeline }) => {
           onDragStart={handleDragStart}
         >
           <video 
+            key={generatedVideo}
             src={generatedVideo} 
-            className="w-full h-full" 
+            className="w-full h-full object-contain" 
             controls 
             loop 
+            playsInline
             autoPlay 
             muted 
+            onError={(e) => {
+              console.error('Video loading error:', e);
+              setError('Error loading the generated video. Please try regenerating.');
+            }}
           />
           <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
             <GripVertical className="w-6 h-6 text-white" />
