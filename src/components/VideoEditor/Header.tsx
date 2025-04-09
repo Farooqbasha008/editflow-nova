@@ -1,104 +1,274 @@
 
 import React, { useState } from 'react';
-import { Button } from "@/components/ui/button";
-import { Download, Save, Edit2, ArrowLeft } from "lucide-react";
-import { Input } from "@/components/ui/input";
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { toast } from 'sonner';
+import { Save, Download, User, LogIn } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { Loader2 } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 
 interface HeaderProps {
   projectName: string;
   onRename: (name: string) => void;
   onSave: () => void;
   onExport: () => void;
+  isSaving?: boolean;
 }
 
-const Header: React.FC<HeaderProps> = ({ 
-  projectName, 
-  onRename, 
-  onSave, 
-  onExport 
+const Header: React.FC<HeaderProps> = ({
+  projectName,
+  onRename,
+  onSave,
+  onExport,
+  isSaving = false
 }) => {
-  const [isEditing, setIsEditing] = useState(false);
-  const [editedName, setEditedName] = useState(projectName);
-
-  const handleStartEditing = () => {
-    setEditedName(projectName);
-    setIsEditing(true);
-  };
-
-  const handleSaveName = () => {
-    if (editedName.trim()) {
-      onRename(editedName);
+  const [editMode, setEditMode] = useState(false);
+  const [tempName, setTempName] = useState(projectName);
+  const [showLogin, setShowLogin] = useState(false);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [isAuthLoading, setIsAuthLoading] = useState(false);
+  const [user, setUser] = useState<any>(null);
+  
+  React.useEffect(() => {
+    const checkUser = async () => {
+      const { data } = await supabase.auth.getUser();
+      if (data?.user) {
+        setUser(data.user);
+      }
+    };
+    
+    checkUser();
+    
+    // Subscribe to auth state changes
+    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+      setUser(session?.user || null);
+    });
+    
+    return () => {
+      authListener.subscription.unsubscribe();
+    };
+  }, []);
+  
+  const handleSave = () => {
+    if (!user) {
+      toast.info("Sign in to save your work", {
+        description: "Create an account to save your projects to the cloud",
+        action: {
+          label: "Sign In",
+          onClick: () => setShowLogin(true)
+        }
+      });
     }
-    setIsEditing(false);
+    onSave();
   };
-
+  
+  const handleSubmitName = () => {
+    if (tempName.trim()) {
+      onRename(tempName);
+      setEditMode(false);
+    } else {
+      setTempName(projectName);
+      setEditMode(false);
+    }
+  };
+  
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
-      handleSaveName();
+      handleSubmitName();
     } else if (e.key === 'Escape') {
-      setIsEditing(false);
+      setTempName(projectName);
+      setEditMode(false);
     }
   };
-
-  return (
-    <div className="flex items-center justify-between w-full h-14 px-4 bg-[#151514] border-b border-white/10 animate-fade-in">
-      <div className="flex items-center space-x-2">
-        <Button 
-          variant="ghost" 
-          size="sm" 
-          className="text-[#F7F8F6]/80 gap-2"
-          onClick={() => window.history.back()}
-        >
-          <ArrowLeft size={18} />
-          Back
-        </Button>
-      </div>
+  
+  const handleSignIn = async () => {
+    setIsAuthLoading(true);
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      });
       
-      <div className="flex items-center">
-        {isEditing ? (
-          <div className="flex items-center">
-            <Input
-              value={editedName}
-              onChange={(e) => setEditedName(e.target.value)}
-              onBlur={handleSaveName}
-              onKeyDown={handleKeyDown}
-              autoFocus
-              className="bg-editor-panel border-[#D7F266] text-[#F7F8F6] max-w-[200px]"
-            />
-          </div>
+      if (error) throw error;
+      
+      setShowLogin(false);
+      toast.success("Signed in successfully");
+    } catch (error: any) {
+      toast.error("Authentication failed", {
+        description: error.message
+      });
+    } finally {
+      setIsAuthLoading(false);
+    }
+  };
+  
+  const handleSignUp = async () => {
+    setIsAuthLoading(true);
+    try {
+      const { error } = await supabase.auth.signUp({
+        email,
+        password
+      });
+      
+      if (error) throw error;
+      
+      setShowLogin(false);
+      toast.success("Account created", {
+        description: "Please check your email to confirm your account"
+      });
+    } catch (error: any) {
+      toast.error("Registration failed", {
+        description: error.message
+      });
+    } finally {
+      setIsAuthLoading(false);
+    }
+  };
+  
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    toast.info("Signed out successfully");
+  };
+  
+  return (
+    <div className="flex items-center justify-between p-3 bg-[#151514] border-b border-white/10">
+      <div className="flex items-center space-x-4">
+        {editMode ? (
+          <Input
+            value={tempName}
+            onChange={(e) => setTempName(e.target.value)}
+            onBlur={handleSubmitName}
+            onKeyDown={handleKeyDown}
+            className="w-64 bg-[#242423] border-white/20 focus-visible:ring-[#D7F266]"
+            autoFocus
+          />
         ) : (
-          <div className="flex items-center gap-2">
-            <h1 className="text-xl font-medium text-[#F7F8F6]">{projectName}</h1>
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              className="text-[#F7F8F6]/50 hover:text-[#F7F8F6]"
-              onClick={handleStartEditing}
-            >
-              <Edit2 size={14} />
-            </Button>
-          </div>
+          <h1
+            className="text-lg font-medium text-white cursor-pointer hover:text-[#D7F266] transition-colors flex items-center"
+            onClick={() => setEditMode(true)}
+          >
+            {projectName}
+            <span className="text-xs ml-2 text-white/40">(click to edit)</span>
+          </h1>
         )}
       </div>
       
-      <div className="flex items-center gap-2">
+      <div className="flex items-center space-x-2">
         <Button 
           variant="outline" 
           size="sm" 
-          className="text-[#F7F8F6] border-[#F7F8F6]/20 bg-[#151514]/50 hover:bg-[#151514]/70"
-          onClick={onSave}
+          onClick={handleSave}
+          disabled={isSaving}
+          className="text-white border-white/20 hover:bg-[#242423] hover:text-[#D7F266]"
         >
-          <Save size={16} className="mr-2" />
-          Save
+          {isSaving ? (
+            <>
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              Saving...
+            </>
+          ) : (
+            <>
+              <Save className="h-4 w-4 mr-2" />
+              Save
+            </>
+          )}
         </Button>
+        
         <Button 
-          className="bg-[#D7F266] hover:bg-[#D7F266]/90 text-[#151514] flex items-center gap-2 rounded-full transition-all duration-300"
+          variant="outline" 
+          size="sm" 
           onClick={onExport}
+          className="text-white border-white/20 hover:bg-[#242423] hover:text-[#D7F266]"
         >
-          <Download size={16} />
-          Download
+          <Download className="h-4 w-4 mr-2" />
+          Export
         </Button>
+        
+        {user ? (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleSignOut}
+            className="text-white hover:bg-[#242423] hover:text-[#D7F266]"
+          >
+            <User className="h-4 w-4 mr-2" />
+            Sign Out
+          </Button>
+        ) : (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setShowLogin(true)}
+            className="text-white hover:bg-[#242423] hover:text-[#D7F266]"
+          >
+            <LogIn className="h-4 w-4 mr-2" />
+            Sign In
+          </Button>
+        )}
       </div>
+      
+      <Dialog open={showLogin} onOpenChange={setShowLogin}>
+        <DialogContent className="bg-[#242423] border-white/10 text-white">
+          <DialogHeader>
+            <DialogTitle className="text-[#D7F266]">Sign in to save your work</DialogTitle>
+            <DialogDescription className="text-white/70">
+              Create an account or sign in to save your projects.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <Input 
+                id="email" 
+                value={email} 
+                onChange={(e) => setEmail(e.target.value)} 
+                placeholder="your@email.com"
+                className="bg-[#151514] border-white/20 focus-visible:ring-[#D7F266]"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="password">Password</Label>
+              <Input 
+                id="password" 
+                type="password" 
+                value={password} 
+                onChange={(e) => setPassword(e.target.value)} 
+                className="bg-[#151514] border-white/20 focus-visible:ring-[#D7F266]"
+              />
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              className="border-white/20"
+              onClick={() => setShowLogin(false)}
+              disabled={isAuthLoading}
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleSignUp}
+              disabled={isAuthLoading}
+              className="bg-[#242423] border border-white/20 hover:bg-[#444443]"
+            >
+              {isAuthLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Sign Up'}
+            </Button>
+            <Button 
+              onClick={handleSignIn}
+              disabled={isAuthLoading}
+              className="bg-[#D7F266] text-[#151514] hover:bg-[#C7E256]"
+            >
+              {isAuthLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Sign In'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

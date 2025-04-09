@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import Header from './Header';
 import MediaLibrary from './MediaLibrary';
@@ -9,6 +10,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import MediaSidebar from './MediaSidebar';
+import { saveProject, saveUserPreferences } from '@/lib/projectService';
+import { useQuery } from '@tanstack/react-query';
+import { getUserPreferences } from '@/lib/projectService';
+import { supabase } from '@/integrations/supabase/client';
 
 export interface TimelineItem {
   id: string;
@@ -39,6 +44,45 @@ const VideoEditor: React.FC = () => {
   const [history, setHistory] = useState<TimelineItem[][]>([[]]);
   const [historyIndex, setHistoryIndex] = useState(0);
   const [selectedItem, setSelectedItem] = useState<TimelineItem | null>(null);
+  const [user, setUser] = useState<any>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  
+  // Fetch user preferences from Supabase
+  const { data: userPrefsData } = useQuery({
+    queryKey: ['userPreferences'],
+    queryFn: getUserPreferences,
+    enabled: !!user, // Only run this query if user is authenticated
+  });
+  
+  // Load user preferences when available
+  useEffect(() => {
+    if (userPrefsData?.success && userPrefsData.preferences) {
+      const prefs = userPrefsData.preferences;
+      if (prefs.defaultVolume !== undefined) setVolume(prefs.defaultVolume);
+      if (prefs.timelineScale !== undefined) setTimelineScale(prefs.timelineScale);
+    }
+  }, [userPrefsData]);
+  
+  // Check authentication status on load
+  useEffect(() => {
+    const checkUser = async () => {
+      const { data } = await supabase.auth.getUser();
+      if (data?.user) {
+        setUser(data.user);
+      }
+    };
+    
+    checkUser();
+    
+    // Subscribe to auth state changes
+    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+      setUser(session?.user || null);
+    });
+    
+    return () => {
+      authListener.subscription.unsubscribe();
+    };
+  }, []);
   
   useEffect(() => {
     if (JSON.stringify(timelineItems) !== JSON.stringify(history[historyIndex])) {
@@ -88,6 +132,24 @@ const VideoEditor: React.FC = () => {
     };
   }, [isPlaying, timelineItems]);
   
+  // Save user preferences when they change
+  useEffect(() => {
+    const savePreferences = async () => {
+      if (!user) return;
+      
+      await saveUserPreferences({
+        defaultVolume: volume, 
+        timelineScale
+      });
+    };
+    
+    const debounce = setTimeout(() => {
+      savePreferences();
+    }, 1000);
+    
+    return () => clearTimeout(debounce);
+  }, [volume, timelineScale, user]);
+  
   const handlePlayPause = () => {
     setIsPlaying(prev => !prev);
   };
@@ -96,18 +158,34 @@ const VideoEditor: React.FC = () => {
     setCurrentTime(time);
   };
 
-  const handleSave = () => {
-    const projectData = {
-      name: projectName,
-      timeline: timelineItems,
-      duration: duration
-    };
+  const handleSave = async () => {
+    setIsSaving(true);
     
-    localStorage.setItem('editflow_project', JSON.stringify(projectData));
-    
-    toast.success('Project saved', {
-      description: `${projectName} has been saved.`,
-    });
+    try {
+      const result = await saveProject(projectName, timelineItems, duration);
+      
+      if (result.success) {
+        toast.success('Project saved', {
+          description: `${projectName} has been saved to your projects.`,
+        });
+      } else if (result.error) {
+        if (result.error.includes('not authenticated')) {
+          toast.info('Project saved locally', {
+            description: 'Sign in to save projects to your account.',
+          });
+        } else {
+          toast.error('Failed to save project', {
+            description: result.error,
+          });
+        }
+      }
+    } catch (error) {
+      toast.error('Error saving project', {
+        description: error instanceof Error ? error.message : 'An unexpected error occurred',
+      });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleExport = () => {
@@ -261,6 +339,7 @@ const VideoEditor: React.FC = () => {
         onRename={handleRename}
         onSave={handleSave}
         onExport={handleExport}
+        isSaving={isSaving}
       />
       
       <div className="flex flex-1 overflow-hidden">
