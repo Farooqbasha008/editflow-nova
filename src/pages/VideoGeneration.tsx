@@ -1019,30 +1019,6 @@ REASONING RULES:
                     />
                   </div>
                   
-                  <div className="space-y-2">
-                    <Label htmlFor="supabase-url" className="text-white">Supabase URL</Label>
-                    <Input 
-                      id="supabase-url"
-                      type="text" 
-                      placeholder="Enter your Supabase URL" 
-                      value={supabaseUrl} 
-                      onChange={(e) => setSupabaseUrl(e.target.value)}
-                      className="bg-[#0E0E0E] border-white/20 text-white"
-                    />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="supabase-key" className="text-white">Supabase API Key</Label>
-                    <Input 
-                      id="supabase-key"
-                      type="password" 
-                      placeholder="Enter your Supabase API key" 
-                      value={supabaseKey} 
-                      onChange={(e) => setSupabaseKey(e.target.value)}
-                      className="bg-[#0E0E0E] border-white/20 text-white"
-                    />
-                  </div>
-                  
                   <Button 
                     onClick={handleApiKeySubmit}
                     className="w-full bg-[#D7F266] hover:bg-[#D7F266]/90 text-[#151514]"
