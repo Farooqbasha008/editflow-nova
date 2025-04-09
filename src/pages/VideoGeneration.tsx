@@ -94,6 +94,14 @@ interface EnhancedVideoDetails extends VideoDetails {
   storyboard: StoryboardScene[];
 }
 
+interface ChatSession {
+  id: string;
+  name: string;
+  messages: Message[];
+  script: GeneratedScript | null;
+  timestamp: Date;
+}
+
 const VideoGeneration: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>([{
     role: 'assistant',
@@ -144,6 +152,10 @@ const VideoGeneration: React.FC = () => {
     timeOfDay: 'day' as 'day' | 'night' | 'dawn' | 'dusk',
     lightingStyle: 'Natural lighting with dramatic shadows',
   });
+  
+  const [chatSessions, setChatSessions] = useState<ChatSession[]>([]);
+  const [activeChatId, setActiveChatId] = useState<string | null>(null);
+  const [showChatList, setShowChatList] = useState(false);
   
   // Create system message
   const createSystemMessage = (): Message => ({
@@ -273,7 +285,18 @@ const VideoGeneration: React.FC = () => {
       timestamp: new Date()
     };
     
-    setMessages(prev => [...prev, userMessage]);
+    const updatedMessages = [...messages, userMessage];
+    setMessages(updatedMessages);
+    
+    // Update current chat session
+    if (activeChatId) {
+      setChatSessions(prev => prev.map(chat => 
+        chat.id === activeChatId 
+          ? { ...chat, messages: updatedMessages } 
+          : chat
+      ));
+    }
+    
     setInputMessage('');
     setIsLoading(true);
     setIsTyping(true);
@@ -827,6 +850,115 @@ Each scene's textToVideoPrompt must follow the structured format and guidelines 
     );
   };
 
+  // Add new chat management handlers after existing handlers
+  const createNewChat = () => {
+    const newChat: ChatSession = {
+      id: `chat_${Date.now()}`,
+      name: `New Chat ${chatSessions.length + 1}`,
+      messages: [{
+        role: 'assistant',
+        content: 'Hi there! I can help you create a video. Describe your story, desired duration, and any specific style preferences.',
+        timestamp: new Date()
+      }],
+      script: null,
+      timestamp: new Date()
+    };
+    
+    setChatSessions(prev => [...prev, newChat]);
+    setActiveChatId(newChat.id);
+    setMessages(newChat.messages);
+    setGeneratedScript(null);
+    setInputMessage('');
+  };
+
+  const loadChat = (chatId: string) => {
+    const chat = chatSessions.find(c => c.id === chatId);
+    if (chat) {
+      setActiveChatId(chatId);
+      setMessages(chat.messages);
+      setGeneratedScript(chat.script);
+      setShowChatList(false);
+    }
+  };
+
+  const deleteChat = (chatId: string) => {
+    setChatSessions(prev => prev.filter(c => c.id !== chatId));
+    if (activeChatId === chatId) {
+      const remainingChats = chatSessions.filter(c => c.id !== chatId);
+      if (remainingChats.length > 0) {
+        loadChat(remainingChats[0].id);
+      } else {
+        createNewChat();
+      }
+    }
+  };
+
+  const renameChat = (chatId: string, newName: string) => {
+    setChatSessions(prev => prev.map(chat => 
+      chat.id === chatId ? { ...chat, name: newName } : chat
+    ));
+  };
+
+  // Add chat list dialog
+  const ChatListDialog = () => (
+    <Dialog open={showChatList} onOpenChange={setShowChatList}>
+      <DialogContent className="bg-[#1A1A1A] border-white/10 text-white">
+        <DialogHeader>
+          <DialogTitle>Your Chats</DialogTitle>
+          <DialogDescription className="text-white/70">
+            Select a chat to load or start a new one
+          </DialogDescription>
+        </DialogHeader>
+        
+        <div className="space-y-4 my-4">
+          <Button
+            onClick={createNewChat}
+            className="w-full bg-[#D7F266] hover:bg-[#D7F266]/90 text-[#151514]"
+          >
+            New Chat
+          </Button>
+          
+          <div className="space-y-2">
+            {chatSessions.map(chat => (
+              <div key={chat.id} className="flex items-center gap-2 p-2 rounded bg-[#0E0E0E] border border-white/10">
+                <span className="flex-1 truncate">{chat.name}</span>
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={() => loadChat(chat.id)}
+                  >
+                    <Play className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={() => {
+                      const newName = window.prompt('Enter new name', chat.name);
+                      if (newName) renameChat(chat.id, newName);
+                    }}
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 hover:text-red-500"
+                    onClick={() => deleteChat(chat.id)}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+
   return (
     <div className="h-screen flex flex-col bg-[#0E0E0E]">
       {/* Header */}
@@ -855,6 +987,14 @@ Each scene's textToVideoPrompt must follow the structured format and guidelines 
             className="text-white/70 hover:text-white"
           >
             <Settings className="h-5 w-5" />
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowChatList(true)}
+            className="border-white/20 text-white hover:text-[#D7F266] hover:border-[#D7F266]"
+          >
+            {chatSessions.find(c => c.id === activeChatId)?.name || "New Chat"}
           </Button>
         </div>
       </header>
@@ -1344,6 +1484,7 @@ Each scene's textToVideoPrompt must follow the structured format and guidelines 
           </div>
         </div>
       </div>
+      <ChatListDialog />
     </div>
   );
 };
