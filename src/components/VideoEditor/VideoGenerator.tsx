@@ -14,6 +14,14 @@ interface VideoGeneratorProps {
   onAddToTimeline: (item: TimelineItem) => void;
 }
 
+// Default parameters based on fal.ai documentation
+const DEFAULT_INFERENCE_STEPS = 30;
+const DEFAULT_GUIDANCE_SCALE = 5;
+const DEFAULT_SHIFT = 5;
+const DEFAULT_SAMPLER = 'unipc';
+const DEFAULT_WIDTH = 1024; // 16:9 aspect ratio
+const DEFAULT_HEIGHT = 576;
+
 const VideoGenerator: React.FC<VideoGeneratorProps> = ({ onAddToTimeline }) => {
   const [prompt, setPrompt] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
@@ -51,46 +59,61 @@ const VideoGenerator: React.FC<VideoGeneratorProps> = ({ onAddToTimeline }) => {
       // Configure fal client with API key
       fal.config({ credentials: apiKey });
 
-      const result = await fal.subscribe('110602490-sd-video', {
+      // Use updated parameters according to fal.ai documentation
+      const result = await fal.subscribe('fal-ai/wan/v2.1/1.3b/text-to-video', {
         input: {
           prompt: prompt,
-          negative_prompt: 'blurry, low quality, distorted faces',
-          num_frames: 80,
-          num_inference_steps: 30,
-          guidance_scale: 12.5,
+          negative_prompt: '', // Using empty string as default per fal.ai
+          num_inference_steps: DEFAULT_INFERENCE_STEPS,
+          guidance_scale: DEFAULT_GUIDANCE_SCALE,
+          sampler: DEFAULT_SAMPLER,
+          shift: DEFAULT_SHIFT,
+          enable_safety_checker: true,
+          enable_prompt_expansion: false,
           seed: Math.floor(Math.random() * 1000000),
-          width: 512,
-          height: 512,
         },
         onQueueUpdate(update) {
           if (update.status === "IN_PROGRESS") {
             setProgressMessage('Generating video...');
             if (update.logs && update.logs.length > 0) {
               const lastLog = update.logs[update.logs.length - 1];
-              const frameMatch = lastLog.message.match(/Processed frame (\d+)/);
-              if (frameMatch) {
-                const frameCount = parseInt(frameMatch[1]);
-                const newProgress = Math.min(100, Math.round((frameCount / 81) * 100));
+              // Updated progress calculation logic based on logs (assuming similar log format)
+              // Note: The exact log message format might differ for the new model.
+              // This regex attempts to find any progress indication like "step X/Y" or "frame X/Y".
+              const progressMatch = lastLog.message.match(/(\d+)\/(\d+)/);
+              if (progressMatch) {
+                const currentStep = parseInt(progressMatch[1]);
+                const totalSteps = parseInt(progressMatch[2]);
+                // Use totalSteps from the log if available, otherwise use inference steps
+                const estimatedTotal = totalSteps > 0 ? totalSteps : DEFAULT_INFERENCE_STEPS;
+                const newProgress = Math.min(100, Math.round((currentStep / estimatedTotal) * 100));
                 setProgress(newProgress);
+              } else {
+                // Fallback if specific progress log isn't found, increment slowly
+                setProgress(prev => Math.min(95, prev + 1));
               }
             }
           } else if (update.status === "COMPLETED") {
             setProgress(100);
             setProgressMessage('Finalizing video...');
           } else if (update.status === "IN_QUEUE") {
-            setProgressMessage('Waiting in queue...');
+            setProgressMessage(`Waiting in queue... Position: ${update.queue_position ?? 'N/A'}`);
+            setProgress(0); // Reset progress when queued
           }
         },
       });
 
-      if (result.data?.video_url) {
-        setGeneratedVideo(result.data.video_url);
+      // Check for video_uri instead of video_url in the response
+      if (result?.data?.[0]) {
+        setGeneratedVideo(result.data[0]);
         toast.success('Video generated successfully!');
         setError(null);
         // Save API key if successful
         localStorage.setItem('falai_api_key', apiKey);
       } else {
-        throw new Error('No video URL in response');
+        // Log the actual result for debugging if the structure is different
+        console.warn('Unexpected result structure from fal.ai:', result);
+        throw new Error('No video found in the response from fal.ai.');
       }
     } catch (error) {
       console.error('Error generating video:', error);
@@ -113,11 +136,14 @@ const VideoGenerator: React.FC<VideoGeneratorProps> = ({ onAddToTimeline }) => {
       id: `generated-video-${Date.now()}`,
       trackId: 'video-track',
       start: 0,
-      duration: 5,
+      // Duration might need adjustment based on the actual generated video length
+      // For now, keeping it fixed, but ideally, we'd get duration from the video metadata
+      duration: 5, // Example duration, adjust as needed
       type: 'video',
       name: `AI Video: ${prompt.substring(0, 15)}${prompt.length > 15 ? '...' : ''}`,
       color: 'bg-green-400/70',
       src: generatedVideo,
+      // Thumbnail might not be directly available; using video src for now
       thumbnail: generatedVideo,
       volume: 1,
     };

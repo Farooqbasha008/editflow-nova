@@ -477,6 +477,8 @@ REASONING RULES:
     }
   };
   const handleGenerateVideo = async () => {
+    let failedScene = -1;
+    let errorDetails = '';
     try {
       if (!generatedScript) {
         throw new Error('Script is not available');
@@ -517,6 +519,7 @@ REASONING RULES:
       
       for (let i = 0; i < generatedScript.scenes.length; i++) {
         const scene = generatedScript.scenes[i];
+        failedScene = scene.sceneNumber; // Track the current scene number for error reporting
         setGenerationProgress((i / generatedScript.scenes.length) * 33);
         
         const videoUrl = await generateVideo(scene.textToVideoPrompt, falaiApiKey, {
@@ -529,6 +532,7 @@ REASONING RULES:
         videoUrls[scene.sceneNumber] = videoUrl;
       }
       
+      failedScene = -1; // Reset failed scene tracker after successful video generation loop
       setGenerationProgress(33);
       
       const videoCompleteMessage: Message = {
@@ -598,9 +602,31 @@ REASONING RULES:
       setGenerationStep('');
     } catch (error) {
       console.error('Error generating video:', error);
-      toast.error('Failed to generate video');
+      errorDetails = error instanceof Error ? error.message : String(error);
+      let errorMessage = 'Failed to generate video.';
+      if (generationStep === 'video' && failedScene !== -1) {
+        errorMessage = `Failed to generate video for Scene ${failedScene}.`;
+      } else if (generationStep === 'speech') {
+        errorMessage = 'Failed to generate speech.';
+      } else if (generationStep === 'sound') {
+        errorMessage = 'Failed to generate sound/music.';
+      }
+      
+      toast.error(errorMessage, {
+        description: `Details: ${errorDetails}`,
+      });
+      
+      // Add error message to chat
+      const errorChatMessage: Message = {
+        role: 'assistant',
+        content: `${errorMessage}\n\nPlease check your API keys in Settings and ensure the service (Fal.ai, Groq, ElevenLabs) is operational. Error: ${errorDetails}`,
+        timestamp: new Date()
+      };
+      setMessages(prev => [...prev, errorChatMessage]);
+      
       setIsLoading(false);
       setGenerationStep('');
+      setGenerationProgress(0); // Reset progress on error
     }
   };
 
