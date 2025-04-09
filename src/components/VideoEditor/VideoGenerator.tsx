@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Sparkles } from 'lucide-react';
+import { Sparkles, GripVertical } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
@@ -169,6 +169,36 @@ const VideoGenerator: React.FC<VideoGeneratorProps> = ({ onAddToTimeline }) => {
     toast.success('Video added to timeline');
   };
 
+  const handleDragStart = (e: React.DragEvent) => {
+    if (!generatedVideo) return;
+    
+    const item = {
+      id: `generated-video-${Date.now()}`,
+      type: 'video',
+      name: `AI Video: ${prompt.substring(0, 15)}${prompt.length > 15 ? '...' : ''}`,
+      src: generatedVideo,
+      thumbnail: generatedVideo,
+      duration: '5:00'
+    };
+    
+    e.dataTransfer.setData('application/json', JSON.stringify(item));
+    
+    // Create custom drag image
+    const dragImage = document.createElement('div');
+    dragImage.classList.add('p-2', 'bg-editor-panel', 'rounded', 'shadow-lg', 'text-white', 'border', 'border-white/20');
+    dragImage.style.width = '120px';
+    dragImage.style.opacity = '0.8';
+    dragImage.textContent = item.name;
+    document.body.appendChild(dragImage);
+    
+    e.dataTransfer.setDragImage(dragImage, 60, 30);
+    
+    // Clean up
+    setTimeout(() => {
+      document.body.removeChild(dragImage);
+    }, 0);
+  };
+
   return (
     <div className="space-y-3 p-3">
       <div className="space-y-2">
@@ -249,7 +279,11 @@ const VideoGenerator: React.FC<VideoGeneratorProps> = ({ onAddToTimeline }) => {
       )}
 
       {generatedVideo && (
-        <div className="relative aspect-video bg-black rounded-md overflow-hidden">
+        <div 
+          className="relative aspect-video bg-black rounded-md overflow-hidden group cursor-move"
+          draggable
+          onDragStart={handleDragStart}
+        >
           <video 
             src={generatedVideo} 
             className="w-full h-full" 
@@ -258,6 +292,10 @@ const VideoGenerator: React.FC<VideoGeneratorProps> = ({ onAddToTimeline }) => {
             autoPlay 
             muted 
           />
+          <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+            <GripVertical className="w-6 h-6 text-white" />
+            <div className="absolute bottom-2 left-2 text-xs text-white">Drag to timeline</div>
+          </div>
         </div>
       )}
     </div>

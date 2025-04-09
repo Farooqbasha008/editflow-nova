@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Music, Play, Pause, Download, Save, Plus } from 'lucide-react';
+import { Music, Play, Pause, Download, Save, Plus, GripVertical } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -210,9 +210,38 @@ const SoundEffectsGenerator: React.FC<SoundEffectsGeneratorProps> = ({ onAddToTi
 
       {generatedAudio && (
         <div className="mt-3 space-y-2">
-          <div className="flex items-center gap-2 bg-editor-panel/50 p-2 rounded">
+          <div 
+            className="flex items-center gap-2 bg-editor-panel/50 p-2 rounded cursor-move group relative"
+            draggable
+            onDragStart={(e) => {
+              const item = {
+                id: `sfx-${Date.now()}`,
+                type: 'audio',
+                name: `SFX: ${description.substring(0, 15)}${description.length > 15 ? '...' : ''}`,
+                src: generatedAudio,
+                duration: '5:00'
+              };
+              
+              e.dataTransfer.setData('application/json', JSON.stringify(item));
+              
+              // Create custom drag image
+              const dragImage = document.createElement('div');
+              dragImage.classList.add('p-2', 'bg-editor-panel', 'rounded', 'shadow-lg', 'text-white', 'border', 'border-white/20');
+              dragImage.style.width = '120px';
+              dragImage.style.opacity = '0.8';
+              dragImage.textContent = item.name;
+              document.body.appendChild(dragImage);
+              
+              e.dataTransfer.setDragImage(dragImage, 60, 30);
+              
+              // Clean up
+              setTimeout(() => {
+                document.body.removeChild(dragImage);
+              }, 0);
+            }}
+          >
             <button
-              className="p-1 bg-editor-hover rounded-full"
+              className="p-1 bg-editor-hover rounded-full flex-shrink-0"
               onClick={handlePlayPause}
             >
               {isPlaying ? <Pause size={12} /> : <Play size={12} />}
@@ -228,6 +257,12 @@ const SoundEffectsGenerator: React.FC<SoundEffectsGeneratorProps> = ({ onAddToTi
             >
               <Download size={12} />
             </Button>
+
+            <GripVertical className="w-4 h-4 text-white/40 group-hover:text-white/90 transition-colors ml-1" />
+            
+            <div className="absolute -top-4 left-1/2 -translate-x-1/2 text-[10px] text-white/70 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+              Drag to timeline
+            </div>
           </div>
 
           <Button

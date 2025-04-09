@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { TimelineItem } from './VideoEditor';
 import { generateSpeech } from '@/lib/groq';
+import { GripVertical } from 'lucide-react';
 
 interface VoiceoverGeneratorProps {
   onAddToTimeline: (item: TimelineItem) => void;
@@ -247,9 +248,38 @@ const VoiceoverGenerator: React.FC<VoiceoverGeneratorProps> = ({ onAddToTimeline
       
       {generatedAudio && (
         <div className="mt-3 space-y-2">
-          <div className="flex items-center gap-2 bg-editor-panel/50 p-2 rounded">
+          <div 
+            className="flex items-center gap-2 bg-editor-panel/50 p-2 rounded cursor-move group relative"
+            draggable
+            onDragStart={(e) => {
+              const item = {
+                id: `voiceover-${Date.now()}`,
+                type: 'audio',
+                name: `Voiceover: ${text.substring(0, 15)}${text.length > 15 ? '...' : ''}`,
+                src: generatedAudio,
+                duration: '5:00'
+              };
+              
+              e.dataTransfer.setData('application/json', JSON.stringify(item));
+              
+              // Create custom drag image
+              const dragImage = document.createElement('div');
+              dragImage.classList.add('p-2', 'bg-editor-panel', 'rounded', 'shadow-lg', 'text-white', 'border', 'border-white/20');
+              dragImage.style.width = '120px';
+              dragImage.style.opacity = '0.8';
+              dragImage.textContent = item.name;
+              document.body.appendChild(dragImage);
+              
+              e.dataTransfer.setDragImage(dragImage, 60, 30);
+              
+              // Clean up
+              setTimeout(() => {
+                document.body.removeChild(dragImage);
+              }, 0);
+            }}
+          >
             <button
-              className="p-1 bg-editor-hover rounded-full"
+              className="p-1 bg-editor-hover rounded-full flex-shrink-0"
               onClick={handlePlayPause}
             >
               {isPlaying ? <Pause size={12} /> : <Play size={12} />}
@@ -265,8 +295,14 @@ const VoiceoverGenerator: React.FC<VoiceoverGeneratorProps> = ({ onAddToTimeline
             >
               <Download size={12} />
             </Button>
+
+            <GripVertical className="w-4 h-4 text-white/40 group-hover:text-white/90 transition-colors ml-1" />
+            
+            <div className="absolute -top-4 left-1/2 -translate-x-1/2 text-[10px] text-white/70 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+              Drag to timeline
+            </div>
           </div>
-          
+
           <Button
             size="sm"
             onClick={handleAddToTimeline}
