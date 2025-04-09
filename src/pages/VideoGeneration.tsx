@@ -23,6 +23,18 @@ import { generateVideo } from '../lib/falai';
 import { generateSound, generateSpeech as generateElevenLabsSpeech } from '../lib/elevenlabs';
 import { generateSpeech as generateGroqSpeech } from '../lib/groq';
 
+// Import additional modules for enhanced video generation
+import { 
+  StoryboardScene, 
+  Character, 
+  sceneGenerationRules, 
+  generateEnhancedPrompt, 
+  maintainContinuity, 
+  determineShotType, 
+  planCameraMovement, 
+  createEnvironmentProfile 
+} from '../lib/videoGeneration';
+
 // Default model to use for script generation
 const DEFAULT_MODEL = 'meta-llama/llama-4-scout-17b-16e-instruct';
 
@@ -77,6 +89,11 @@ interface VideoDetails {
   script?: string;
 }
 
+interface EnhancedVideoDetails extends VideoDetails {
+  characters: Character[];
+  storyboard: StoryboardScene[];
+}
+
 const VideoGeneration: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>([{
     role: 'assistant',
@@ -112,8 +129,21 @@ const VideoGeneration: React.FC = () => {
   
   // UI state
   const [showSidebar, setShowSidebar] = useState(true);
-  const [sidebarTab, setSidebarTab] = useState<'chat' | 'settings' | 'script'>('chat');
+  const [sidebarTab, setSidebarTab] = useState<'chat' | 'settings' | 'script' | 'cinematic'>('chat');
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  
+  // State variables for character management and enhanced scene planning
+  const [characters, setCharacters] = useState<Character[]>([]);
+  const [storyboard, setStoryboard] = useState<StoryboardScene[]>([]);
+  const [showCinematicGuidelines, setShowCinematicGuidelines] = useState(false);
+  
+  // Add after other script parameters
+  const [cinematicParams, setCinematicParams] = useState({
+    colorPalette: 'Natural, cinematic colors',
+    environmentType: 'interior' as 'interior' | 'exterior',
+    timeOfDay: 'day' as 'day' | 'night' | 'dawn' | 'dusk',
+    lightingStyle: 'Natural lighting with dramatic shadows',
+  });
   
   // Create system message
   const createSystemMessage = (): Message => ({
@@ -530,13 +560,46 @@ Each scene's textToVideoPrompt must follow the structured format and guidelines 
         return;
       }
       
+      // Create storyboard from script
+      const newStoryboard = generatedScript.scenes.map((scene, index) => {
+        const shotType = determineShotType(index, generatedScript.scenes.length);
+        const previousScene = index > 0 ? storyboard[index - 1] : undefined;
+        
+        const storyboardScene: StoryboardScene = {
+          shotType,
+          cameraMovement: planCameraMovement(shotType, previousScene?.cameraMovement),
+          environmentType: cinematicParams.environmentType,
+          timeOfDay: cinematicParams.timeOfDay,
+          lightingConditions: cinematicParams.lightingStyle,
+          visualContinuity: previousScene 
+            ? maintainContinuity({
+                ...previousScene,
+                visualContinuity: {
+                  colorPalette: cinematicParams.colorPalette,
+                  atmosphericConditions: 'consistent',
+                  locationConsistency: 'maintained'
+                }
+              }, previousScene)
+            : {
+                colorPalette: cinematicParams.colorPalette,
+                atmosphericConditions: 'clear',
+                locationConsistency: 'establishing'
+              }
+        };
+        
+        return storyboardScene;
+      });
+
+      setStoryboard(newStoryboard);
+      
+      // Continue with video generation using enhanced prompts
       setIsLoading(true);
       setGenerationStep('video');
       setGenerationProgress(0);
       
       const processingMessage: Message = {
         role: 'assistant',
-        content: `Generating a ${generatedScript.duration} video based on the confirmed script...\n\nStep 1/3: Generating video scenes...`,
+        content: `Generating a ${generatedScript.duration} video with enhanced cinematic guidelines...\n\nStep 1/3: Generating video scenes with careful attention to visual continuity...`,
         timestamp: new Date()
       };
       
@@ -547,14 +610,22 @@ Each scene's textToVideoPrompt must follow the structured format and guidelines 
       
       for (let i = 0; i < generatedScript.scenes.length; i++) {
         const scene = generatedScript.scenes[i];
+        const storyboardScene = newStoryboard[i];
+        
         failedScene = scene.sceneNumber; // Track the current scene number for error reporting
         setGenerationProgress((i / generatedScript.scenes.length) * 33);
         
-        const videoUrl = await generateVideo(scene.textToVideoPrompt, falaiApiKey, {
+        const enhancedPrompt = generateEnhancedPrompt(
+          storyboardScene,
+          generatedScript.style,
+          characters
+        );
+        
+        const videoUrl = await generateVideo(enhancedPrompt, falaiApiKey, {
           duration: 5,
           width: 512,
           height: 512,
-          negativePrompt: 'blurry, low quality, distorted faces'
+          negativePrompt: 'close-up faces, blurry, low quality, distorted faces, rapid movements, complex backgrounds, inconsistent lighting'
         });
         
         videoUrls[scene.sceneNumber] = videoUrl;
@@ -725,6 +796,35 @@ Each scene's textToVideoPrompt must follow the structured format and guidelines 
       const isJson = jsonContent || match.includes('```json');
       return `<pre class="${isJson ? 'language-json' : ''} bg-gray-800 p-3 rounded-md overflow-x-auto my-2"><code>${content}</code></pre>`;
     });
+  };
+
+  // Add new handlers for character management
+  const handleAddCharacter = () => {
+    const newCharacter: Character = {
+      id: `char_${characters.length + 1}`,
+      description: '',
+      visualAttributes: {
+        gender: '',
+        ageRange: '',
+        bodyType: '',
+        clothing: '',
+        distinctiveFeatures: ''
+      },
+      shotGuidelines: {
+        preferredAngles: [],
+        avoidedAngles: ['extreme close-up', 'direct face shot'],
+        minimumShotSize: 'medium'
+      }
+    };
+    setCharacters([...characters, newCharacter]);
+  };
+
+  const handleUpdateCharacter = (id: string, updates: Partial<Character>) => {
+    setCharacters(chars => 
+      chars.map(char => 
+        char.id === id ? { ...char, ...updates } : char
+      )
+    );
   };
 
   return (
@@ -908,10 +1008,11 @@ Each scene's textToVideoPrompt must follow the structured format and guidelines 
         >
           <div className="flex items-center justify-between mb-4">
             <Tabs value={sidebarTab} onValueChange={(value) => setSidebarTab(value as any)} className="w-full">
-              <TabsList className="grid grid-cols-3 mb-4">
+              <TabsList className="grid grid-cols-4 mb-4">
                 <TabsTrigger value="chat" className="text-sm">Parameters</TabsTrigger>
                 <TabsTrigger value="script" className="text-sm">Script</TabsTrigger>
                 <TabsTrigger value="settings" className="text-sm">Settings</TabsTrigger>
+                <TabsTrigger value="cinematic" className="text-sm">Cinematic</TabsTrigger>
               </TabsList>
               
               <TabsContent value="chat" className="space-y-6">
@@ -1128,6 +1229,116 @@ Each scene's textToVideoPrompt must follow the structured format and guidelines 
                     <p className="text-xs mt-2">Start a conversation to generate a script</p>
                   </div>
                 )}
+              </TabsContent>
+
+              <TabsContent value="cinematic" className="space-y-6">
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label className="text-white">Color Palette</Label>
+                    <Input
+                      value={cinematicParams.colorPalette}
+                      onChange={(e) => setCinematicParams(prev => ({
+                        ...prev,
+                        colorPalette: e.target.value
+                      }))}
+                      className="bg-[#0E0E0E] border-white/20 text-white"
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label className="text-white">Environment Type</Label>
+                    <Select
+                      value={cinematicParams.environmentType}
+                      onValueChange={(value: 'interior' | 'exterior') => 
+                        setCinematicParams(prev => ({
+                          ...prev,
+                          environmentType: value
+                        }))
+                      }
+                    >
+                      <SelectTrigger className="bg-[#0E0E0E] border-white/20 text-white">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="interior">Interior</SelectItem>
+                        <SelectItem value="exterior">Exterior</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label className="text-white">Time of Day</Label>
+                    <Select
+                      value={cinematicParams.timeOfDay}
+                      onValueChange={(value: 'day' | 'night' | 'dawn' | 'dusk') => 
+                        setCinematicParams(prev => ({
+                          ...prev,
+                          timeOfDay: value
+                        }))
+                      }
+                    >
+                      <SelectTrigger className="bg-[#0E0E0E] border-white/20 text-white">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="day">Day</SelectItem>
+                        <SelectItem value="night">Night</SelectItem>
+                        <SelectItem value="dawn">Dawn</SelectItem>
+                        <SelectItem value="dusk">Dusk</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label className="text-white">Lighting Style</Label>
+                    <Input
+                      value={cinematicParams.lightingStyle}
+                      onChange={(e) => setCinematicParams(prev => ({
+                        ...prev,
+                        lightingStyle: e.target.value
+                      }))}
+                      className="bg-[#0E0E0E] border-white/20 text-white"
+                    />
+                  </div>
+                  
+                  <Separator className="my-4" />
+                  
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-white">Character Management</Label>
+                      <Button
+                        onClick={handleAddCharacter}
+                        variant="outline"
+                        size="sm"
+                        className="border-white/20 text-white hover:text-[#D7F266] hover:border-[#D7F266]"
+                      >
+                        Add Character
+                      </Button>
+                    </div>
+                    
+                    {characters.map((char, index) => (
+                      <div key={char.id} className="space-y-2 p-2 border border-white/10 rounded-md">
+                        <Input
+                          value={char.description}
+                          onChange={(e) => handleUpdateCharacter(char.id, { description: e.target.value })}
+                          placeholder="Character description"
+                          className="bg-[#0E0E0E] border-white/20 text-white"
+                        />
+                        <Input
+                          value={char.visualAttributes.clothing}
+                          onChange={(e) => handleUpdateCharacter(char.id, { 
+                            visualAttributes: { 
+                              ...char.visualAttributes, 
+                              clothing: e.target.value 
+                            } 
+                          })}
+                          placeholder="Clothing description"
+                          className="bg-[#0E0E0E] border-white/20 text-white"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </TabsContent>
             </Tabs>
           </div>
