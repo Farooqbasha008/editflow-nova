@@ -20,14 +20,6 @@ interface FalQueueUpdate {
   logs?: Array<{ message: string }>;
 }
 
-interface FalResponse {
-  image: string;
-  seed: number;
-  content: {
-    video: string;
-  };
-}
-
 const VideoGenerator: React.FC<VideoGeneratorProps> = ({ onAddToTimeline }) => {
   const [prompt, setPrompt] = useState('');
   const [enhancedPrompt, setEnhancedPrompt] = useState('');
@@ -95,18 +87,14 @@ const VideoGenerator: React.FC<VideoGeneratorProps> = ({ onAddToTimeline }) => {
         input: {
           prompt: useEnhancedPrompt ? enhancedPrompt : prompt,
           negative_prompt: 'close-up faces, blurry, low quality, distorted faces, rapid movements, complex backgrounds, inconsistent lighting, poor composition, bad framing',
-          num_inference_steps: 30, // Increased for better quality
-          guidance_scale: 12.5, // Increased for stronger adherence to prompt
-          seed: Math.floor(Math.random() * 1000000),
-          enable_safety_checker: true,
-          enable_prompt_expansion: true, // Enable to get better results
-          sampler: "dpm++", // Using the allowed dpm++ sampler
+          num_inference_steps: 30,
+          guidance_scale: 12.5,
+          seed: Math.floor(Math.random() * 1000000)
         },
         pollInterval: 5000,
         onQueueUpdate(update: FalQueueUpdate) {
           if (update.status === "IN_PROGRESS") {
             setProgressMessage('Generating video...');
-            // Their logs contain message like "50/100 steps"
             if (update.logs?.length > 0) {
               const lastLog = update.logs[update.logs.length - 1];
               const progressMatch = lastLog.message.match(/(\d+)\/(\d+)\s*steps/i);
@@ -124,13 +112,17 @@ const VideoGenerator: React.FC<VideoGeneratorProps> = ({ onAddToTimeline }) => {
           } else if (update.status === "IN_QUEUE") {
             setProgressMessage(`Waiting in queue... Position: ${update.queue_position ?? 'N/A'}`);
             setProgress(0);
+          } else if (update.status === "FAILED") {
+            throw new Error('Video generation failed. Please try again.');
           }
         },
       });
 
-      const response = result as unknown as FalResponse;
-      const videoUrl = response.content?.video;
+      if (!result) {
+        throw new Error('No response from API');
+      }
 
+      const videoUrl = (result as any)?.artifacts?.[0]?.url;
       if (!videoUrl) {
         throw new Error('No video URL in the response. Please try again.');
       }
