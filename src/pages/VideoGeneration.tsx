@@ -236,7 +236,6 @@ const VideoGeneration: React.FC = () => {
     if (apiKey.trim()) {
       localStorage.setItem('groq_api_key', apiKey);
       setShowApiKeyInput(false);
-      toast.success('API keys saved');
       setSidebarTab('chat');
     } else {
       toast.error('Please enter a valid Groq API key');
@@ -256,6 +255,8 @@ const VideoGeneration: React.FC = () => {
     if (supabaseKey.trim()) {
       localStorage.setItem('supabase_key', supabaseKey);
     }
+
+    toast.success('Settings saved successfully');
   };
   
   const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -646,9 +647,7 @@ Each scene's textToVideoPrompt must follow the structured format and guidelines 
         
         const videoUrl = await generateVideo(enhancedPrompt, falaiApiKey, {
           duration: 5,
-          width: 512,
-          height: 512,
-          negativePrompt: 'close-up faces, blurry, low quality, distorted faces, rapid movements, complex backgrounds, inconsistent lighting'
+            negativePrompt: 'close-up faces, blurry, low quality, distorted faces, rapid movements, complex backgrounds, inconsistent lighting'
         });
         
         videoUrls[scene.sceneNumber] = videoUrl;

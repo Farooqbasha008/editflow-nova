@@ -20,6 +20,14 @@ interface FalQueueUpdate {
   logs?: Array<{ message: string }>;
 }
 
+interface FalVideoResponse {
+  data?: {
+    video?: {
+      url?: string;
+    };
+  };
+}
+
 const VideoGenerator: React.FC<VideoGeneratorProps> = ({ onAddToTimeline }) => {
   const [prompt, setPrompt] = useState('');
   const [enhancedPrompt, setEnhancedPrompt] = useState('');
@@ -75,23 +83,34 @@ const VideoGenerator: React.FC<VideoGeneratorProps> = ({ onAddToTimeline }) => {
       return;
     }
 
+    // Validate API key format
+    if (!apiKey.startsWith('fal_') || apiKey.length < 20) {
+      toast.error('Invalid FAL.ai API key format', {
+        description: 'API key should start with "fal_" and be at least 20 characters long'
+      });
+      return;
+    }
+
     setIsGenerating(true);
     setError(null);
     setProgressMessage('Initializing...');
     setProgress(0);
 
+    let subscription;
     try {
-      fal.config({ credentials: apiKey });
+      // Configure the client with the API key
+      fal.config({
+        credentials: apiKey
+      });
 
-      const result = await fal.subscribe('fal-ai/wan/v2.1/1.3b/text-to-video', {
+      // Clean the prompt to remove control characters
+      const cleanedPrompt = (useEnhancedPrompt ? enhancedPrompt : prompt).replace(/\n/g, ' ').replace(/\t/g, ' ');
+
+      subscription = await fal.subscribe('fal-ai/wan/v2.1/1.3b/text-to-video', {
         input: {
-          prompt: useEnhancedPrompt ? enhancedPrompt : prompt,
-          negative_prompt: 'close-up faces, blurry, low quality, distorted faces, rapid movements, complex backgrounds, inconsistent lighting, poor composition, bad framing',
-          num_inference_steps: 30,
-          guidance_scale: 12.5,
-          seed: Math.floor(Math.random() * 1000000)
+          prompt: cleanedPrompt
         },
-        pollInterval: 5000,
+        logs: true,
         onQueueUpdate(update: FalQueueUpdate) {
           if (update.status === "IN_PROGRESS") {
             setProgressMessage('Generating video...');
@@ -118,27 +137,56 @@ const VideoGenerator: React.FC<VideoGeneratorProps> = ({ onAddToTimeline }) => {
         },
       });
 
-      if (!result) {
-        throw new Error('No response from API');
-      }
+      // Keep the subscription alive until we get a result
+      const result = await new Promise<FalVideoResponse>((resolve, reject) => {
+        const timeout = setTimeout(() => {
+          subscription?.unsubscribe();
+          reject(new Error('Video generation timed out after 5 minutes'));
+        }, 300000); // 5 minute timeout
 
-      const videoUrl = (result as any)?.artifacts?.[0]?.url;
+        subscription.onError((error) => {
+          clearTimeout(timeout);
+          reject(error);
+        });
+
+        subscription.onComplete((result) => {
+          clearTimeout(timeout);
+          resolve(result as FalVideoResponse);
+        });
+      });
+
+      // Access the video URL correctly
+      const videoUrl = result.data?.video?.url;
       if (!videoUrl) {
         throw new Error('No video URL in the response. Please try again.');
       }
 
       setGeneratedVideo(videoUrl);
       toast.success('Video generated successfully!');
+      
+      // Only save valid API key after successful generation
       localStorage.setItem('falai_api_key', apiKey);
 
     } catch (error) {
       console.error('Error generating video:', error);
-      const errorMessage = error instanceof Error ? error.message : 'An error occurred while generating the video';
+      let errorMessage = 'An error occurred while generating the video';
+      
+      if (error instanceof Error) {
+        if (error.message.includes('401')) {
+          errorMessage = 'Invalid or expired API key. Please check your FAL.ai API key in settings.';
+        } else {
+          errorMessage = error.message;
+        }
+      }
+      
       setError(errorMessage);
       toast.error('Failed to generate video', {
         description: errorMessage,
       });
     } finally {
+      if (subscription) {
+        subscription.unsubscribe();
+      }
       setIsGenerating(false);
       setProgressMessage('');
       setProgress(0);
