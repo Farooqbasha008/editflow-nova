@@ -21,11 +21,9 @@ interface FalQueueUpdate {
 }
 
 interface FalVideoResponse {
-  data?: {
-    video?: {
-      url?: string;
-    };
-  };
+  artifacts?: Array<{
+    url?: string;
+  }>;
 }
 
 const VideoGenerator: React.FC<VideoGeneratorProps> = ({ onAddToTimeline }) => {
@@ -83,13 +81,7 @@ const VideoGenerator: React.FC<VideoGeneratorProps> = ({ onAddToTimeline }) => {
       return;
     }
 
-    // Validate API key format
-    if (!apiKey.startsWith('fal_') || apiKey.length < 20) {
-      toast.error('Invalid FAL.ai API key format', {
-        description: 'API key should start with "fal_" and be at least 20 characters long'
-      });
-      return;
-    }
+    // API key validation removed to support different key formats
 
     setIsGenerating(true);
     setError(null);
@@ -106,10 +98,16 @@ const VideoGenerator: React.FC<VideoGeneratorProps> = ({ onAddToTimeline }) => {
       // Clean the prompt to remove control characters
       const cleanedPrompt = (useEnhancedPrompt ? enhancedPrompt : prompt).replace(/\n/g, ' ').replace(/\t/g, ' ');
 
+      // Use the latest model version
       subscription = await fal.subscribe('fal-ai/wan/v2.1/1.3b/text-to-video', {
         input: {
-          prompt: cleanedPrompt
+          prompt: cleanedPrompt,
+          negative_prompt: 'close-up faces, blurry, low quality, distorted faces, rapid movements, complex backgrounds, inconsistent lighting',
+          num_inference_steps: 30, // Changed from num_inference_steps to inference_steps
+          guidance_scale: 8,
+          seed: Math.floor(Math.random() * 1000000)
         },
+        pollInterval: 5000,
         logs: true,
         onQueueUpdate(update: FalQueueUpdate) {
           if (update.status === "IN_PROGRESS") {
@@ -132,7 +130,9 @@ const VideoGenerator: React.FC<VideoGeneratorProps> = ({ onAddToTimeline }) => {
             setProgressMessage(`Waiting in queue... Position: ${update.queue_position ?? 'N/A'}`);
             setProgress(0);
           } else if (update.status === "FAILED") {
-            throw new Error('Video generation failed. Please try again.');
+            setProgressMessage('Generation failed');
+            setError('Video generation failed. Please try again.');
+            // Don't throw here as it won't be caught by the outer try/catch
           }
         },
       });
@@ -146,17 +146,22 @@ const VideoGenerator: React.FC<VideoGeneratorProps> = ({ onAddToTimeline }) => {
 
         subscription.onError((error) => {
           clearTimeout(timeout);
-          reject(error);
+          console.error('Subscription error:', error);
+          reject(error instanceof Error ? error : new Error(String(error)));
         });
 
         subscription.onComplete((result) => {
           clearTimeout(timeout);
+          if (!result) {
+            reject(new Error('Empty result received from FAL.ai'));
+            return;
+          }
           resolve(result as FalVideoResponse);
         });
       });
 
       // Access the video URL correctly
-      const videoUrl = result.data?.video?.url;
+      const videoUrl = result.artifacts?.[0]?.url;
       if (!videoUrl) {
         throw new Error('No video URL in the response. Please try again.');
       }
@@ -174,6 +179,14 @@ const VideoGenerator: React.FC<VideoGeneratorProps> = ({ onAddToTimeline }) => {
       if (error instanceof Error) {
         if (error.message.includes('401')) {
           errorMessage = 'Invalid or expired API key. Please check your FAL.ai API key in settings.';
+        } else if (error.message.includes('429')) {
+          errorMessage = 'Rate limit exceeded. Please try again later.';
+        } else if (error.message.includes('403')) {
+          errorMessage = 'Access denied. Your API key may not have permission to use this service.';
+        } else if (error.message.includes('timeout')) {
+          errorMessage = 'The request timed out. The service might be experiencing high load.';
+        } else if (error.message.includes('network') || error.message.includes('Network')) {
+          errorMessage = 'Network error. Please check your internet connection and try again.';
         } else {
           errorMessage = error.message;
         }

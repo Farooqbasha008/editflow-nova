@@ -60,7 +60,7 @@ const LandingPage = () => {
               </div>
               <h4 className="text-xl font-bold mb-2">Generate complete video</h4>
               <p className="text-[#F7F8F6]/80 mb-6">from script or topic</p>
-              <Link to="/video-generation" className="w-full">
+              <Link to="/script-generation" className="w-full">
                 <Button className="bg-[#D7F266] hover:bg-[#D7F266]/90 text-[#151514] w-full rounded-full transition-all duration-300">
                   Start Creating
                 </Button>

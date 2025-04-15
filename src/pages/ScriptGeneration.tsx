@@ -102,7 +102,7 @@ interface ChatSession {
   timestamp: Date;
 }
 
-const VideoGeneration: React.FC = () => {
+const ScriptGeneration: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>([{
     role: 'assistant',
     content: 'Hi there! I can help you create a video. Describe your story, desired duration, and any specific style preferences. The more details you provide, the better the result will be!',
@@ -1488,4 +1488,4 @@ Each scene's textToVideoPrompt must follow the structured format and guidelines 
   );
 };
 
-export default VideoGeneration;
+export default ScriptGeneration;

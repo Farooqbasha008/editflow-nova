@@ -1,6 +1,6 @@
 import { fal } from "@fal-ai/client";
 
-interface VideoGenerationOptions {
+interface ScriptGenerationOptions {
   duration?: number;
   negativePrompt?: string;
 }
@@ -8,7 +8,7 @@ interface VideoGenerationOptions {
 export async function generateVideo(
   prompt: string,
   apiKey: string,
-  options: VideoGenerationOptions = {}
+  options: ScriptGenerationOptions = {}
 ): Promise<string> {
   const { 
     duration = 5, 
