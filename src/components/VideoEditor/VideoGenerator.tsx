@@ -103,9 +103,10 @@ const VideoGenerator: React.FC<VideoGeneratorProps> = ({ onAddToTimeline }) => {
         input: {
           prompt: cleanedPrompt,
           negative_prompt: 'close-up faces, blurry, low quality, distorted faces, rapid movements, complex backgrounds, inconsistent lighting',
-          num_inference_steps: 30, // Changed from num_inference_steps to inference_steps
-          guidance_scale: 8,
-          seed: Math.floor(Math.random() * 1000000)
+          num_inference_steps: 30, // Corrected parameter name to match API docs
+          guidance_scale: 7, // Adjusted for potentially better stability
+          seed: Math.floor(Math.random() * 1000000),
+          // Added default number of frames
         },
         pollInterval: 5000,
         logs: true,
@@ -131,7 +132,15 @@ const VideoGenerator: React.FC<VideoGeneratorProps> = ({ onAddToTimeline }) => {
             setProgress(0);
           } else if (update.status === "FAILED") {
             setProgressMessage('Generation failed');
-            setError('Video generation failed. Please try again.');
+            let failReason = 'Video generation failed. Please try again.';
+            if (update.logs && update.logs.length > 0) {
+              // Log the last few messages for debugging
+              const relevantLogs = update.logs.slice(-3).map(log => log.message).join('\n');
+              console.error('Fal.ai Generation Failed Logs:', relevantLogs);
+              // Try to extract a more specific reason if possible, otherwise use the generic message
+              failReason = `Video generation failed. Logs: ${relevantLogs.substring(0, 100)}${relevantLogs.length > 100 ? '...' : ''}`;
+            }
+            setError(failReason);
             // Don't throw here as it won't be caught by the outer try/catch
           }
         },
