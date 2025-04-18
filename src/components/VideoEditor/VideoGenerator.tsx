@@ -10,20 +10,8 @@ import { toast } from 'sonner';
 import { TimelineItem } from './VideoEditor';
 import { fal } from "@fal-ai/client";
 
-// Initialize fal client settings
-try {
-  // Check client version
-  console.log("Using fal client version:", (fal as any).version || "unknown");
-  
-  // Set connection timeout
-  fal.config({
-    requestOptions: {
-      timeout: 300000 // 5 minute timeout
-    }
-  });
-} catch (error) {
-  console.error("Failed to initialize fal client:", error);
-}
+// Log the client version for debugging
+console.log("Using fal client version:", (fal as any).version || "unknown");
 
 interface VideoGeneratorProps {
   onAddToTimeline: (item: TimelineItem) => void;
@@ -36,12 +24,15 @@ interface FalQueueUpdate {
 }
 
 interface FalVideoResponse {
-  artifacts?: Array<{
-    url?: string;
-  }>;
   video?: {
     url: string;
   };
+  seed?: number;
+  
+  artifacts?: Array<{
+    url?: string;
+  }>;
+  data?: any;
 }
 
 const VideoGenerator: React.FC<VideoGeneratorProps> = ({ onAddToTimeline }) => {
@@ -114,8 +105,13 @@ const VideoGenerator: React.FC<VideoGeneratorProps> = ({ onAddToTimeline }) => {
         credentials: apiKey
       });
 
+      // Store API key in local storage for future use
+      localStorage.setItem('falai_api_key', apiKey);
+
       // Clean the prompt to remove control characters
       const cleanedPrompt = (useEnhancedPrompt ? enhancedPrompt : prompt).replace(/\n/g, ' ').replace(/\t/g, ' ');
+
+      console.log('Sending request to Fal.ai with prompt:', cleanedPrompt);
 
       // Use the latest model version
       subscription = await fal.subscribe('fal-ai/wan/v2.1/1.3b/text-to-video', {
@@ -194,12 +190,12 @@ const VideoGenerator: React.FC<VideoGeneratorProps> = ({ onAddToTimeline }) => {
       // First try to access the video URL using the documentation format
       let videoUrl = result.video?.url;
       
-      // If that fails, try the artifacts array format from the existing code
+      // If that fails, try the artifacts array format 
       if (!videoUrl && result.artifacts && result.artifacts.length > 0) {
         videoUrl = result.artifacts[0]?.url;
       }
       
-      // If that fails too, check if "data" contains the URL (some API versions use this)
+      // If that fails too, check if "data" contains the URL
       if (!videoUrl && (result as any).data?.video?.url) {
         videoUrl = (result as any).data.video.url;
       }
@@ -211,9 +207,6 @@ const VideoGenerator: React.FC<VideoGeneratorProps> = ({ onAddToTimeline }) => {
 
       setGeneratedVideo(videoUrl);
       toast.success('Video generated successfully!');
-      
-      // Only save valid API key after successful generation
-      localStorage.setItem('falai_api_key', apiKey);
 
     } catch (error) {
       console.error('Error generating video:', error);
