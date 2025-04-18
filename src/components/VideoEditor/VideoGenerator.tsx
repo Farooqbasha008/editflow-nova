@@ -126,8 +126,8 @@ const VideoGenerator: React.FC<VideoGeneratorProps> = ({ onAddToTimeline }) => {
         // Create a timeout promise
         const timeoutPromise = new Promise<never>((_, reject) => {
           setTimeout(() => {
-            reject(new Error('Video generation timed out after 5 minutes'));
-          }, 300000); // 5 minute timeout
+            reject(new Error('Video generation timed out after 10 minutes. The service might be experiencing high load.'));
+          }, 600000); // 10 minute timeout (increased from 5 minutes)
         });
         
         // Use the latest model version with a race against timeout
@@ -164,8 +164,12 @@ const VideoGenerator: React.FC<VideoGeneratorProps> = ({ onAddToTimeline }) => {
                 setProgress(100);
                 setProgressMessage('Finalizing video...');
               } else if (update.status === "IN_QUEUE") {
-                setProgressMessage(`Waiting in queue... Position: ${update.queue_position ?? 'N/A'}`);
-                setProgress(0);
+                const position = update.queue_position ?? 'unknown';
+                setProgressMessage(`Waiting in queue... Position: ${position}. This may take several minutes.`);
+                // Set progress to show movement even in queue
+                setProgress(prev => (prev < 20 ? prev + 1 : prev));
+                // Log queue position for debugging
+                console.log(`In queue at position ${position} at ${new Date().toISOString()}`);
               } else if (update.status === "FAILED") {
                 setProgressMessage('Generation failed');
                 let failReason = 'Video generation failed. Please try again.';
@@ -361,7 +365,19 @@ const VideoGenerator: React.FC<VideoGeneratorProps> = ({ onAddToTimeline }) => {
 
       {error && (
         <Alert variant="destructive">
-          <AlertDescription>{error}</AlertDescription>
+          <AlertDescription>
+            {error}
+            {error.includes('timed out') && (
+              <div className="mt-2 text-xs">
+                The Fal.ai service may be experiencing high load. You can try:
+                <ul className="list-disc pl-5 mt-1">
+                  <li>Try again with a simpler prompt</li>
+                  <li>Try again later when the service might be less busy</li>
+                  <li>Check your API key has proper access to the text-to-video model</li>
+                </ul>
+              </div>
+            )}
+          </AlertDescription>
         </Alert>
       )}
 
