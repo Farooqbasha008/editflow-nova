@@ -10,6 +10,21 @@ import { toast } from 'sonner';
 import { TimelineItem } from './VideoEditor';
 import { fal } from "@fal-ai/client";
 
+// Initialize fal client settings
+try {
+  // Check client version
+  console.log("Using fal client version:", (fal as any).version || "unknown");
+  
+  // Set connection timeout
+  fal.config({
+    requestOptions: {
+      timeout: 300000 // 5 minute timeout
+    }
+  });
+} catch (error) {
+  console.error("Failed to initialize fal client:", error);
+}
+
 interface VideoGeneratorProps {
   onAddToTimeline: (item: TimelineItem) => void;
 }
@@ -24,6 +39,9 @@ interface FalVideoResponse {
   artifacts?: Array<{
     url?: string;
   }>;
+  video?: {
+    url: string;
+  };
 }
 
 const VideoGenerator: React.FC<VideoGeneratorProps> = ({ onAddToTimeline }) => {
@@ -36,6 +54,7 @@ const VideoGenerator: React.FC<VideoGeneratorProps> = ({ onAddToTimeline }) => {
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [apiKey, setApiKey] = useState('');
+  const [debuggingInfo, setDebuggingInfo] = useState<string | null>(null);
 
   // Load API key from localStorage
   useEffect(() => {
@@ -103,10 +122,12 @@ const VideoGenerator: React.FC<VideoGeneratorProps> = ({ onAddToTimeline }) => {
         input: {
           prompt: cleanedPrompt,
           negative_prompt: 'close-up faces, blurry, low quality, distorted faces, rapid movements, complex backgrounds, inconsistent lighting',
-          num_inference_steps: 30, // Corrected parameter name to match API docs
-          guidance_scale: 7, // Adjusted for potentially better stability
+          num_inference_steps: 30,
+          guidance_scale: 7,
           seed: Math.floor(Math.random() * 1000000),
-          // Added default number of frames
+          aspect_ratio: "16:9",
+          sampler: "unipc",
+          shift: 5
         },
         pollInterval: 5000,
         logs: true,
@@ -134,14 +155,11 @@ const VideoGenerator: React.FC<VideoGeneratorProps> = ({ onAddToTimeline }) => {
             setProgressMessage('Generation failed');
             let failReason = 'Video generation failed. Please try again.';
             if (update.logs && update.logs.length > 0) {
-              // Log the last few messages for debugging
               const relevantLogs = update.logs.slice(-3).map(log => log.message).join('\n');
               console.error('Fal.ai Generation Failed Logs:', relevantLogs);
-              // Try to extract a more specific reason if possible, otherwise use the generic message
               failReason = `Video generation failed. Logs: ${relevantLogs.substring(0, 100)}${relevantLogs.length > 100 ? '...' : ''}`;
             }
             setError(failReason);
-            // Don't throw here as it won't be caught by the outer try/catch
           }
         },
       });
@@ -165,14 +183,30 @@ const VideoGenerator: React.FC<VideoGeneratorProps> = ({ onAddToTimeline }) => {
             reject(new Error('Empty result received from FAL.ai'));
             return;
           }
+          
+          // Log the full response to understand its structure
+          console.log('FAL.ai response:', JSON.stringify(result, null, 2));
+          
           resolve(result as FalVideoResponse);
         });
       });
 
-      // Access the video URL correctly
-      const videoUrl = result.artifacts?.[0]?.url;
+      // First try to access the video URL using the documentation format
+      let videoUrl = result.video?.url;
+      
+      // If that fails, try the artifacts array format from the existing code
+      if (!videoUrl && result.artifacts && result.artifacts.length > 0) {
+        videoUrl = result.artifacts[0]?.url;
+      }
+      
+      // If that fails too, check if "data" contains the URL (some API versions use this)
+      if (!videoUrl && (result as any).data?.video?.url) {
+        videoUrl = (result as any).data.video.url;
+      }
+      
       if (!videoUrl) {
-        throw new Error('No video URL in the response. Please try again.');
+        console.error('Could not find video URL in response:', result);
+        throw new Error('No video URL found in the response. Please try again.');
       }
 
       setGeneratedVideo(videoUrl);
@@ -201,6 +235,8 @@ const VideoGenerator: React.FC<VideoGeneratorProps> = ({ onAddToTimeline }) => {
         }
       }
       
+      // Store detailed debugging information
+      setDebuggingInfo(JSON.stringify(error, Object.getOwnPropertyNames(error)));
       setError(errorMessage);
       toast.error('Failed to generate video', {
         description: errorMessage,
@@ -335,6 +371,15 @@ const VideoGenerator: React.FC<VideoGeneratorProps> = ({ onAddToTimeline }) => {
         <Alert variant="destructive">
           <AlertDescription>{error}</AlertDescription>
         </Alert>
+      )}
+
+      {debuggingInfo && (
+        <details className="text-xs text-white/60 mt-2 bg-black/20 p-2 rounded">
+          <summary className="cursor-pointer">Debug Information (click to expand)</summary>
+          <div className="p-2 mt-1 bg-black/40 rounded max-h-32 overflow-auto">
+            <pre>{debuggingInfo}</pre>
+          </div>
+        </details>
       )}
 
       {(isGenerating || progressMessage) && (
