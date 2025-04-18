@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import Header from './Header';
 import MediaLibrary from './MediaLibrary';
@@ -333,7 +332,7 @@ const VideoEditor: React.FC = () => {
     timelineItems.find(item => item.type === 'video' && item.id === selectedItem?.id) || null;
   
   return (
-    <div className="flex flex-col h-full bg-[#151514] text-[#F7F8F6] overflow-hidden">
+    <div className="flex flex-col h-full bg-[#000000] text-[#EEEEEE] overflow-hidden">
       <Header 
         projectName={projectName}
         onRename={handleRename}
@@ -371,17 +370,17 @@ const VideoEditor: React.FC = () => {
             <ResizableHandle withHandle />
             
             <ResizablePanel defaultSize={40} minSize={20}>
-              <div className="flex items-center justify-between p-1 bg-[#151514]/70 border-b border-white/10 h-8">
+              <div className="flex items-center justify-between p-1 bg-[#000000]/70 border-b border-white/10 h-8">
                 <div className="flex items-center">
                   <button 
-                    className="p-1 text-[#F7F8F6]/80 hover:text-[#D7F266] transition-colors mx-1"
+                    className="p-1 text-[#EEEEEE]/80 hover:text-[#C9FF00] transition-colors mx-1"
                     onClick={handleUndo}
                     title="Undo"
                   >
                     <ChevronLeft size={14} />
                   </button>
                   <button 
-                    className="p-1 text-[#F7F8F6]/80 hover:text-[#D7F266] transition-colors mr-1"
+                    className="p-1 text-[#EEEEEE]/80 hover:text-[#C9FF00] transition-colors mr-1"
                     onClick={handleRedo}
                     title="Redo"
                   >
@@ -389,7 +388,7 @@ const VideoEditor: React.FC = () => {
                   </button>
                   <div className="h-4 w-px bg-white/20 mx-1"></div>
                   <button 
-                    className="p-1 text-[#F7F8F6]/80 hover:text-[#D7F266] transition-colors mx-1"
+                    className="p-1 text-[#EEEEEE]/80 hover:text-[#C9FF00] transition-colors mx-1"
                     onClick={handleTrimItem}
                     title="Trim selected item"
                   >
@@ -398,15 +397,15 @@ const VideoEditor: React.FC = () => {
                 </div>
                 
                 <div className="flex items-center">
-                  <span className="text-xs font-semibold text-[#F7F8F6]/80 mr-2">Timeline Zoom:</span>
+                  <span className="text-xs font-semibold text-[#EEEEEE]/80 mr-2">Timeline Zoom:</span>
                   <button 
-                    className="p-1 text-[#F7F8F6]/80 hover:text-[#D7F266] transition-colors"
+                    className="p-1 text-[#EEEEEE]/80 hover:text-[#C9FF00] transition-colors"
                     onClick={handleTimelineZoomOut}
                   >
                     <ZoomOut size={14} />
                   </button>
                   <button 
-                    className="p-1 text-[#F7F8F6]/80 hover:text-[#D7F266] transition-colors ml-1"
+                    className="p-1 text-[#EEEEEE]/80 hover:text-[#C9FF00] transition-colors ml-1"
                     onClick={handleTimelineZoomIn}
                   >
                     <ZoomIn size={14} />

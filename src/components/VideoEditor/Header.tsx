@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -134,7 +133,7 @@ const Header: React.FC<HeaderProps> = ({
   };
   
   return (
-    <div className="flex items-center justify-between p-3 bg-[#151514] border-b border-white/10">
+    <div className="flex items-center justify-between p-3 bg-[#000000] border-b border-white/10">
       <div className="flex items-center space-x-4">
         {editMode ? (
           <Input
@@ -142,12 +141,12 @@ const Header: React.FC<HeaderProps> = ({
             onChange={(e) => setTempName(e.target.value)}
             onBlur={handleSubmitName}
             onKeyDown={handleKeyDown}
-            className="w-64 bg-[#242423] border-white/20 focus-visible:ring-[#D7F266]"
+            className="w-64 bg-[#000000] border-white/20 focus-visible:ring-[#C9FF00]"
             autoFocus
           />
         ) : (
           <h1
-            className="text-lg font-medium text-white cursor-pointer hover:text-[#D7F266] transition-colors flex items-center"
+            className="text-lg font-medium text-white cursor-pointer hover:text-[#C9FF00] transition-colors flex items-center font-heading"
             onClick={() => setEditMode(true)}
           >
             {projectName}
@@ -162,7 +161,7 @@ const Header: React.FC<HeaderProps> = ({
           size="sm" 
           onClick={handleSave}
           disabled={isSaving}
-          className="text-white border-white/20 hover:bg-[#242423] hover:text-[#D7F266]"
+          className="text-white border-white/20 hover:bg-[#242423] hover:text-[#C9FF00]"
         >
           {isSaving ? (
             <>
@@ -181,7 +180,7 @@ const Header: React.FC<HeaderProps> = ({
           variant="outline" 
           size="sm" 
           onClick={onExport}
-          className="text-white border-white/20 hover:bg-[#242423] hover:text-[#D7F266]"
+          className="text-white border-white/20 hover:bg-[#242423] hover:text-[#C9FF00]"
         >
           <Download className="h-4 w-4 mr-2" />
           Export
@@ -192,7 +191,7 @@ const Header: React.FC<HeaderProps> = ({
             variant="ghost"
             size="sm"
             onClick={handleSignOut}
-            className="text-white hover:bg-[#242423] hover:text-[#D7F266]"
+            className="text-white hover:bg-[#242423] hover:text-[#C9FF00]"
           >
             <User className="h-4 w-4 mr-2" />
             Sign Out
@@ -202,7 +201,7 @@ const Header: React.FC<HeaderProps> = ({
             variant="ghost"
             size="sm"
             onClick={() => setShowLogin(true)}
-            className="text-white hover:bg-[#242423] hover:text-[#D7F266]"
+            className="text-white hover:bg-[#242423] hover:text-[#C9FF00]"
           >
             <LogIn className="h-4 w-4 mr-2" />
             Sign In
@@ -211,9 +210,9 @@ const Header: React.FC<HeaderProps> = ({
       </div>
       
       <Dialog open={showLogin} onOpenChange={setShowLogin}>
-        <DialogContent className="bg-[#242423] border-white/10 text-white">
+        <DialogContent className="bg-[#000000] border-white/10 text-white">
           <DialogHeader>
-            <DialogTitle className="text-[#D7F266]">Sign in to save your work</DialogTitle>
+            <DialogTitle className="text-[#C9FF00] font-heading">Sign in to save your work</DialogTitle>
             <DialogDescription className="text-white/70">
               Create an account or sign in to save your projects.
             </DialogDescription>
@@ -227,7 +226,7 @@ const Header: React.FC<HeaderProps> = ({
                 value={email} 
                 onChange={(e) => setEmail(e.target.value)} 
                 placeholder="your@email.com"
-                className="bg-[#151514] border-white/20 focus-visible:ring-[#D7F266]"
+                className="bg-[#000000] border-white/20 focus-visible:ring-[#C9FF00]"
               />
             </div>
             
@@ -238,7 +237,7 @@ const Header: React.FC<HeaderProps> = ({
                 type="password" 
                 value={password} 
                 onChange={(e) => setPassword(e.target.value)} 
-                className="bg-[#151514] border-white/20 focus-visible:ring-[#D7F266]"
+                className="bg-[#000000] border-white/20 focus-visible:ring-[#C9FF00]"
               />
             </div>
           </div>
@@ -248,23 +247,39 @@ const Header: React.FC<HeaderProps> = ({
               variant="outline" 
               className="border-white/20"
               onClick={() => setShowLogin(false)}
-              disabled={isAuthLoading}
             >
               Cancel
             </Button>
-            <Button 
-              onClick={handleSignUp}
-              disabled={isAuthLoading}
-              className="bg-[#242423] border border-white/20 hover:bg-[#444443]"
-            >
-              {isAuthLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Sign Up'}
-            </Button>
+            
             <Button 
               onClick={handleSignIn}
               disabled={isAuthLoading}
-              className="bg-[#D7F266] text-[#151514] hover:bg-[#C7E256]"
+              className="bg-[#C9FF00] text-[#000000] hover:bg-[#C9FF00]/90"
             >
-              {isAuthLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Sign In'}
+              {isAuthLoading ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Signing in...
+                </>
+              ) : (
+                'Sign In'
+              )}
+            </Button>
+            
+            <Button 
+              variant="outline"
+              onClick={handleSignUp}
+              disabled={isAuthLoading}
+              className="bg-transparent text-white border-white/20 hover:bg-[#242423] hover:text-[#C9FF00]"
+            >
+              {isAuthLoading ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Creating account...
+                </>
+              ) : (
+                'Create Account'
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>

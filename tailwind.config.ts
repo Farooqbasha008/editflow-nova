@@ -18,6 +18,10 @@ export default {
 			}
 		},
 		extend: {
+			fontFamily: {
+				'sans': ['"Aeonik"', 'sans-serif'],
+				'heading': ['"NEUE MACHINA"', 'sans-serif'],
+			},
 			colors: {
 				border: 'hsl(var(--border))',
 				input: 'hsl(var(--input))',
@@ -72,10 +76,10 @@ export default {
 				},
 				// New theme colors
 				theme: {
-					primary: '#D7F266', // Lime Green
-					dark: '#151514',    // Almost Black
-					neutral: '#D3DDDA', // Soft Grey
-					light: '#F7F8F6',   // Off-White
+					primary: '#C9FF00', // Neon Green
+					dark: '#000000',    // Black
+					neutral: '#C0C0C0', // Light Gray
+					light: '#EEEEEE',   // White
 				}
 			},
 			borderRadius: {

@@ -1,3 +1,6 @@
+/* Font imports for NEUE MACHINA and Aeonik */
+@import url('https://fonts.cdnfonts.com/css/neue-machina');
+@import url('https://fonts.cdnfonts.com/css/aeonik');
 
 @import 'tailwindcss/base';
 @import 'tailwindcss/components';
@@ -5,73 +8,73 @@
 
 @layer base {
   :root {
-    --background: 60 2% 97%;     /* Off-White #F7F8F6 */
-    --foreground: 60 1% 8%;      /* Almost Black #151514 */
+    --background: 0 0% 75%;      /* Light Gray #C0C0C0 */
+    --foreground: 0 0% 0%;       /* Black #000000 */
 
-    --card: 60 2% 97%;           /* Off-White #F7F8F6 */
-    --card-foreground: 60 1% 8%; /* Almost Black #151514 */
+    --card: 0 0% 75%;            /* Light Gray #C0C0C0 */
+    --card-foreground: 0 0% 0%;  /* Black #000000 */
 
-    --popover: 60 2% 97%;        /* Off-White #F7F8F6 */
-    --popover-foreground: 60 1% 8%; /* Almost Black #151514 */
+    --popover: 0 0% 93%;         /* White #EEEEEE */
+    --popover-foreground: 0 0% 0%; /* Black #000000 */
 
-    --primary: 75 86% 67%;       /* Lime Green #D7F266 */
-    --primary-foreground: 60 1% 8%; /* Almost Black #151514 */
+    --primary: 72 100% 50%;      /* Neon Green #C9FF00 */
+    --primary-foreground: 0 0% 0%; /* Black #000000 */
 
-    --secondary: 165 8% 85%;     /* Soft Grey #D3DDDA */
-    --secondary-foreground: 60 1% 8%; /* Almost Black #151514 */
+    --secondary: 0 0% 75%;       /* Light Gray #C0C0C0 */
+    --secondary-foreground: 0 0% 0%; /* Black #000000 */
 
-    --muted: 165 8% 85%;         /* Soft Grey #D3DDDA */
-    --muted-foreground: 60 1% 20%; /* Darker variant of Almost Black */
+    --muted: 0 0% 75%;           /* Light Gray #C0C0C0 */
+    --muted-foreground: 0 0% 20%; /* Darker variant of Black */
 
-    --accent: 75 86% 67%;        /* Lime Green #D7F266 */
-    --accent-foreground: 60 1% 8%; /* Almost Black #151514 */
+    --accent: 72 100% 50%;       /* Neon Green #C9FF00 */
+    --accent-foreground: 0 0% 0%; /* Black #000000 */
 
     --destructive: 0 84% 60%;
-    --destructive-foreground: 60 2% 97%; /* Off-White #F7F8F6 */
+    --destructive-foreground: 0 0% 93%; /* White #EEEEEE */
 
-    --border: 165 8% 85%;        /* Soft Grey #D3DDDA */
-    --input: 165 8% 85%;         /* Soft Grey #D3DDDA */
-    --ring: 75 86% 67%;          /* Lime Green #D7F266 */
+    --border: 0 0% 75%;          /* Light Gray #C0C0C0 */
+    --input: 0 0% 75%;           /* Light Gray #C0C0C0 */
+    --ring: 72 100% 50%;         /* Neon Green #C9FF00 */
 
     --radius: 0.5rem;
 
     /* Editor-specific variables */
-    --editor-bg: 60 1% 8%;         /* Almost Black #151514 */
-    --editor-panel: 60 1% 12%;     /* Slightly lighter than Almost Black */
-    --editor-timeline: 60 1% 10%;  /* Between the two above */
-    --editor-hover: 60 1% 15%;     /* Slightly lighter for hover states */
-    --editor-accent: 75 86% 67%;   /* Lime Green #D7F266 */
-    --editor-accent-hover: 75 76% 60%; /* Slightly darker Lime Green */
+    --editor-bg: 0 0% 0%;        /* Black #000000 */
+    --editor-panel: 0 0% 12%;    /* Dark Gray */
+    --editor-timeline: 0 0% 10%; /* Slightly lighter Black */
+    --editor-hover: 0 0% 15%;    /* Hover state Gray */
+    --editor-accent: 72 100% 50%; /* Neon Green #C9FF00 */
+    --editor-accent-hover: 72 90% 45%; /* Slightly darker Neon Green */
   }
 
   .dark {
-    --background: 60 1% 8%;      /* Almost Black #151514 */
-    --foreground: 60 2% 97%;     /* Off-White #F7F8F6 */
+    --background: 0 0% 0%;       /* Black #000000 */
+    --foreground: 0 0% 93%;      /* White #EEEEEE */
 
-    --card: 60 1% 8%;            /* Almost Black #151514 */
-    --card-foreground: 60 2% 97%; /* Off-White #F7F8F6 */
+    --card: 0 0% 0%;             /* Black #000000 */
+    --card-foreground: 0 0% 93%; /* White #EEEEEE */
 
-    --popover: 60 1% 8%;         /* Almost Black #151514 */
-    --popover-foreground: 60 2% 97%; /* Off-White #F7F8F6 */
+    --popover: 0 0% 0%;          /* Black #000000 */
+    --popover-foreground: 0 0% 93%; /* White #EEEEEE */
 
-    --primary: 75 86% 67%;       /* Lime Green #D7F266 */
-    --primary-foreground: 60 1% 8%; /* Almost Black #151514 */
+    --primary: 72 100% 50%;      /* Neon Green #C9FF00 */
+    --primary-foreground: 0 0% 0%; /* Black #000000 */
 
-    --secondary: 165 8% 25%;     /* Darker Soft Grey */
-    --secondary-foreground: 60 2% 97%; /* Off-White #F7F8F6 */
+    --secondary: 0 0% 25%;       /* Darker Gray */
+    --secondary-foreground: 0 0% 93%; /* White #EEEEEE */
 
-    --muted: 165 8% 25%;         /* Darker Soft Grey */
-    --muted-foreground: 165 8% 65%; /* Lighter Soft Grey */
+    --muted: 0 0% 25%;           /* Darker Gray */
+    --muted-foreground: 0 0% 65%; /* Lighter Gray */
 
-    --accent: 75 86% 67%;        /* Lime Green #D7F266 */
-    --accent-foreground: 60 1% 8%; /* Almost Black #151514 */
+    --accent: 72 100% 50%;       /* Neon Green #C9FF00 */
+    --accent-foreground: 0 0% 0%; /* Black #000000 */
 
     --destructive: 0 63% 31%;
-    --destructive-foreground: 60 2% 97%; /* Off-White #F7F8F6 */
+    --destructive-foreground: 0 0% 93%; /* White #EEEEEE */
 
-    --border: 165 8% 35%;        /* Mid-tone Soft Grey */
-    --input: 165 8% 35%;         /* Mid-tone Soft Grey */
-    --ring: 75 86% 67%;          /* Lime Green #D7F266 */
+    --border: 0 0% 35%;          /* Mid-tone Gray */
+    --input: 0 0% 35%;           /* Mid-tone Gray */
+    --ring: 72 100% 50%;         /* Neon Green #C9FF00 */
   }
 }
 
@@ -90,6 +93,12 @@
     background-color: hsl(var(--background));
     color: hsl(var(--foreground));
     font-feature-settings: "rlig" 1, "calt" 1;
+    font-family: 'Aeonik', sans-serif;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'NEUE MACHINA', sans-serif;
+    font-weight: 500;
   }
 }
 

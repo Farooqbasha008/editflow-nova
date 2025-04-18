@@ -173,7 +173,7 @@ const SoundEffectsGenerator: React.FC<SoundEffectsGeneratorProps> = ({ onAddToTi
   return (
     <div className="space-y-3 p-3">
       <div className="space-y-2">
-        <Label htmlFor="sound-description" className="text-xs text-[#F7F8F6]">Sound Description</Label>
+        <Label htmlFor="sound-description" className="text-xs text-[#EEEEEE]">Sound Description</Label>
         <Select value={soundType} onValueChange={(type) => {
           setSoundType(type);
           const selectedType = SOUND_TYPES.find(t => t.id === type);
@@ -181,12 +181,12 @@ const SoundEffectsGenerator: React.FC<SoundEffectsGeneratorProps> = ({ onAddToTi
             setDescription(selectedType.example);
           }
         }}>
-          <SelectTrigger id="sound-type" className="bg-transparent border-white/20 text-white focus:ring-[#D7F266]">
+          <SelectTrigger id="sound-type" className="bg-transparent border-white/20 text-white focus:ring-[#C9FF00]">
             <SelectValue placeholder="Select a sound type" />
           </SelectTrigger>
-          <SelectContent className="bg-[#1A1A1A] border-white/20 text-white">
+          <SelectContent className="bg-[#000000] border-white/20 text-white">
             {SOUND_TYPES.map((type) => (
-              <SelectItem key={type.id} value={type.id} className="focus:bg-[#D7F266]/20 focus:text-white">
+              <SelectItem key={type.id} value={type.id} className="focus:bg-[#C9FF00]/20 focus:text-white">
                 {type.name}
               </SelectItem>
             ))}
@@ -197,29 +197,29 @@ const SoundEffectsGenerator: React.FC<SoundEffectsGeneratorProps> = ({ onAddToTi
           placeholder="Describe the sound effect you want to generate..."
           value={description}
           onChange={(e) => setDescription(e.target.value)}
-          className="h-24 text-xs bg-transparent border-white/20 resize-none focus-visible:ring-[#D7F266]"
+          className="h-24 text-xs bg-transparent border-white/20 resize-none focus-visible:ring-[#C9FF00]"
         />
       </div>
 
       {!apiKey && (
         <div className="space-y-2">
-          <Label htmlFor="api-key" className="text-xs text-[#F7F8F6]">ElevenLabs API Key</Label>
+          <Label htmlFor="api-key" className="text-xs text-[#EEEEEE]">ElevenLabs API Key</Label>
           <div className="flex space-x-2">
             <input
               id="api-key"
               type="password"
               placeholder="Enter your ElevenLabs API key"
-              className="flex-1 h-9 px-3 py-2 text-xs rounded-md bg-transparent border border-white/20 text-white focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#D7F266]"
+              className="flex-1 h-9 px-3 py-2 text-xs rounded-md bg-transparent border border-white/20 text-white focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#C9FF00]"
               onChange={(e) => setApiKey(e.target.value)}
             />
             <Button 
               onClick={() => saveApiKey(apiKey)}
-              className="bg-[#D7F266] hover:bg-[#D7F266]/90 text-[#151514] h-9 px-3 py-2 text-xs"
+              className="bg-[#C9FF00] hover:bg-[#C9FF00]/90 text-[#000000] h-9 px-3 py-2 text-xs"
             >
               Save
             </Button>
           </div>
-          <p className="text-xs text-[#F7F8F6]/60">
+          <p className="text-xs text-[#EEEEEE]/60">
             Your API key is stored locally and never sent to our servers.
           </p>
         </div>
@@ -228,7 +228,7 @@ const SoundEffectsGenerator: React.FC<SoundEffectsGeneratorProps> = ({ onAddToTi
       <Button
         onClick={handleGenerate}
         disabled={isGenerating || !description.trim()}
-        className="w-full bg-[#D7F266] hover:bg-[#D7F266]/90 text-[#151514] rounded-full transition-all duration-300 text-sm h-8"
+        className="w-full bg-[#C9FF00] hover:bg-[#C9FF00]/90 text-[#000000] rounded-full transition-all duration-300 text-sm h-8"
       >
         {isGenerating ? (
           <span className="animate-pulse">Generating...</span>
@@ -278,7 +278,7 @@ const SoundEffectsGenerator: React.FC<SoundEffectsGeneratorProps> = ({ onAddToTi
             >
               {isPlaying ? <Pause size={12} /> : <Play size={12} />}
             </button>
-            <div className="text-xs text-[#F7F8F6]/90 truncate flex-1">
+            <div className="text-xs text-[#EEEEEE]/90 truncate flex-1">
               {description.substring(0, 20)}{description.length > 20 ? '...' : ''}
             </div>
             <Button
@@ -300,7 +300,7 @@ const SoundEffectsGenerator: React.FC<SoundEffectsGeneratorProps> = ({ onAddToTi
           <Button
             size="sm"
             onClick={handleAddToTimeline}
-            className="w-full h-8 text-xs bg-editor-panel border border-white/20 hover:bg-editor-hover text-[#F7F8F6]"
+            className="w-full h-8 text-xs bg-editor-panel border border-white/20 hover:bg-editor-hover text-[#EEEEEE]"
             variant="outline"
           >
             <Plus size={14} className="mr-1" /> Add to Timeline
