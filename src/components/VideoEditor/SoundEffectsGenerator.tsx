@@ -63,12 +63,22 @@ const SoundEffectsGenerator: React.FC<SoundEffectsGeneratorProps> = ({ onAddToTi
     });
 
     try {
+      console.log('Sending request to ElevenLabs with prompt:', description);
+      
       const audioUrl = await generateSound(
         description,
         apiKey,
         { type: 'sfx', duration: 5 }
       );
-
+      
+      console.log('Received audio URL:', audioUrl);
+      
+      // Try preloading the audio
+      if (audioRef.current) {
+        audioRef.current.src = audioUrl;
+        await audioRef.current.load();
+      }
+      
       setGeneratedAudio(audioUrl);
       toast.success('Sound effect generated successfully!');
     } catch (error) {
@@ -82,17 +92,39 @@ const SoundEffectsGenerator: React.FC<SoundEffectsGeneratorProps> = ({ onAddToTi
   };
 
   const handlePlayPause = () => {
-    if (!audioRef.current || !generatedAudio) return;
-
+    if (!audioRef.current || !generatedAudio) {
+      console.error('Audio element or URL is missing:', {
+        audioRef: !!audioRef.current,
+        generatedAudio: !!generatedAudio
+      });
+      return;
+    }
+    
+    console.log('Current audio source:', audioRef.current.src);
+    
     if (isPlaying) {
       audioRef.current.pause();
+      setIsPlaying(false);
     } else {
-      audioRef.current.play().catch(err => {
-        console.error('Failed to play audio:', err);
-        toast.error('Failed to play audio');
-      });
+      // Force reload of audio source
+      audioRef.current.src = generatedAudio;
+      audioRef.current.load();
+      
+      const playPromise = audioRef.current.play();
+      if (playPromise !== undefined) {
+        playPromise
+          .then(() => {
+            console.log('Audio playing successfully');
+            setIsPlaying(true);
+          })
+          .catch(err => {
+            console.error('Failed to play audio:', err);
+            toast.error('Failed to play audio', {
+              description: 'Browser prevented audio playback. Try clicking the Play button again.'
+            });
+          });
+      }
     }
-    setIsPlaying(!isPlaying);
   };
 
   const handleAddToTimeline = () => {
