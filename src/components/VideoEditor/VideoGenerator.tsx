@@ -91,23 +91,33 @@ const VideoGenerator: React.FC<VideoGeneratorProps> = ({ onAddToTimeline }) => {
       return;
     }
 
-    // API key validation removed to support different key formats
-
     setIsGenerating(true);
     setError(null);
-    setProgressMessage('Initializing...');
-    setProgress(0);
+    setProgressMessage('Validating API key...');
+    setProgress(10);
+    setDebuggingInfo(null);
 
-    let subscription;
+    let subscription: any;
     try {
       // Configure the client with the API key
       fal.config({
         credentials: apiKey
       });
-
-      // Store API key in local storage for future use
+      
+      // Simple validation of API key format
+      if (!apiKey.match(/^[a-zA-Z0-9_\-]{20,}$/)) {
+        // Show a warning but continue - some APIs may use different formats
+        console.warn('API key may not match expected format (should be at least 20 alphanumeric characters)');
+        toast.warning('Your API key format looks unusual, but we\'ll try anyway');
+      }
+      
+      // Store API key in localStorage
       localStorage.setItem('falai_api_key', apiKey);
 
+      // Continue with video generation
+      setProgressMessage('Initializing...');
+      setProgress(20);
+      
       // Clean the prompt to remove control characters
       const cleanedPrompt = (useEnhancedPrompt ? enhancedPrompt : prompt).replace(/\n/g, ' ').replace(/\t/g, ' ');
 
@@ -123,7 +133,8 @@ const VideoGenerator: React.FC<VideoGeneratorProps> = ({ onAddToTimeline }) => {
           seed: Math.floor(Math.random() * 1000000),
           aspect_ratio: "16:9",
           sampler: "unipc",
-          shift: 5
+          shift: 5,
+          enable_safety_checker: true
         },
         pollInterval: 5000,
         logs: true,
@@ -213,11 +224,11 @@ const VideoGenerator: React.FC<VideoGeneratorProps> = ({ onAddToTimeline }) => {
       let errorMessage = 'An error occurred while generating the video';
       
       if (error instanceof Error) {
-        if (error.message.includes('401')) {
-          errorMessage = 'Invalid or expired API key. Please check your FAL.ai API key in settings.';
-        } else if (error.message.includes('429')) {
+        if (error.message.includes('401') || (error as any).status === 401) {
+          errorMessage = 'Authentication failed. Please check your FAL.ai API key - it appears to be invalid or expired. Make sure you are using an API key from https://fal.ai/dashboard/keys and not the model key.';
+        } else if (error.message.includes('429') || (error as any).status === 429) {
           errorMessage = 'Rate limit exceeded. Please try again later.';
-        } else if (error.message.includes('403')) {
+        } else if (error.message.includes('403') || (error as any).status === 403) {
           errorMessage = 'Access denied. Your API key may not have permission to use this service.';
         } else if (error.message.includes('timeout')) {
           errorMessage = 'The request timed out. The service might be experiencing high load.';
