@@ -97,7 +97,6 @@ const VideoGenerator: React.FC<VideoGeneratorProps> = ({ onAddToTimeline }) => {
     setProgress(10);
     setDebuggingInfo(null);
 
-    let subscription: any;
     try {
       // Configure the client with the API key
       fal.config({
@@ -123,104 +122,95 @@ const VideoGenerator: React.FC<VideoGeneratorProps> = ({ onAddToTimeline }) => {
 
       console.log('Sending request to Fal.ai with prompt:', cleanedPrompt);
 
-      // Use the latest model version
-      subscription = await fal.subscribe('fal-ai/wan/v2.1/1.3b/text-to-video', {
-        input: {
-          prompt: cleanedPrompt,
-          negative_prompt: 'close-up faces, blurry, low quality, distorted faces, rapid movements, complex backgrounds, inconsistent lighting',
-          num_inference_steps: 30,
-          guidance_scale: 7,
-          seed: Math.floor(Math.random() * 1000000),
-          aspect_ratio: "16:9",
-          sampler: "unipc",
-          shift: 5,
-          enable_safety_checker: true
-        },
-        pollInterval: 5000,
-        logs: true,
-        onQueueUpdate(update: FalQueueUpdate) {
-          if (update.status === "IN_PROGRESS") {
-            setProgressMessage('Generating video...');
-            if (update.logs?.length > 0) {
-              const lastLog = update.logs[update.logs.length - 1];
-              const progressMatch = lastLog.message.match(/(\d+)\/(\d+)\s*steps/i);
-              if (progressMatch) {
-                const [_, current, total] = progressMatch;
-                const percent = Math.round((parseInt(current) / parseInt(total)) * 100);
-                setProgress(percent);
-              } else {
-                setProgress(prev => Math.min(95, prev + 5));
+      try {
+        // Create a timeout promise
+        const timeoutPromise = new Promise<never>((_, reject) => {
+          setTimeout(() => {
+            reject(new Error('Video generation timed out after 5 minutes'));
+          }, 300000); // 5 minute timeout
+        });
+        
+        // Use the latest model version with a race against timeout
+        const subscriptionResult = await Promise.race([
+          fal.subscribe('fal-ai/wan/v2.1/1.3b/text-to-video', {
+            input: {
+              prompt: cleanedPrompt,
+              negative_prompt: 'close-up faces, blurry, low quality, distorted faces, rapid movements, complex backgrounds, inconsistent lighting',
+              num_inference_steps: 30,
+              guidance_scale: 7,
+              seed: Math.floor(Math.random() * 1000000),
+              aspect_ratio: "16:9",
+              sampler: "unipc",
+              shift: 5,
+              enable_safety_checker: true
+            },
+            pollInterval: 5000,
+            logs: true,
+            onQueueUpdate(update: FalQueueUpdate) {
+              if (update.status === "IN_PROGRESS") {
+                setProgressMessage('Generating video...');
+                if (update.logs?.length > 0) {
+                  const lastLog = update.logs[update.logs.length - 1];
+                  const progressMatch = lastLog.message.match(/(\d+)\/(\d+)\s*steps/i);
+                  if (progressMatch) {
+                    const [_, current, total] = progressMatch;
+                    const percent = Math.round((parseInt(current) / parseInt(total)) * 100);
+                    setProgress(percent);
+                  } else {
+                    setProgress(prev => Math.min(95, prev + 5));
+                  }
+                }
+              } else if (update.status === "COMPLETED") {
+                setProgress(100);
+                setProgressMessage('Finalizing video...');
+              } else if (update.status === "IN_QUEUE") {
+                setProgressMessage(`Waiting in queue... Position: ${update.queue_position ?? 'N/A'}`);
+                setProgress(0);
+              } else if (update.status === "FAILED") {
+                setProgressMessage('Generation failed');
+                let failReason = 'Video generation failed. Please try again.';
+                if (update.logs && update.logs.length > 0) {
+                  const relevantLogs = update.logs.slice(-3).map(log => log.message).join('\n');
+                  console.error('Fal.ai Generation Failed Logs:', relevantLogs);
+                  failReason = `Video generation failed. Logs: ${relevantLogs.substring(0, 100)}${relevantLogs.length > 100 ? '...' : ''}`;
+                }
+                setError(failReason);
               }
-            }
-          } else if (update.status === "COMPLETED") {
-            setProgress(100);
-            setProgressMessage('Finalizing video...');
-          } else if (update.status === "IN_QUEUE") {
-            setProgressMessage(`Waiting in queue... Position: ${update.queue_position ?? 'N/A'}`);
-            setProgress(0);
-          } else if (update.status === "FAILED") {
-            setProgressMessage('Generation failed');
-            let failReason = 'Video generation failed. Please try again.';
-            if (update.logs && update.logs.length > 0) {
-              const relevantLogs = update.logs.slice(-3).map(log => log.message).join('\n');
-              console.error('Fal.ai Generation Failed Logs:', relevantLogs);
-              failReason = `Video generation failed. Logs: ${relevantLogs.substring(0, 100)}${relevantLogs.length > 100 ? '...' : ''}`;
-            }
-            setError(failReason);
-          }
-        },
-      });
+            },
+          }),
+          timeoutPromise
+        ]);
+        
+        // Log the full response for debugging
+        console.log('FAL.ai response:', JSON.stringify(subscriptionResult, null, 2));
+        
+        // First try to access the video URL using the documentation format
+        let videoUrl = (subscriptionResult as FalVideoResponse).video?.url;
+        
+        // If that fails, try the artifacts array format 
+        if (!videoUrl && (subscriptionResult as FalVideoResponse).artifacts && 
+            (subscriptionResult as FalVideoResponse).artifacts.length > 0) {
+          videoUrl = (subscriptionResult as FalVideoResponse).artifacts[0]?.url;
+        }
+        
+        // If that fails too, check if "data" contains the URL
+        if (!videoUrl && (subscriptionResult as any).data?.video?.url) {
+          videoUrl = (subscriptionResult as any).data.video.url;
+        }
+        
+        if (!videoUrl) {
+          console.error('Could not find video URL in response:', subscriptionResult);
+          throw new Error('No video URL found in the response. Please try again.');
+        }
 
-      // Keep the subscription alive until we get a result
-      const result = await new Promise<FalVideoResponse>((resolve, reject) => {
-        const timeout = setTimeout(() => {
-          subscription?.unsubscribe();
-          reject(new Error('Video generation timed out after 5 minutes'));
-        }, 300000); // 5 minute timeout
-
-        subscription.onError((error) => {
-          clearTimeout(timeout);
-          console.error('Subscription error:', error);
-          reject(error instanceof Error ? error : new Error(String(error)));
-        });
-
-        subscription.onComplete((result) => {
-          clearTimeout(timeout);
-          if (!result) {
-            reject(new Error('Empty result received from FAL.ai'));
-            return;
-          }
-          
-          // Log the full response to understand its structure
-          console.log('FAL.ai response:', JSON.stringify(result, null, 2));
-          
-          resolve(result as FalVideoResponse);
-        });
-      });
-
-      // First try to access the video URL using the documentation format
-      let videoUrl = result.video?.url;
-      
-      // If that fails, try the artifacts array format 
-      if (!videoUrl && result.artifacts && result.artifacts.length > 0) {
-        videoUrl = result.artifacts[0]?.url;
+        setGeneratedVideo(videoUrl);
+        toast.success('Video generated successfully!');
+      } catch (error) {
+        console.error('Error generating video:', error);
+        throw error; // Re-throw to be caught by the outer try/catch
       }
-      
-      // If that fails too, check if "data" contains the URL
-      if (!videoUrl && (result as any).data?.video?.url) {
-        videoUrl = (result as any).data.video.url;
-      }
-      
-      if (!videoUrl) {
-        console.error('Could not find video URL in response:', result);
-        throw new Error('No video URL found in the response. Please try again.');
-      }
-
-      setGeneratedVideo(videoUrl);
-      toast.success('Video generated successfully!');
-
     } catch (error) {
-      console.error('Error generating video:', error);
+      console.error('Error handling video generation:', error);
       let errorMessage = 'An error occurred while generating the video';
       
       if (error instanceof Error) {
@@ -246,9 +236,7 @@ const VideoGenerator: React.FC<VideoGeneratorProps> = ({ onAddToTimeline }) => {
         description: errorMessage,
       });
     } finally {
-      if (subscription) {
-        subscription.unsubscribe();
-      }
+      // No need to clean up subscription anymore since we're using Promise.race
       setIsGenerating(false);
       setProgressMessage('');
       setProgress(0);
