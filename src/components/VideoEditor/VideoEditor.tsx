@@ -13,6 +13,7 @@ import { saveProject, saveUserPreferences } from '@/lib/projectService';
 import { useQuery } from '@tanstack/react-query';
 import { getUserPreferences } from '@/lib/projectService';
 import { supabase } from '@/integrations/supabase/client';
+import JSZip from 'jszip';
 
 declare global {
   interface HTMLVideoElement {
@@ -193,392 +194,338 @@ const VideoEditor: React.FC = () => {
     }
   };
 
-  // Add this helper function at the top of the component, before handleExport
-  const downloadFile = async (url: string, filename: string) => {
-    try {
-      // First try to fetch the file as a blob
-      const response = await fetch(url);
-      const blob = await response.blob();
-      
-      // Create a blob URL from the fetched content
-      const blobUrl = URL.createObjectURL(blob);
-      
-      // Create a hidden anchor element for downloading
-      const a = document.createElement('a');
-      a.style.display = 'none';
-      a.href = blobUrl;
-      a.download = filename;
-      
-      // Append to document, click and remove
-      document.body.appendChild(a);
-      a.click();
-      
-      // Clean up
-      setTimeout(() => {
-        document.body.removeChild(a);
-        URL.revokeObjectURL(blobUrl);
-      }, 100);
-      
-      return true;
-    } catch (error) {
-      console.error('Download error:', error);
-      return false;
-    }
-  };
-
+  // Export function that produces a single video file with all audio combined
   const handleExport = async () => {
-    toast.success('Export started', {
-      description: 'Your video is being prepared for download.',
-    });
-    
-    try {
-      // Get the video element from the DOM
-      const videoElement = document.querySelector('video');
-      
-      if (!videoElement) {
-        throw new Error('Video element not found');
-      }
-      
-      // Basic validation that we have content to export
-      if (timelineItems.length === 0) {
-        toast.error('Nothing to export', {
-          description: 'Please add some media to the timeline first.',
-        });
-        return;
-      }
-      
-      // First, try to find the direct source of the active video
-      const activeVideos = timelineItems.filter(item => 
-        item.type === 'video' && 
-        currentTime >= item.start && 
-        currentTime < (item.start + item.duration)
-      );
-      
-      const activeVideo = activeVideos.length > 0 ? activeVideos[activeVideos.length - 1] : null;
-      
-      // FALLBACK: Direct file download if stream capture isn't supported
-      if (activeVideo && activeVideo.src) {
-        console.log('Using direct download fallback');
-        
-        const filename = `${projectName.replace(/\s+/g, '_')}_export.mp4`;
-        const success = await downloadFile(activeVideo.src, filename);
-        
-        if (success) {
-          toast.success('Export complete', {
-            description: 'Your video has been downloaded.',
-          });
-          return;
-        } else {
-          console.log('Direct download failed, trying alternative methods');
-        }
-      }
-      
-      // Check if MediaRecorder is supported
-      if (!window.MediaRecorder) {
-        toast.error('Your browser does not support MediaRecorder API', {
-          description: 'Please try using Chrome, Edge, or Firefox.',
-        });
-        return;
-      }
-      
-      console.log('Video element found:', videoElement);
-      
-      // Check which codecs are supported
-      const getSupportedMimeType = () => {
-        const types = [
-          'video/webm;codecs=vp9',
-          'video/webm;codecs=vp8',
-          'video/webm',
-          'video/mp4',
-        ];
-        
-        for (const type of types) {
-          if (MediaRecorder.isTypeSupported(type)) {
-            console.log('Supported MIME type:', type);
-            return type;
-          }
-        }
-        return null;
-      };
-      
-      const mimeType = getSupportedMimeType();
-      if (!mimeType) {
-        throw new Error('No supported video format found for recording');
-      }
-      
-      // File extension based on mime type
-      const fileExtension = mimeType.includes('mp4') ? 'mp4' : 'webm';
-      
-      // Create a MediaRecorder from the video stream
-      let stream;
-      try {
-        // First try the standard method
-        stream = videoElement.captureStream();
-        console.log('Stream created successfully using captureStream()');
-      } catch (e) {
-        console.error('Error using captureStream():', e);
-        
-        try {
-          // Try with mozCaptureStream for Firefox
-          // @ts-ignore
-          if (typeof videoElement.mozCaptureStream === 'function') {
-            // @ts-ignore
-            stream = videoElement.mozCaptureStream();
-            console.log('Stream created successfully using mozCaptureStream()');
-          } else {
-            throw new Error('No captureStream method available');
-          }
-        } catch (mozError) {
-          console.error('Error using mozCaptureStream():', mozError);
-          
-          // FALLBACK: Try canvas-based capture as last resort
-          try {
-            const canvas = document.createElement('canvas');
-            canvas.width = videoElement.videoWidth || 640;
-            canvas.height = videoElement.videoHeight || 480;
-            const ctx = canvas.getContext('2d');
-            
-            if (!ctx) {
-              throw new Error('Could not get canvas context');
-            }
-            
-            // Draw the current frame
-            ctx.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
-            
-            // Try to get a stream from the canvas
-            stream = canvas.captureStream(30); // 30 FPS
-            console.log('Using canvas fallback for stream capture');
-          } catch (canvasError) {
-            console.error('Canvas capture failed:', canvasError);
-            
-            // If all stream capture methods fail, just download the current source if available
-            if (activeVideo && activeVideo.src) {
-              const filename = `${projectName.replace(/\s+/g, '_')}_export.mp4`;
-              const success = await downloadFile(activeVideo.src, filename);
-              
-              if (success) {
-                toast.success('Export complete', {
-                  description: 'Your video has been downloaded directly.',
-                });
-                return;
-              } else {
-                throw new Error('Unable to capture video stream');
-              }
-            } else {
-              throw new Error('Unable to capture video stream');
-            }
-          }
-        }
-      }
-      
-      if (!stream) {
-        throw new Error('Failed to create media stream');
-      }
-      
-      console.log('Setting up MediaRecorder with mimeType:', mimeType);
-      
-      const mediaRecorder = new MediaRecorder(stream, {
-        mimeType,
-        videoBitsPerSecond: 5000000 // 5 Mbps
+    // If there are no items, show an error
+    if (timelineItems.length === 0) {
+      toast.error('Nothing to export', {
+        description: 'Please add some media to the timeline first.',
       });
+      return;
+    }
+
+    // Create a loading toast
+    const loadingId = 'export-loading';
+    toast.loading('Preparing export...', { id: loadingId });
+
+    // Track progress for user feedback
+    const updateStatus = (message: string) => {
+      console.log(`Export status: ${message}`);
+      toast.loading(message, { id: loadingId });
+    };
+
+    try {
+      // Verify we have video content
+      const hasVideoContent = timelineItems.some(item => item.type === 'video');
+      if (!hasVideoContent) {
+        throw new Error('No video content found in timeline');
+      }
       
-      const chunks: BlobPart[] = [];
+      // Get the main video container element
+      const previewContainer = document.querySelector('.preview-container') || 
+                               document.querySelector('[data-preview-container]');
       
-      mediaRecorder.ondataavailable = (e) => {
-        console.log('Data available, chunk size:', e.data.size);
-        if (e.data.size > 0) {
-          chunks.push(e.data);
-        }
-      };
+      if (!previewContainer) {
+        throw new Error('Video preview container not found');
+      }
       
-      // Handle recording errors
-      mediaRecorder.onerror = (event) => {
-        console.error('MediaRecorder error:', event);
-        toast.error('Recording error', {
-          description: 'An error occurred during video recording.',
-        });
-      };
+      // Find all video elements
+      const videoElements = Array.from(document.querySelectorAll('video'));
+      const audioElements = Array.from(document.querySelectorAll('audio'));
       
-      mediaRecorder.onstop = () => {
-        console.log('MediaRecorder stopped, chunks:', chunks.length);
-        
-        if (chunks.length === 0) {
-          toast.error('No video data captured', {
-            description: 'Try playing the video before exporting.',
-          });
-          return;
-        }
-        
-        // Create a blob from the recorded chunks
-        const blob = new Blob(chunks, { type: mimeType });
-        console.log('Blob created, size:', blob.size);
-        
-        if (blob.size === 0) {
-          toast.error('Generated file is empty', {
-            description: 'Please try again or use a different browser.',
-          });
-          return;
-        }
-        
-        // Create object URL
-        const url = URL.createObjectURL(blob);
-        
-        // Create a download link
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `${projectName.replace(/\s+/g, '_')}_export.${fileExtension}`;
-        
-        // Trigger download
-        document.body.appendChild(a);
-        a.click();
-        
-        // Clean up
-        setTimeout(() => {
-          document.body.removeChild(a);
-          URL.revokeObjectURL(url);
-        }, 100);
-        
-        toast.success('Export complete', {
-          description: 'Your video has been downloaded.',
-        });
-      };
+      if (videoElements.length === 0) {
+        throw new Error('No video elements found in the player');
+      }
       
-      // Save current playback state and position
+      // Save current state
       const wasPlaying = isPlaying;
       const currentPosition = currentTime;
       
-      // Set up a way to track when the video has reached the end of the timeline
-      const handleVideoEnd = () => {
-        console.log('Video ended event triggered');
-        if (mediaRecorder.state === 'recording') {
-          mediaRecorder.stop();
-          videoElement.removeEventListener('ended', handleVideoEnd);
-          
-          // Restore original playback state and position
-          if (!wasPlaying) {
-            setTimeout(() => {
-              videoElement.pause();
-              setCurrentTime(currentPosition);
-              handleSeek(currentPosition);
-            }, 100);
-          }
-        }
-      };
-      
-      // Set video to beginning
+      // Reset to beginning
+      updateStatus('Positioning timeline at start...');
       setCurrentTime(0);
       handleSeek(0);
-      videoElement.currentTime = 0;
       
-      // Listen for video completion
-      videoElement.addEventListener('ended', handleVideoEnd, { once: true });
-      
-      // Also listen for timeupdate to ensure we catch the end
-      const handleTimeUpdate = () => {
-        if (videoElement.currentTime >= duration - 0.5) {
-          console.log('Reached end of timeline via timeupdate');
-          if (mediaRecorder.state === 'recording') {
-            mediaRecorder.stop();
-            videoElement.removeEventListener('timeupdate', handleTimeUpdate);
-          }
-        }
-      };
-      
-      videoElement.addEventListener('timeupdate', handleTimeUpdate);
-      
-      console.log('Starting MediaRecorder...');
-      
-      // Start recording
-      mediaRecorder.start(1000); // Collect data in 1-second chunks
-      
-      // Request data chunk immediately
-      setTimeout(() => {
-        if (mediaRecorder.state === 'recording') {
-          mediaRecorder.requestData();
-        }
-      }, 500);
-      
-      // Ensure we're recording
-      await new Promise(resolve => setTimeout(resolve, 100));
-      
-      // Play the video
-      console.log('Playing video...');
-      setIsPlaying(true);
-      
-      try {
-        await videoElement.play();
-      } catch (playError) {
-        console.error('Error playing video:', playError);
-        if (mediaRecorder.state === 'recording') {
-          mediaRecorder.stop();
-        }
-        throw new Error('Could not play the video for recording');
+      // Pause playback momentarily while we set up
+      if (isPlaying) {
+        setIsPlaying(false);
       }
       
-      // Set a max recording time as a fallback
-      const maxRecordingTime = Math.min(duration * 1000, 30 * 60 * 1000);
+      await new Promise(resolve => setTimeout(resolve, 500));
       
-      setTimeout(() => {
-        if (mediaRecorder.state === 'recording') {
-          console.log('Export timeout reached, stopping recorder');
-          mediaRecorder.stop();
-          videoElement.removeEventListener('ended', handleVideoEnd);
-          videoElement.removeEventListener('timeupdate', handleTimeUpdate);
-          
-          // Restore original playback state
-          if (!wasPlaying) {
-            videoElement.pause();
-            setIsPlaying(false);
-            setCurrentTime(currentPosition);
-            handleSeek(currentPosition);
+      // Setup MediaRecorder directly on the video element
+      updateStatus('Setting up recording...');
+      
+      let recorder: MediaRecorder | null = null;
+      let recordedChunks: Blob[] = [];
+      const safeProjectName = projectName.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+      
+      // The main video element
+      const mainVideo = videoElements[0];
+      
+      try {
+        // Set up audio context for mixing
+        const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+        const audioDestination = audioCtx.createMediaStreamDestination();
+        
+        // Connect all audio sources
+        let connectedAudioSources = 0;
+        
+        // Try to connect video audio
+        if (mainVideo && !mainVideo.muted) {
+          try {
+            const videoSource = audioCtx.createMediaElementSource(mainVideo);
+            videoSource.connect(audioDestination);
+            videoSource.connect(audioCtx.destination); // Keep playing through speakers
+            connectedAudioSources++;
+          } catch (e) {
+            console.warn('Could not connect video audio:', e);
           }
         }
-      }, maxRecordingTime + 1000); // Add 1 second buffer
+        
+        // Try to connect all audio elements
+        audioElements.forEach(audio => {
+          if (!audio.muted) {
+            try {
+              const source = audioCtx.createMediaElementSource(audio);
+              source.connect(audioDestination);
+              source.connect(audioCtx.destination); // Keep playing through speakers
+              connectedAudioSources++;
+            } catch (e) {
+              console.warn('Could not connect audio element:', e);
+            }
+          }
+        });
+        
+        updateStatus(`Connected ${connectedAudioSources} audio sources`);
+        
+        // Create canvas for video
+        const canvas = document.createElement('canvas');
+        const videoWidth = mainVideo.videoWidth || 1280;
+        const videoHeight = mainVideo.videoHeight || 720;
+        canvas.width = videoWidth;
+        canvas.height = videoHeight;
+        const ctx = canvas.getContext('2d', { alpha: false });
+        
+        if (!ctx) {
+          throw new Error('Could not create canvas context');
+        }
+        
+        // Create video stream from canvas
+        const canvasStream = canvas.captureStream(30); // 30fps
+        
+        // Add audio tracks to the stream
+        audioDestination.stream.getAudioTracks().forEach(track => {
+          canvasStream.addTrack(track);
+        });
+        
+        // Choose best codec
+        const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus') 
+          ? 'video/webm;codecs=vp9,opus'
+          : 'video/webm';
+        
+        // Create recorder with high quality settings
+        recorder = new MediaRecorder(canvasStream, {
+          mimeType,
+          videoBitsPerSecond: 5000000
+        });
+        
+        // Collect recorded data
+        recorder.ondataavailable = (e) => {
+          if (e.data.size > 0) {
+            recordedChunks.push(e.data);
+          }
+        };
+        
+        // When recording stops
+        recorder.onstop = () => {
+          updateStatus('Finalizing video file...');
+          
+          if (recordedChunks.length === 0) {
+            throw new Error('No data was recorded');
+          }
+          
+          // Create final file and download it
+          const blob = new Blob(recordedChunks, { type: mimeType });
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = `${safeProjectName}_export.webm`;
+          document.body.appendChild(link);
+          link.click();
+          
+          // Cleanup
+          setTimeout(() => {
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+            
+            // Restore state
+            setCurrentTime(currentPosition);
+            handleSeek(currentPosition);
+            if (wasPlaying) {
+              setIsPlaying(true);
+            }
+            
+            toast.success('Export complete', {
+              id: loadingId,
+              description: 'Your video has been exported successfully.',
+            });
+          }, 100);
+        };
+        
+        // Animation function to draw video frames to canvas
+        let animationId: number | null = null;
+        const drawFrame = () => {
+          if (mainVideo.readyState >= 2) {
+            ctx.fillStyle = '#000000';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(mainVideo, 0, 0, canvas.width, canvas.height);
+          }
+          animationId = requestAnimationFrame(drawFrame);
+        };
+        
+        // Start recording process
+        updateStatus('Starting recording...');
+        recorder.start(1000); // Collect in 1 second chunks
+        
+        // Start drawing frames
+        animationId = requestAnimationFrame(drawFrame);
+        
+        // Start playback
+        updateStatus('Beginning playback...');
+        setIsPlaying(true);
+        mainVideo.currentTime = 0;
+        
+        try {
+          await mainVideo.play();
+          
+          // Show progress indicator with stop button
+          toast.loading('Recording in progress...', {
+            id: 'recording-progress',
+            description: 'Recording your video with all audio tracks combined.',
+            action: {
+              label: 'Stop',
+              onClick: () => {
+                if (recorder && recorder.state === 'recording') {
+                  recorder.stop();
+                  if (animationId) cancelAnimationFrame(animationId);
+                  setIsPlaying(false);
+                  toast.dismiss('recording-progress');
+                }
+              }
+            },
+            duration: 300000, // 5 minute timeout
+          });
+          
+          // Stop recording when video ends
+          mainVideo.addEventListener('ended', () => {
+            if (recorder && recorder.state === 'recording') {
+              updateStatus('Finalizing recording...');
+              recorder.stop();
+              if (animationId) cancelAnimationFrame(animationId);
+              toast.dismiss('recording-progress');
+            }
+          }, { once: true });
+          
+          // Add safety timeout (based on timeline duration)
+          const maxDuration = Math.max(
+            ...timelineItems.map(item => item.start + item.duration),
+            60 // minimum 1 minute
+          );
+          
+          setTimeout(() => {
+            if (recorder && recorder.state === 'recording') {
+              updateStatus('Maximum duration reached');
+              recorder.stop();
+              if (animationId) cancelAnimationFrame(animationId);
+              setIsPlaying(false);
+              toast.dismiss('recording-progress');
+            }
+          }, (maxDuration + 5) * 1000); // Add 5 second buffer
+          
+        } catch (playbackError) {
+          console.error('Playback error:', playbackError);
+          if (recorder && recorder.state === 'recording') {
+            recorder.stop();
+          }
+          if (animationId) cancelAnimationFrame(animationId);
+          throw new Error('Could not start video playback');
+        }
+        
+      } catch (setupError) {
+        console.error('Recording setup error:', setupError);
+        
+        // Try a direct download approach for source media
+        updateStatus('Trying direct download of source video...');
+        
+        const mainVideoItem = timelineItems.find(item => item.type === 'video' && item.src);
+        if (mainVideoItem && mainVideoItem.src) {
+          try {
+            const response = await fetch(mainVideoItem.src);
+            if (!response.ok) {
+              throw new Error(`Failed to fetch ${mainVideoItem.src}`);
+            }
+            
+            const blob = await response.blob();
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `${safeProjectName}_video.${mainVideoItem.src.endsWith('.webm') ? 'webm' : 'mp4'}`;
+            document.body.appendChild(link);
+            link.click();
+            
+            setTimeout(() => {
+              document.body.removeChild(link);
+              URL.revokeObjectURL(url);
+              
+              toast.success('Video exported', {
+                id: loadingId,
+                description: 'Source video downloaded successfully.',
+              });
+              
+              // Download any audio files separately
+              const audioItems = timelineItems.filter(item => 
+                item.type === 'audio' && item.src
+              );
+              
+              if (audioItems.length > 0) {
+                toast.info('Audio files', {
+                  description: `${audioItems.length} audio files will be downloaded separately.`,
+                  duration: 3000,
+                });
+                
+                // Download audio files with a delay
+                audioItems.forEach((item, index) => {
+                  if (item.src) {
+                    setTimeout(() => {
+                      const audioLink = document.createElement('a');
+                      audioLink.href = item.src!;
+                      audioLink.download = `${safeProjectName}_audio_${index + 1}.${item.src!.endsWith('.wav') ? 'wav' : 'mp3'}`;
+                      document.body.appendChild(audioLink);
+                      audioLink.click();
+                      setTimeout(() => document.body.removeChild(audioLink), 100);
+                    }, index * 500); // Stagger downloads
+                  }
+                });
+              }
+            }, 100);
+            
+            return;
+          } catch (downloadError) {
+            console.error('Direct download error:', downloadError);
+            throw new Error('Could not download source media');
+          }
+        } else {
+          throw new Error('No source video found to download');
+        }
+      }
       
     } catch (error) {
       console.error('Export error:', error);
-      
-      // Provide a more specific error message
-      let errorMessage = 'An error occurred while exporting your video.';
-      
-      if (error instanceof Error) {
-        errorMessage = error.message;
-      }
-      
-      // Check if there's any video item we can directly download
-      const videoItems = timelineItems.filter(item => item.type === 'video' && item.src);
-      
-      if (videoItems.length > 0) {
-        const firstVideo = videoItems[0];
-        toast.info('Trying direct download instead', {
-          description: 'Downloading the original video file.',
-        });
-        
-        const filename = `${projectName.replace(/\s+/g, '_')}_export.mp4`;
-        const success = await downloadFile(firstVideo.src!, filename);
-        
-        if (success) {
-          toast.success('Export complete', {
-            description: 'Your video has been downloaded.',
-          });
-          return;
-        } else {
-          toast.error('Download failed', {
-            description: 'Could not download the video file directly.',
-          });
-        }
-      }
-      
-      // Fallback to screenshots if recording fails
-      if (errorMessage.includes('captureStream') || errorMessage.includes('MediaRecorder')) {
-        toast.error('Export failed', {
-          description: 'Your browser may not support video recording. Try using Chrome or Firefox.',
-        });
-      } else {
-        toast.error('Export failed', {
-          description: errorMessage,
-        });
-      }
+      toast.error('Export failed', {
+        id: loadingId,
+        description: error instanceof Error ? error.message : 'An unknown error occurred',
+      });
     }
   };
 
