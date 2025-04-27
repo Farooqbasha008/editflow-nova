@@ -80,7 +80,7 @@ const Preview: React.FC<PreviewProps> = ({
   };
   
   return (
-    <div ref={containerRef} className={`flex-1 bg-[#151514] flex flex-col overflow-hidden animate-fade-in ${minimized ? 'h-20' : ''}`} style={{ minHeight: minimized ? '80px' : '360px' }}>
+    <div ref={containerRef} className={`flex-1 bg-[#151514] flex flex-col overflow-hidden animate-fade-in preview-container ${minimized ? 'h-20' : ''}`} style={{ minHeight: minimized ? '80px' : '360px' }} data-preview-container>
       {!minimized ? (
         <VideoPlayer 
           activeVideo={activeVideo}
