@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -29,8 +28,8 @@ interface ExportServiceProps {
   projectName: string;
 }
 
-// Create FFmpeg instance
-const ffmpeg = new FFmpeg({
+// Create FFmpeg instance with config
+const ffmpegInstance = new FFmpeg({
   log: true,
   corePath: 'https://unpkg.com/@ffmpeg/core@0.12.4/dist/ffmpeg-core.js',
 });
@@ -91,19 +90,23 @@ const ExportService: React.FC<ExportServiceProps> = ({
     try {
       // Load FFmpeg if not already loaded
       if (!ffmpegLoaded) {
-        await ffmpeg.load();
+        await ffmpegInstance.load();
         ffmpegLoaded = true;
       }
       
-      // Set up progress tracking
-      ffmpeg.setProgress(({ ratio }) => {
+      // Configure progress tracking - using the updated API pattern
+      const progressCallback = ({ ratio }: { ratio: number }) => {
         setProgress(Math.floor(ratio * 100));
-      });
+      };
       
-      // Set up logging
-      ffmpeg.setLogger(({ message }) => {
+      // Configure logging - using the updated API pattern
+      const loggerCallback = ({ message }: { message: string }) => {
         console.log('FFmpeg Log:', message);
-      });
+      };
+      
+      // Set up progress and logging callbacks
+      ffmpegInstance.setProgress(progressCallback);
+      ffmpegInstance.setLogger(loggerCallback);
       
       // Process video items
       const videoItems = timelineItems.filter(item => item.type === 'video');
@@ -140,7 +143,7 @@ const ExportService: React.FC<ExportServiceProps> = ({
           const filename = createFilenameFromUrl(item.src, i);
           
           // Write file to FFmpeg virtual filesystem
-          ffmpeg.FS('writeFile', filename, new Uint8Array(data));
+          ffmpegInstance.FS('writeFile', filename, new Uint8Array(data));
           
           videoFiles.push({
             name: filename,
@@ -175,7 +178,7 @@ const ExportService: React.FC<ExportServiceProps> = ({
           const filename = `audio_${i}_${Date.now()}.mp3`;
           
           // Write file to FFmpeg virtual filesystem
-          ffmpeg.FS('writeFile', filename, new Uint8Array(data));
+          ffmpegInstance.FS('writeFile', filename, new Uint8Array(data));
           
           audioFileList.push({
             name: filename,
@@ -201,7 +204,7 @@ const ExportService: React.FC<ExportServiceProps> = ({
         concatContent += `file ${video.name}\n`;
       }
       
-      ffmpeg.FS('writeFile', 'concat_list.txt', new TextEncoder().encode(concatContent));
+      ffmpegInstance.FS('writeFile', 'concat_list.txt', new TextEncoder().encode(concatContent));
       
       // Concatenate videos
       setStage('Combining videos');
@@ -214,7 +217,7 @@ const ExportService: React.FC<ExportServiceProps> = ({
       const outputFilename = `output.${options.format}`;
       
       // Build command for concatenating videos
-      await ffmpeg.run(
+      await ffmpegInstance.run(
         '-f', 'concat',
         '-safe', '0',
         '-i', 'concat_list.txt',
@@ -245,7 +248,7 @@ const ExportService: React.FC<ExportServiceProps> = ({
         // Add filter to main command
         const audioCommand = `-filter_complex "${audioFilterComplex}${mixFilter}" -map 0:v -map "[aout]" -c:v copy -c:a aac -shortest`;
         
-        await ffmpeg.run(
+        await ffmpegInstance.run(
           '-i', 'temp_concat.mp4',
           ...audioCommand.split(' '),
           'temp_with_audio.mp4'
@@ -259,7 +262,7 @@ const ExportService: React.FC<ExportServiceProps> = ({
       const inputFile = audioFileList.length > 0 ? 'temp_with_audio.mp4' : 'temp_concat.mp4';
       
       // Final encoding with quality settings and dimensions
-      await ffmpeg.run(
+      await ffmpegInstance.run(
         '-i', inputFile,
         '-s', `${dimensions.width}x${dimensions.height}`,
         ...qualitySettings.split(' '),
@@ -270,7 +273,7 @@ const ExportService: React.FC<ExportServiceProps> = ({
       setStage('Preparing download');
       setProgress(95);
       
-      const data = ffmpeg.FS('readFile', outputFilename);
+      const data = ffmpegInstance.FS('readFile', outputFilename);
       
       // Check if data is available before accessing buffer property
       if (data) {
@@ -291,19 +294,19 @@ const ExportService: React.FC<ExportServiceProps> = ({
       // Cleanup temporary files
       inputFileList.forEach(file => {
         try {
-          ffmpeg.FS('unlink', file);
+          ffmpegInstance.FS('unlink', file);
         } catch (e) {
           console.warn('Error cleaning up file:', e);
         }
       });
       
       try {
-        ffmpeg.FS('unlink', 'concat_list.txt');
-        ffmpeg.FS('unlink', 'temp_concat.mp4');
+        ffmpegInstance.FS('unlink', 'concat_list.txt');
+        ffmpegInstance.FS('unlink', 'temp_concat.mp4');
         if (audioFileList.length > 0) {
-          ffmpeg.FS('unlink', 'temp_with_audio.mp4');
+          ffmpegInstance.FS('unlink', 'temp_with_audio.mp4');
         }
-        ffmpeg.FS('unlink', outputFilename);
+        ffmpegInstance.FS('unlink', outputFilename);
       } catch (e) {
         console.warn('Error cleaning up file:', e);
       }
