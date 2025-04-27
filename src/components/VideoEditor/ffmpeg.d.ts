@@ -1,6 +1,15 @@
 
 declare module '@ffmpeg/ffmpeg' {
-  export interface FFmpeg {
+  export interface FFmpegConfig {
+    log?: boolean;
+    logger?: (message: any) => void;
+    corePath?: string;
+    progress?: (progress: { ratio: number }) => void;
+    mainName?: string;
+  }
+
+  export class FFmpeg {
+    constructor(config?: FFmpegConfig);
     load(): Promise<void>;
     run(...args: string[]): Promise<number>;
     FS(method: string, path: string, data?: Uint8Array): Uint8Array;
@@ -9,16 +18,9 @@ declare module '@ffmpeg/ffmpeg' {
     exit(): Promise<void>;
   }
 
-  export interface CreateFFmpegOptions {
-    log?: boolean;
-    logger?: (message: any) => void;
-    corePath?: string;
-    progress?: (progress: { ratio: number }) => void;
-    mainName?: string;
+  export namespace FFmpeg {
+    function createFFmpeg(options?: FFmpegConfig): FFmpeg;
   }
-
-  export function createFFmpeg(options?: CreateFFmpegOptions): FFmpeg;
-  export function fetchFile(file: string | File | Blob): Promise<Uint8Array>;
 }
 
 declare module '@ffmpeg/core';

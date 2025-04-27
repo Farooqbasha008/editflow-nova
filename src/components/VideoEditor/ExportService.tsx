@@ -8,7 +8,8 @@ import { Progress } from '@/components/ui/progress';
 import { CheckCircle, Download, X } from 'lucide-react';
 import { TimelineItem } from './VideoEditor';
 import { toast } from 'sonner';
-import { createFFmpeg, fetchFile } from '@ffmpeg/ffmpeg';
+import { FFmpeg } from '@ffmpeg/ffmpeg';
+import { fetchFile } from '@ffmpeg/util';
 
 // Define export formats and quality presets
 export type ExportFormat = 'mp4' | 'webm' | 'gif';
@@ -29,7 +30,7 @@ interface ExportServiceProps {
 }
 
 // Create FFmpeg instance
-const ffmpeg = createFFmpeg({
+const ffmpeg = new FFmpeg({
   log: true,
   corePath: 'https://unpkg.com/@ffmpeg/core@0.12.4/dist/ffmpeg-core.js',
 });
