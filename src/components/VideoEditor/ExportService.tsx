@@ -34,6 +34,9 @@ const ffmpeg = createFFmpeg({
   corePath: 'https://unpkg.com/@ffmpeg/core@0.12.4/dist/ffmpeg-core.js',
 });
 
+// Flag to track if FFmpeg has been loaded
+let ffmpegLoaded = false;
+
 const ExportService: React.FC<ExportServiceProps> = ({ 
   isOpen, 
   onClose, 
@@ -85,9 +88,10 @@ const ExportService: React.FC<ExportServiceProps> = ({
     setStage('Initializing FFmpeg');
     
     try {
-      // Load FFmpeg
-      if (!ffmpeg.loaded) {
+      // Load FFmpeg if not already loaded
+      if (!ffmpegLoaded) {
         await ffmpeg.load();
+        ffmpegLoaded = true;
       }
       
       // Set up progress tracking
@@ -266,11 +270,17 @@ const ExportService: React.FC<ExportServiceProps> = ({
       setProgress(95);
       
       const data = ffmpeg.FS('readFile', outputFilename);
-      const blob = new Blob([data.buffer], { type: `video/${options.format}` });
       
-      // Create download URL
-      const url = URL.createObjectURL(blob);
-      setDownloadUrl(url);
+      // Check if data is available before accessing buffer property
+      if (data) {
+        const blob = new Blob([data.buffer], { type: `video/${options.format}` });
+        
+        // Create download URL
+        const url = URL.createObjectURL(blob);
+        setDownloadUrl(url);
+      } else {
+        throw new Error("Failed to read output file");
+      }
       
       // Cleanup
       setStage('Export complete!');

@@ -3,7 +3,7 @@ declare module '@ffmpeg/ffmpeg' {
   export interface FFmpeg {
     load(): Promise<void>;
     run(...args: string[]): Promise<number>;
-    FS(method: string, path: string, data?: Uint8Array): Uint8Array | void;
+    FS(method: string, path: string, data?: Uint8Array): Uint8Array;
     setProgress(progress: (progress: { ratio: number }) => void): void;
     setLogger(logger: (message: any) => void): void;
     exit(): Promise<void>;
