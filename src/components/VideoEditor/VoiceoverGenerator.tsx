@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 import { TimelineItem } from './VideoEditor';
 import { generateSpeech } from '@/lib/groq';
 import { GripVertical } from 'lucide-react';
+import { generatedMediaDB } from '@/lib/db';
 
 interface VoiceoverGeneratorProps {
   onAddToTimeline: (item: TimelineItem) => void;
@@ -98,7 +99,21 @@ const VoiceoverGenerator: React.FC<VoiceoverGeneratorProps> = ({ onAddToTimeline
       );
       
       setGeneratedAudio(audioUrl);
-      toast.success('Voiceover generated successfully!');
+      
+      // Save to IndexedDB
+      await generatedMediaDB.addMedia({
+        name: `Voiceover: ${text.substring(0, 15)}${text.length > 15 ? '...' : ''}`,
+        type: 'audio',
+        src: audioUrl,
+        dateCreated: new Date(),
+        prompt: text,
+        metadata: {
+          voice,
+          trimSilence,
+        }
+      });
+      
+      toast.success('Voiceover generated and saved successfully!');
     } catch (error) {
       console.error('Error generating voiceover:', error);
       toast.error('Failed to generate voiceover', {

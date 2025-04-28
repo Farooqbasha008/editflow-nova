@@ -1,12 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
-import { Save, Download, User, LogIn } from 'lucide-react';
+import { Save, Download, User, LogIn, Settings } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/lib/auth';
 
 interface HeaderProps {
   projectName: string;
@@ -30,6 +31,9 @@ const Header: React.FC<HeaderProps> = ({
   const [password, setPassword] = useState('');
   const [isAuthLoading, setIsAuthLoading] = useState(false);
   const [user, setUser] = useState<any>(null);
+  const [falaiApiKey, setFalaiApiKey] = useState<string>('');
+  const [showApiKeyInput, setShowApiKeyInput] = useState<boolean>(false);
+  const { signIn, signOut } = useAuth();
   
   React.useEffect(() => {
     const checkUser = async () => {
@@ -49,6 +53,14 @@ const Header: React.FC<HeaderProps> = ({
     return () => {
       authListener.subscription.unsubscribe();
     };
+  }, []);
+  
+  // Load API key from localStorage on component mount
+  useEffect(() => {
+    const savedApiKey = localStorage.getItem('falai_api_key');
+    if (savedApiKey) {
+      setFalaiApiKey(savedApiKey);
+    }
   }, []);
   
   const handleSave = () => {
@@ -86,19 +98,11 @@ const Header: React.FC<HeaderProps> = ({
   const handleSignIn = async () => {
     setIsAuthLoading(true);
     try {
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password
-      });
-      
-      if (error) throw error;
-      
-      setShowLogin(false);
-      toast.success("Signed in successfully");
-    } catch (error: any) {
-      toast.error("Authentication failed", {
-        description: error.message
-      });
+      const result = await signIn(email, password);
+      if (result.success) {
+        setShowLogin(false);
+        toast.success("Signed in successfully");
+      }
     } finally {
       setIsAuthLoading(false);
     }
@@ -128,8 +132,24 @@ const Header: React.FC<HeaderProps> = ({
   };
   
   const handleSignOut = async () => {
-    await supabase.auth.signOut();
-    toast.info("Signed out successfully");
+    try {
+      const result = await signOut();
+      if (result.success) {
+        toast.success('Signed out successfully');
+      }
+    } catch (error) {
+      toast.error('Failed to sign out');
+    }
+  };
+  
+  const handleSaveApiKey = () => {
+    if (falaiApiKey.trim()) {
+      localStorage.setItem('falai_api_key', falaiApiKey);
+      setShowApiKeyInput(false);
+      toast.success('API key saved successfully');
+    } else {
+      toast.error('Please enter a valid API key');
+    }
   };
   
   return (
@@ -184,6 +204,16 @@ const Header: React.FC<HeaderProps> = ({
         >
           <Download className="h-4 w-4 mr-2" />
           Export
+        </Button>
+        
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => setShowApiKeyInput(true)}
+          className="text-white hover:bg-[#242423] hover:text-[#C9FF00]"
+        >
+          <Settings className="h-4 w-4 mr-2" />
+          API Key
         </Button>
         
         {user ? (
@@ -284,6 +314,54 @@ const Header: React.FC<HeaderProps> = ({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {showApiKeyInput && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-[#151514] p-6 rounded-lg shadow-lg w-[400px]">
+            <h2 className="text-lg font-medium text-white mb-4">Fal.ai API Key</h2>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Input
+                  type="password"
+                  value={falaiApiKey}
+                  onChange={(e) => setFalaiApiKey(e.target.value)}
+                  placeholder="Enter your Fal.ai API key"
+                  className="bg-[#151514] border-white/20 focus:border-[#D7F266]"
+                />
+                <p className="text-xs text-white/60">
+                  Get your API key from{' '}
+                  <a
+                    href="https://fal.ai"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[#D7F266] hover:underline"
+                  >
+                    fal.ai
+                  </a>
+                </p>
+              </div>
+              <div className="flex justify-end space-x-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowApiKeyInput(false)}
+                  className="text-white border-white/20 hover:bg-[#242423] hover:text-[#C9FF00]"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={handleSaveApiKey}
+                  disabled={!falaiApiKey.trim()}
+                  className="bg-[#D7F266] text-[#151514] hover:bg-[#D7F266]/80"
+                >
+                  Save
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

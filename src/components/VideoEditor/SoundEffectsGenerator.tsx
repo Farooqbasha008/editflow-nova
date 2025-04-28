@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { TimelineItem } from './VideoEditor';
 import { generateSound } from '@/lib/elevenlabs';
+import { generatedMediaDB } from '@/services/GeneratedMediaDB';
 
 interface SoundEffectsGeneratorProps {
   onAddToTimeline: (item: TimelineItem) => void;
@@ -80,7 +81,21 @@ const SoundEffectsGenerator: React.FC<SoundEffectsGeneratorProps> = ({ onAddToTi
       }
       
       setGeneratedAudio(audioUrl);
-      toast.success('Sound effect generated successfully!');
+      
+      // Save to IndexedDB
+      await generatedMediaDB.addSoundEffect({
+        name: `${soundType === 'ambient' ? 'Music' : 'SFX'}: ${description.substring(0, 15)}${description.length > 15 ? '...' : ''}`,
+        type: 'sfx',
+        src: audioUrl,
+        dateCreated: new Date(),
+        prompt: description,
+        metadata: {
+          soundType,
+          duration: 5
+        }
+      });
+      
+      toast.success('Sound effect generated and saved successfully!');
     } catch (error) {
       console.error('Error generating sound effect:', error);
       toast.error('Failed to generate sound effect', {

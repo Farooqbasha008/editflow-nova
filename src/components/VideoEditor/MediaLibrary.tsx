@@ -1,10 +1,11 @@
-
 import React, { useState } from 'react';
-import { Upload, Film, Music, Image as ImageIcon, Mic, Video, Search } from 'lucide-react';
+import { Upload, Film, Music, Image as ImageIcon, Mic, Video, Search, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { TimelineItem } from './VideoEditor';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { GeneratedMediaManager } from './GeneratedMediaManager';
+import { Button } from '@/components/ui/button';
 
 // Mock data for media items
 const MEDIA_ITEMS = [
@@ -180,6 +181,7 @@ const MediaItem: React.FC<MediaItemProps> = ({ item, onDragStart, onDoubleClick 
 
 const MediaLibrary: React.FC<MediaLibraryProps> = ({ onAddToTimeline, mediaType = 'all' }) => {
   const [searchTerm, setSearchTerm] = useState('');
+  const [activeTab, setActiveTab] = useState<'library' | 'generated'>('library');
   
   const handleDragStart = (e: React.DragEvent, item: typeof MEDIA_ITEMS[number]) => {
     e.dataTransfer.setData('application/json', JSON.stringify(item));
@@ -266,80 +268,68 @@ const MediaLibrary: React.FC<MediaLibraryProps> = ({ onAddToTimeline, mediaType 
   const audioItems = filteredItems.filter(item => item.type === 'audio');
   
   return (
-    <div className="flex flex-col h-full bg-editor-panel/70">
-      {/* Search bar */}
+    <div className="h-full flex flex-col bg-editor-panel">
       <div className="p-3 border-b border-white/10">
-        <div className="relative">
-          <Search size={16} className="absolute left-2 top-1/2 transform -translate-y-1/2 text-white/50" />
-          <input
-            type="text"
-            placeholder="Search media..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full bg-editor-bg/80 border border-white/10 rounded-md pl-8 pr-3 py-1.5 text-sm text-white/90 focus:outline-none focus:ring-1 focus:ring-editor-accent"
-          />
+        <div className="flex items-center space-x-2 mb-3">
+          <div className="flex-1 relative">
+            <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 text-white/40" size={16} />
+            <input
+              type="text"
+              placeholder="Search media..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-8 pr-3 py-1.5 text-sm bg-white/5 text-white rounded-md focus:outline-none focus:ring-1 focus:ring-[#D7F266]"
+            />
+          </div>
+        </div>
+        
+        <div className="flex space-x-1">
+          <Button
+            variant={activeTab === 'library' ? 'default' : 'ghost'}
+            size="sm"
+            onClick={() => setActiveTab('library')}
+            className={cn(
+              "flex-1 text-xs",
+              activeTab === 'library' ? "bg-[#D7F266] text-[#151514]" : "text-white/60 hover:text-white"
+            )}
+          >
+            <Film className="h-4 w-4 mr-1" />
+            Library
+          </Button>
+          <Button
+            variant={activeTab === 'generated' ? 'default' : 'ghost'}
+            size="sm"
+            onClick={() => setActiveTab('generated')}
+            className={cn(
+              "flex-1 text-xs",
+              activeTab === 'generated' ? "bg-[#D7F266] text-[#151514]" : "text-white/60 hover:text-white"
+            )}
+          >
+            <Sparkles className="h-4 w-4 mr-1" />
+            Generated
+          </Button>
         </div>
       </div>
       
       <ScrollArea className="flex-1">
-        <div className="p-3 flex flex-col gap-3">
-          <div 
-            className="video-item border border-dashed border-white/20 h-32 flex flex-col items-center justify-center text-white/60 cursor-pointer hover:border-white/40 hover:text-white/80 w-full"
-          >
-            <Upload size={24} className="mb-2" />
-            <span className="text-xs">Upload Media</span>
+        {activeTab === 'library' ? (
+          <div className="p-3">
+            <div className="grid grid-cols-2 gap-2">
+              {filteredItems.map(item => (
+                <MediaItem
+                  key={item.id}
+                  item={item}
+                  onDragStart={handleDragStart}
+                  onDoubleClick={handleDoubleClick}
+                />
+              ))}
+            </div>
           </div>
-          
-          {/* Video Group */}
-          {videoItems.length > 0 && (
-            <Collapsible defaultOpen className="w-full">
-              <CollapsibleTrigger className="flex items-center justify-between w-full p-2 bg-editor-panel/90 hover:bg-editor-panel text-white/90 text-sm font-medium rounded-t-md border-b border-white/10">
-                <div className="flex items-center gap-2">
-                  <Film size={16} />
-                  <span>Example Videos</span>
-                </div>
-                <div className="text-xs text-white/60">{videoItems.length} items</div>
-              </CollapsibleTrigger>
-              <CollapsibleContent>
-                <div className="grid grid-cols-2 gap-2 p-2 bg-editor-panel/50 rounded-b-md">
-                  {videoItems.map(item => (
-                    <MediaItem 
-                      key={item.id} 
-                      item={item} 
-                      onDragStart={handleDragStart}
-                      onDoubleClick={handleDoubleClick}
-                    />
-                  ))}
-                </div>
-              </CollapsibleContent>
-            </Collapsible>
-          )}
-          
-          {/* Audio Group */}
-          {audioItems.length > 0 && (
-            <Collapsible defaultOpen className="w-full">
-              <CollapsibleTrigger className="flex items-center justify-between w-full p-2 bg-editor-panel/90 hover:bg-editor-panel text-white/90 text-sm font-medium rounded-t-md border-b border-white/10">
-                <div className="flex items-center gap-2">
-                  <Music size={16} />
-                  <span>Example Audio</span>
-                </div>
-                <div className="text-xs text-white/60">{audioItems.length} items</div>
-              </CollapsibleTrigger>
-              <CollapsibleContent>
-                <div className="grid grid-cols-2 gap-2 p-2 bg-editor-panel/50 rounded-b-md">
-                  {audioItems.map(item => (
-                    <MediaItem 
-                      key={item.id} 
-                      item={item} 
-                      onDragStart={handleDragStart}
-                      onDoubleClick={handleDoubleClick}
-                    />
-                  ))}
-                </div>
-              </CollapsibleContent>
-            </Collapsible>
-          )}
-        </div>
+        ) : (
+          <div className="p-3">
+            <GeneratedMediaManager onAddToTimeline={onAddToTimeline} />
+          </div>
+        )}
       </ScrollArea>
     </div>
   );
