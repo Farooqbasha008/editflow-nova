@@ -8,6 +8,13 @@ import { toast } from 'sonner';
 import { TimelineItem } from './VideoEditor';
 import { generateVideo } from '@/lib/falai';
 import { generatedMediaDB } from '@/lib/db';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface VideoGeneratorProps {
   onAddToTimeline: (item: TimelineItem) => void;
@@ -19,6 +26,15 @@ const VideoGenerator: React.FC<VideoGeneratorProps> = ({ onAddToTimeline }) => {
   const [progress, setProgress] = useState<number>(0);
   const [falaiApiKey, setFalaiApiKey] = useState<string>('');
   const [showApiKeyInput, setShowApiKeyInput] = useState<boolean>(false);
+  const [aspectRatio, setAspectRatio] = useState<'16:9' | '9:16'>('16:9');
+  const [generatedVideos, setGeneratedVideos] = useState<Array<{
+    id: string;
+    name: string;
+    src: string;
+    thumbnail: string;
+    duration: number;
+    aspectRatio: '16:9' | '9:16';
+  }>>([]);
 
   // Load API key from localStorage on component mount
   useEffect(() => {
@@ -38,6 +54,30 @@ const VideoGenerator: React.FC<VideoGeneratorProps> = ({ onAddToTimeline }) => {
     } else {
       toast.error('Please enter a valid API key');
     }
+  };
+
+  const handleDragStart = (e: React.DragEvent, video: typeof generatedVideos[number]) => {
+    e.dataTransfer.setData('application/json', JSON.stringify({
+      ...video,
+      type: 'video',
+      color: 'bg-yellow-400/70',
+      allowedTrack: 'track1'
+    }));
+    
+    // Create custom drag image
+    const dragImage = document.createElement('div');
+    dragImage.classList.add('video-item', 'p-2', 'bg-editor-panel', 'rounded', 'shadow-lg', 'text-white', 'border', 'border-white/20');
+    dragImage.style.width = '120px';
+    dragImage.style.opacity = '0.8';
+    dragImage.textContent = video.name;
+    document.body.appendChild(dragImage);
+    
+    e.dataTransfer.setDragImage(dragImage, 60, 30);
+    
+    // Clean up
+    setTimeout(() => {
+      document.body.removeChild(dragImage);
+    }, 0);
   };
 
   const handleGenerateVideo = async () => {
@@ -69,7 +109,8 @@ const VideoGenerator: React.FC<VideoGeneratorProps> = ({ onAddToTimeline }) => {
       // Generate video using fal.ai
       const videoUrl = await generateVideo(prompt, falaiApiKey, {
         duration: 5,
-        negativePrompt: 'close-up faces, blurry, low quality, distorted faces, rapid movements, complex backgrounds, inconsistent lighting'
+        negativePrompt: 'close-up faces, blurry, low quality, distorted faces, rapid movements, complex backgrounds, inconsistent lighting',
+        aspectRatio
       });
 
       if (!videoUrl) {
@@ -86,7 +127,7 @@ const VideoGenerator: React.FC<VideoGeneratorProps> = ({ onAddToTimeline }) => {
       const thumbnailUrl = videoUrl.replace('.mp4', '.jpg');
 
       // Save to IndexedDB
-      await generatedMediaDB.addMedia({
+      const savedVideo = await generatedMediaDB.addMedia({
         name: `Generated from: ${prompt.slice(0, 20)}${prompt.length > 20 ? '...' : ''}`,
         type: 'video',
         src: videoUrl,
@@ -94,26 +135,23 @@ const VideoGenerator: React.FC<VideoGeneratorProps> = ({ onAddToTimeline }) => {
         prompt: prompt,
         metadata: {
           thumbnail: thumbnailUrl,
-          duration: 5 // Default duration from fal.ai
+          duration: 5, // Default duration from fal.ai
+          aspectRatio
         }
       });
 
-      const newItem: TimelineItem = {
-        id: videoId,
-        trackId: 'video-1',
-        start: 0,
-        duration: 5, // Default duration from fal.ai
-        type: 'video',
-        name: `Generated from: ${prompt.slice(0, 20)}${prompt.length > 20 ? '...' : ''}`,
-        color: '#6366F1',
-        src: videoUrl,
-        thumbnail: thumbnailUrl
-      };
-
-      onAddToTimeline(newItem);
+      // Add to local state for display
+      setGeneratedVideos(prev => [{
+        id: savedVideo.id,
+        name: savedVideo.name,
+        src: savedVideo.src,
+        thumbnail: savedVideo.metadata.thumbnail || '',
+        duration: savedVideo.metadata.duration || 5,
+        aspectRatio: savedVideo.metadata.aspectRatio || '16:9'
+      }, ...prev]);
       
       toast.success('Video generation complete', {
-        description: 'Video has been added to your timeline and saved to your library'
+        description: 'Video has been added to your library'
       });
       
       setPrompt('');
@@ -174,6 +212,22 @@ const VideoGenerator: React.FC<VideoGeneratorProps> = ({ onAddToTimeline }) => {
               className="h-24 bg-[#151514] border-white/20 focus:border-[#D7F266]"
             />
           </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="aspect-ratio">Aspect Ratio</Label>
+            <Select
+              value={aspectRatio}
+              onValueChange={(value: '16:9' | '9:16') => setAspectRatio(value)}
+            >
+              <SelectTrigger className="bg-[#151514] border-white/20 focus:border-[#D7F266]">
+                <SelectValue placeholder="Select aspect ratio" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="16:9">16:9 (Landscape)</SelectItem>
+                <SelectItem value="9:16">9:16 (Portrait)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
           
           {generating && (
             <div className="w-full bg-white/10 h-2 rounded-full overflow-hidden">
@@ -201,6 +255,35 @@ const VideoGenerator: React.FC<VideoGeneratorProps> = ({ onAddToTimeline }) => {
               </>
             )}
           </Button>
+
+          {/* Generated Videos List */}
+          {generatedVideos.length > 0 && (
+            <div className="mt-4 space-y-2">
+              <Label>Generated Videos</Label>
+              <div className="grid grid-cols-2 gap-2">
+                {generatedVideos.map((video) => (
+                  <div
+                    key={video.id}
+                    className="relative group bg-[#151514] border border-white/20 rounded p-2 cursor-move hover:border-[#D7F266]/50 transition-colors"
+                    draggable
+                    onDragStart={(e) => handleDragStart(e, video)}
+                  >
+                    <div className="aspect-video bg-black/50 rounded overflow-hidden mb-2">
+                      <img
+                        src={video.thumbnail}
+                        alt={video.name}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                    <div className="text-xs text-white/80 truncate">{video.name}</div>
+                    <div className="text-[10px] text-white/60">
+                      {video.duration}s • {video.aspectRatio}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
           
           <div className="flex items-center justify-between">
             <div className="text-xs text-white/60">

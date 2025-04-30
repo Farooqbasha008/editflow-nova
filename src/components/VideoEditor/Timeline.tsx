@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Play, Pause, Volume2, VolumeX, Scissors, Plus, Trash2, ZoomIn, ZoomOut, Clock, Undo, Redo, ChevronLeft, ChevronRight, ArrowLeft, ArrowRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -379,6 +378,14 @@ const Timeline = ({
       
       const droppedItem = JSON.parse(itemData);
       
+      // Check if the item has an allowedTrack restriction
+      if (droppedItem.allowedTrack && droppedItem.allowedTrack !== trackId) {
+        toast.error('Cannot place item', {
+          description: `This item can only be placed in the ${droppedItem.allowedTrack === 'track1' ? 'video' : 'audio'} track`
+        });
+        return;
+      }
+      
       // Get track number
       const trackNumber = parseInt(trackId.replace('track', ''));
       
@@ -441,61 +448,44 @@ const Timeline = ({
         }
       }
       
-      // If the item is from the media library (has src property)
-      if (droppedItem.src) {
-        // Choose color based on track type
-        let color, type;
-        
-        if (isVideoTrack) {
-          type = 'video';
-          color = 'bg-yellow-400/70';
-        } else {
-          type = 'audio';
-          color = 'bg-blue-400/70';
-        }
-        
-        // Set duration (use provided or default)
-        const durationInSeconds = parseInt(droppedItem.duration?.split(':')[1]) || 5;
-        
-        const newItem: TimelineItem = {
-          id: `timeline-${Date.now()}`,
-          trackId,
-          start: dropTime,
-          duration: durationInSeconds,
-          type,
-          name: droppedItem.name,
-          color,
-          src: droppedItem.src,
-          thumbnail: droppedItem.thumbnail,
-          volume: 1.0
-        };
-        
-        // Check for overlapping items in the same track
-        const overlappingItems = items.filter(item => 
-          item.trackId === trackId &&
-          newItem.start < (item.start + item.duration) &&
-          (newItem.start + newItem.duration) > item.start
-        );
-        
-        if (overlappingItems.length > 0) {
-          toast.error('Cannot place item', {
-            description: 'This position overlaps with existing items on the track'
-          });
-          return;
-        }
-        
-        // Add the new item to the timeline
-        // Create and dispatch a custom event to add the item
-        const customEvent = new CustomEvent('add-timeline-item', { 
-          detail: newItem
+      // Create the new timeline item
+      const newItem: TimelineItem = {
+        id: `timeline-${Date.now()}`,
+        trackId,
+        start: dropTime,
+        duration: droppedItem.duration || 5,
+        type: itemType || 'video',
+        name: droppedItem.name,
+        color: droppedItem.color || 'bg-yellow-400/70',
+        src: droppedItem.src,
+        thumbnail: droppedItem.thumbnail,
+        volume: 1.0
+      };
+      
+      // Check for overlapping items in the same track
+      const overlappingItems = items.filter(item => 
+        item.trackId === trackId &&
+        newItem.start < (item.start + item.duration) &&
+        (newItem.start + newItem.duration) > item.start
+      );
+      
+      if (overlappingItems.length > 0) {
+        toast.error('Cannot place item', {
+          description: 'This position overlaps with existing items on the track'
         });
-        window.dispatchEvent(customEvent);
-        
-        toast.success('Item added to timeline', {
-          description: `Added ${newItem.name} to the timeline`
-        });
+        return;
       }
-    } catch (error: any) {
+      
+      // Add the new item to the timeline
+      const customEvent = new CustomEvent('add-timeline-item', { 
+        detail: newItem
+      });
+      window.dispatchEvent(customEvent);
+      
+      toast.success('Item added to timeline', {
+        description: `Added ${newItem.name} to the timeline`
+      });
+    } catch (error) {
       toast.error('Error dropping item', {
         description: error.message || 'An unexpected error occurred'
       });

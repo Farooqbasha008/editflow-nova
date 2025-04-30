@@ -3,6 +3,7 @@ import { fal } from "@fal-ai/client";
 interface ScriptGenerationOptions {
   duration?: number;
   negativePrompt?: string;
+  aspectRatio?: '16:9' | '9:16';
 }
 
 // Define possible response formats based on API documentation
@@ -33,7 +34,8 @@ export async function generateVideo(
 ): Promise<string> {
   const { 
     duration = 5, 
-    negativePrompt = 'close-up faces, blurry, low quality, distorted faces, rapid movements, complex backgrounds, inconsistent lighting'
+    negativePrompt = 'close-up faces, blurry, low quality, distorted faces, rapid movements, complex backgrounds, inconsistent lighting',
+    aspectRatio = '16:9'
   } = options;
 
   if (!apiKey) {
@@ -61,8 +63,11 @@ export async function generateVideo(
             prompt,
             negative_prompt: negativePrompt,
             num_inference_steps: 30,
-            guidance_scale: 12.5,
-            seed: Math.floor(Math.random() * 1000000)
+            guidance_scale: 5, // Updated to recommended value
+            seed: Math.floor(Math.random() * 1000000),
+            aspect_ratio: aspectRatio,
+            shift: 5, // Added shift parameter
+            sampler: 'unipc' // Added sampler parameter
           },
           pollInterval: 5000,
           logs: true
@@ -99,6 +104,15 @@ export async function generateVideo(
       return videoUrl;
     } catch (error) {
       console.error('Error generating video:', error);
+      if (error instanceof Error) {
+        // Handle specific API errors
+        if (error.message.includes('API key')) {
+          throw new Error('Invalid API key. Please check your Fal.ai API key and try again.');
+        }
+        if (error.message.includes('rate limit')) {
+          throw new Error('Rate limit exceeded. Please try again later.');
+        }
+      }
       throw error;
     }
   } catch (error) {

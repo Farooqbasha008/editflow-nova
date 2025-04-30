@@ -184,11 +184,16 @@ const MediaLibrary: React.FC<MediaLibraryProps> = ({ onAddToTimeline, mediaType 
   const [activeTab, setActiveTab] = useState<'library' | 'generated'>('library');
   
   const handleDragStart = (e: React.DragEvent, item: typeof MEDIA_ITEMS[number]) => {
-    e.dataTransfer.setData('application/json', JSON.stringify(item));
+    e.dataTransfer.setData('application/json', JSON.stringify({
+      ...item,
+      type: item.type,
+      color: item.type === 'video' ? 'bg-yellow-400/70' : 'bg-blue-400/70',
+      allowedTrack: item.type === 'video' ? 'track1' : 'track2'
+    }));
     
     // Create custom drag image
     const dragImage = document.createElement('div');
-    dragImage.classList.add('video-item', 'p-2', 'bg-editor-panel', 'rounded', 'shadow-lg', 'text-white', 'border', 'border-white/20');
+    dragImage.classList.add('media-item', 'p-2', 'bg-editor-panel', 'rounded', 'shadow-lg', 'text-white', 'border', 'border-white/20');
     dragImage.style.width = '120px';
     dragImage.style.opacity = '0.8';
     dragImage.textContent = item.name;
@@ -268,7 +273,7 @@ const MediaLibrary: React.FC<MediaLibraryProps> = ({ onAddToTimeline, mediaType 
   const audioItems = filteredItems.filter(item => item.type === 'audio');
   
   return (
-    <div className="h-full flex flex-col bg-editor-panel">
+    <div className="flex flex-col h-full bg-[#151514] border-r border-white/10">
       <div className="p-3 border-b border-white/10">
         <div className="flex items-center space-x-2 mb-3">
           <div className="flex-1 relative">
