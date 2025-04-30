@@ -4,7 +4,7 @@ import { cn } from '@/lib/utils';
 import { TimelineItem } from './VideoEditor';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { GeneratedMediaManager } from './GeneratedMediaManager';
+import GeneratedMediaManager from './GeneratedMediaManager';
 import { Button } from '@/components/ui/button';
 
 // Mock data for media items

@@ -1,4 +1,3 @@
-
 import React, { useRef, useEffect, useState } from 'react';
 import { cn } from '@/lib/utils';
 import { TimelineItem } from '../VideoEditor';
@@ -32,39 +31,114 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   const videoRef = useRef<HTMLVideoElement>(null);
   const [loaded, setLoaded] = useState(false);
   const [showVolumeControl, setShowVolumeControl] = useState(false);
+  const [isVideoReady, setIsVideoReady] = useState(false);
+  const [currentVideoId, setCurrentVideoId] = useState<string | null>(null);
 
+  // Handle video loading and source changes
   useEffect(() => {
-    if (videoRef.current && loaded && activeVideo) {
-      if (Math.abs(videoRef.current.currentTime - (currentTime - activeVideo.start)) > 0.5) {
-        videoRef.current.currentTime = Math.max(0, currentTime - activeVideo.start);
-      }
+    if (!videoRef.current) return;
+    
+    const video = videoRef.current;
+    
+    if (activeVideo?.src) {
+      // Check if this is a new video that needs to be loaded
+      if (activeVideo.id !== currentVideoId) {
+        console.log('Loading new video:', activeVideo.src);
+        setIsVideoReady(false);
+        setLoaded(false);
+        video.src = activeVideo.src;
+        video.load();
+        setCurrentVideoId(activeVideo.id);
+      } 
+    } else {
+      // No active video
+      video.src = '';
+      setIsVideoReady(false);
+      setLoaded(false);
+      setCurrentVideoId(null);
+    }
+  }, [activeVideo, currentVideoId]);
+
+  // Set up event listeners for the video element
+  useEffect(() => {
+    if (!videoRef.current) return;
+    
+    const video = videoRef.current;
+    
+    const handleLoadedData = () => {
+      console.log('Video loaded successfully');
+      setLoaded(true);
+      setIsVideoReady(true);
       
-      const clipVolume = (activeVideo.volume || 1) * (muted ? 0 : volume);
-      videoRef.current.volume = clipVolume;
-      
-      if (isPlaying && videoRef.current.paused) {
-        videoRef.current.play().catch(err => {
-          console.error('Failed to play video:', err);
+      // Try to play if currently playing
+      if (isPlaying && video.paused) {
+        video.play().catch(error => {
+          console.error('Failed to autoplay video:', error);
         });
-      } else if (!isPlaying && !videoRef.current.paused) {
-        videoRef.current.pause();
       }
-    } else if (videoRef.current && !activeVideo) {
-      if (!videoRef.current.paused) {
-        videoRef.current.pause();
+    };
+    
+    const handleError = (e: ErrorEvent) => {
+      console.error('Video loading error:', e);
+      setIsVideoReady(false);
+      toast.error('Error loading video', {
+        description: 'Could not load the video. Please try a different file.',
+      });
+    };
+    
+    const handleEnded = () => {
+      if (isPlaying) {
+        video.currentTime = 0;
+        video.play().catch(console.error);
       }
-    }
-  }, [activeVideo, currentTime, isPlaying, loaded, volume, muted]);
+    };
+    
+    // Add event listeners
+    video.addEventListener('loadeddata', handleLoadedData);
+    video.addEventListener('error', handleError as EventListener);
+    video.addEventListener('ended', handleEnded);
+    
+    // Clean up
+    return () => {
+      video.removeEventListener('loadeddata', handleLoadedData);
+      video.removeEventListener('error', handleError as EventListener);
+      video.removeEventListener('ended', handleEnded);
+    };
+  }, [isPlaying]);
 
+  // Handle video playback and synchronization
   useEffect(() => {
-    if (videoRef.current && activeVideo?.src) {
-      if (videoRef.current.src !== activeVideo.src) {
-        videoRef.current.src = activeVideo.src;
-        videoRef.current.load();
-        videoRef.current.onloadeddata = () => setLoaded(true);
+    if (!videoRef.current || !activeVideo || !isVideoReady) return;
+
+    const video = videoRef.current;
+    const relativeTime = currentTime - activeVideo.start;
+
+    // Update video position if needed
+    if (Math.abs(video.currentTime - relativeTime) > 0.5) {
+      video.currentTime = Math.max(0, relativeTime);
+    }
+
+    // Update volume
+    const clipVolume = (activeVideo.volume || 1) * (muted ? 0 : volume);
+    video.volume = clipVolume;
+
+    // Handle play/pause
+    if (isPlaying) {
+      if (video.paused) {
+        console.log('Playing video:', activeVideo.src);
+        video.play().catch(err => {
+          console.error('Failed to play video:', err);
+          toast.error('Playback error', {
+            description: 'Could not play the video. Please try again.',
+          });
+        });
+      }
+    } else {
+      if (!video.paused) {
+        video.pause();
       }
     }
-  }, [activeVideo]);
+  }, [activeVideo, currentTime, isPlaying, isVideoReady, volume, muted]);
 
   const toggleVideoVolume = () => {
     setShowVolumeControl(prev => !prev);
@@ -79,14 +153,8 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
         <video 
           ref={videoRef} 
           className="w-full h-full object-contain"
-          src={activeVideo?.src || DEFAULT_VIDEO_URL}
           playsInline
-          onLoadedData={() => setLoaded(true)}
-          onError={() => {
-            toast.error('Error loading video', {
-              description: 'Could not load the video. Please try a different file.',
-            });
-          }}
+          preload="auto"
         />
         
         {activeVideo && (

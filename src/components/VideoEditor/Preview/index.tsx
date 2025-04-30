@@ -1,5 +1,4 @@
-
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { TimelineItem } from '../VideoEditor';
 import VideoPlayer from './VideoPlayer';
@@ -33,20 +32,33 @@ const Preview: React.FC<PreviewProps> = ({
   const [fullscreen, setFullscreen] = useState(false);
   const [minimized, setMinimized] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const [activeMedia, setActiveMedia] = useState({
+    videos: [] as TimelineItem[],
+    audios: [] as TimelineItem[]
+  });
   
-  const activeVideos = timelineItems.filter(item => 
-    item.type === 'video' && 
-    currentTime >= item.start && 
-    currentTime < (item.start + item.duration)
-  );
+  // Find active media items based on current time
+  useEffect(() => {
+    console.log('Finding active media at time:', currentTime);
+    const videos = timelineItems.filter(item => 
+      item.type === 'video' && 
+      currentTime >= item.start && 
+      currentTime < (item.start + item.duration)
+    );
+    
+    const audios = timelineItems.filter(item => 
+      item.type === 'audio' && 
+      currentTime >= item.start && 
+      currentTime < (item.start + item.duration)
+    );
+    
+    console.log('Active videos:', videos.length, 'Active audios:', audios.length);
+    setActiveMedia({ videos, audios });
+  }, [currentTime, timelineItems]);
   
-  const activeAudios = timelineItems.filter(item => 
-    item.type === 'audio' && 
-    currentTime >= item.start && 
-    currentTime < (item.start + item.duration)
-  );
-  
-  const activeVideo = activeVideos.length > 0 ? activeVideos[activeVideos.length - 1] : null;
+  // Get the top video (last one in the array)
+  const activeVideo = activeMedia.videos.length > 0 ? 
+    activeMedia.videos[activeMedia.videos.length - 1] : null;
   
   const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newVolume = parseFloat(e.target.value);
@@ -150,7 +162,7 @@ const Preview: React.FC<PreviewProps> = ({
       </div>
       
       <AudioManager 
-        activeAudios={activeAudios}
+        activeAudios={activeMedia.audios}
         currentTime={currentTime}
         isPlaying={isPlaying}
         volume={volume}
@@ -159,8 +171,8 @@ const Preview: React.FC<PreviewProps> = ({
       
       {!minimized && (
         <ActiveMediaDisplay 
-          activeVideos={activeVideos}
-          activeAudios={activeAudios}
+          activeVideos={activeMedia.videos}
+          activeAudios={activeMedia.audios}
         />
       )}
     </div>

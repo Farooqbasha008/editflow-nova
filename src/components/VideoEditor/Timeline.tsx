@@ -145,27 +145,109 @@ const Timeline = ({
     const dx = e.clientX - dragStartX;
     const dy = e.clientY - dragStartY;
     
-    // Calculate new start time
+    // Calculate new start time based on mouse movement
     const deltaTime = dx / scale;
     let newStart = Math.max(0, dragStartPos.start + deltaTime);
     
-    // Calculate new track
+    // Calculate new track based on vertical movement
     const trackHeight = 40; // Height of each track in pixels
     const trackOffset = Math.round(dy / trackHeight);
     const tracksCount = tracks.length;
     const trackIndex = Math.max(0, Math.min(tracksCount - 1, parseInt(dragStartPos.trackId.replace('track', '')) - 1 + trackOffset));
     const newTrackId = `track${trackIndex + 1}`;
     
-    // Check for overlapping items in the target track
-    const overlappingItems = items.filter(item => 
-      item.id !== draggedItem.id && 
-      item.trackId === newTrackId &&
-      newStart < (item.start + item.duration) && 
-      (newStart + draggedItem.duration) > item.start
-    );
+    // Get all items in the target track except the one being dragged
+    const itemsInTargetTrack = items
+      .filter(item => item.id !== draggedItem.id && item.trackId === newTrackId)
+      .sort((a, b) => a.start - b.start);
     
-    if (overlappingItems.length === 0) {
-      // Update the dragged item position visually
+    let validPosition = true;
+    
+    if (itemsInTargetTrack.length > 0) {
+      // Check if new position would overlap with any existing item
+      for (const item of itemsInTargetTrack) {
+        if (newStart < (item.start + item.duration) && 
+            (newStart + draggedItem.duration) > item.start) {
+          validPosition = false;
+          
+          // Try to find a valid position
+          // Option 1: Before the current item if there's space
+          if (newStart <= item.start && item.start >= draggedItem.duration) {
+            newStart = Math.max(0, item.start - draggedItem.duration);
+            validPosition = true;
+            break;
+          }
+          
+          // Option 2: After the current item
+          const afterItemPos = item.start + item.duration;
+          
+          // Check if placing after this item would overlap with the next item
+          const nextItem = itemsInTargetTrack.find(next => 
+            next.id !== item.id && next.start > item.start
+          );
+          
+          if (!nextItem || (afterItemPos + draggedItem.duration <= nextItem.start)) {
+            newStart = afterItemPos;
+            validPosition = true;
+            break;
+          }
+        }
+      }
+      
+      // If still not valid, try to place at the beginning or end of the track
+      if (!validPosition) {
+        // Try at the beginning if there's space
+        const firstItem = itemsInTargetTrack[0];
+        if (firstItem && firstItem.start >= draggedItem.duration) {
+          newStart = 0;
+          validPosition = true;
+        } else {
+          // Place after the last item
+          const lastItem = itemsInTargetTrack[itemsInTargetTrack.length - 1];
+          newStart = lastItem.start + lastItem.duration;
+          validPosition = true;
+        }
+      }
+    }
+    
+    // Only update if we found a valid position
+    if (validPosition) {
+      // Apply snapping if enabled
+      if (snapEnabled) {
+        const snapThreshold = 5; // pixels
+        const snapPoints = [];
+        
+        // Add time markers as snap points
+        timeMarkers.forEach(time => {
+          snapPoints.push(time * scale);
+        });
+        
+        // Add item edges as snap points
+        itemsInTargetTrack.forEach(item => {
+          snapPoints.push(item.start * scale);
+          snapPoints.push((item.start + item.duration) * scale);
+        });
+        
+        // Find closest snap point
+        const newStartPos = newStart * scale;
+        const closestPoint = snapPoints.find(point => Math.abs(point - newStartPos) < snapThreshold);
+        
+        if (closestPoint !== undefined) {
+          const snappedTime = closestPoint / scale;
+          
+          // Verify snapped position doesn't cause overlap
+          const wouldOverlap = itemsInTargetTrack.some(item => 
+            snappedTime < (item.start + item.duration) && 
+            (snappedTime + draggedItem.duration) > item.start
+          );
+          
+          if (!wouldOverlap) {
+            newStart = snappedTime;
+          }
+        }
+      }
+      
+      // Update the dragged item position
       const updatedItem = {
         ...draggedItem,
         start: newStart,
@@ -339,7 +421,21 @@ const Timeline = ({
   // Handle drag over for tracks
   const handleTrackDragOver = (e: React.DragEvent, trackId: string) => {
     e.preventDefault();
+    
+    // Add a hover effect to the track
     e.currentTarget.classList.add('bg-editor-hover/30');
+    
+    // Get position information
+    const rect = e.currentTarget.getBoundingClientRect();
+    const offsetX = e.clientX - rect.left;
+    const dropTime = Math.max(0, offsetX / scale);
+    
+    // Update the UI to show where the item will be dropped
+    // You could add a position indicator or highlight available gaps here
+    // This could be implemented with a state variable and visual element
+    
+    // For now, just add a custom data attribute with the drop position
+    e.currentTarget.setAttribute('data-drop-time', dropTime.toString());
   };
   
   // Handle drag leave for tracks
@@ -353,21 +449,10 @@ const Timeline = ({
     e.currentTarget.classList.remove('bg-editor-hover/30');
     
     try {
-      // Get drop position
+      // Get drop position from the event
       const rect = e.currentTarget.getBoundingClientRect();
       const offsetX = e.clientX - rect.left;
       let dropTime = Math.max(0, offsetX / scale);
-      
-      // Find the last item in this track to position new item right after it
-      const itemsInTrack = items.filter(item => item.trackId === trackId);
-      if (itemsInTrack.length > 0) {
-        const lastItemInTrack = itemsInTrack.reduce((latest, item) => {
-          return (item.start + item.duration > latest.start + latest.duration) ? item : latest;
-        }, itemsInTrack[0]);
-        
-        // Position new item immediately after the last item
-        dropTime = lastItemInTrack.start + lastItemInTrack.duration;
-      }
       
       const itemData = e.dataTransfer.getData('application/json');
       
@@ -422,29 +507,60 @@ const Timeline = ({
         return;
       }
       
-      // Apply snapping if enabled
-      if (snapEnabled) {
-        const snapThreshold = 5; // pixels
-        const snapPoints = [];
+      // Calculate item duration
+      const itemDuration = droppedItem.duration || 5;
+      
+      // Find all items in this track and sort them by start time
+      const itemsInTrack = items
+        .filter(item => item.trackId === trackId)
+        .sort((a, b) => a.start - b.start);
+      
+      // Determine where to place the new item
+      if (itemsInTrack.length === 0) {
+        // Track is empty, place at the beginning
+        dropTime = 0;
+      } else {
+        // Find the "gap" where the user dropped the item
+        let placed = false;
         
-        // Add time markers as snap points
-        timeMarkers.forEach(time => {
-          snapPoints.push(time * scale);
-        });
-        
-        // Add other items' edges as snap points
-        items.forEach(otherItem => {
-          if ((!draggedItem || otherItem.id !== draggedItem.id) && otherItem.trackId === trackId) {
-            snapPoints.push(otherItem.start * scale);
-            snapPoints.push((otherItem.start + otherItem.duration) * scale);
+        // Try to place at the clicked position if there's a gap
+        if (itemsInTrack.length > 0) {
+          // Find a gap to place the item
+          for (let i = 0; i < itemsInTrack.length; i++) {
+            const currentItem = itemsInTrack[i];
+            const nextItem = itemsInTrack[i + 1];
+            
+            if (i === 0 && dropTime < currentItem.start && dropTime + itemDuration <= currentItem.start) {
+              // There's space before the first item
+              placed = true;
+              break;
+            }
+            
+            if (nextItem) {
+              // Check if there's enough space between current and next item
+              const gapStart = currentItem.start + currentItem.duration;
+              const gapEnd = nextItem.start;
+              
+              if (dropTime >= gapStart && dropTime + itemDuration <= gapEnd) {
+                placed = true;
+                break;
+              }
+            } else {
+              // This is the last item, check if we can place after it
+              const afterLastItem = currentItem.start + currentItem.duration;
+              if (dropTime >= afterLastItem) {
+                dropTime = afterLastItem;
+                placed = true;
+                break;
+              }
+            }
           }
-        });
+        }
         
-        // Find closest snap point
-        const dropPos = dropTime * scale;
-        const closestPoint = snapPoints.find(point => Math.abs(point - dropPos) < snapThreshold);
-        if (closestPoint !== undefined) {
-          dropTime = closestPoint / scale;
+        // If we couldn't place in any gap, place at the end
+        if (!placed) {
+          const lastItem = itemsInTrack[itemsInTrack.length - 1];
+          dropTime = lastItem.start + lastItem.duration;
         }
       }
       
@@ -453,7 +569,7 @@ const Timeline = ({
         id: `timeline-${Date.now()}`,
         trackId,
         start: dropTime,
-        duration: droppedItem.duration || 5,
+        duration: itemDuration,
         type: itemType || 'video',
         name: droppedItem.name,
         color: droppedItem.color || 'bg-yellow-400/70',
@@ -462,7 +578,7 @@ const Timeline = ({
         volume: 1.0
       };
       
-      // Check for overlapping items in the same track
+      // Final check for overlapping items
       const overlappingItems = items.filter(item => 
         item.trackId === trackId &&
         newItem.start < (item.start + item.duration) &&
