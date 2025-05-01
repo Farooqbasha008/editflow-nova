@@ -449,11 +449,6 @@ const Timeline = ({
     e.currentTarget.classList.remove('bg-editor-hover/30');
     
     try {
-      // Get drop position from the event
-      const rect = e.currentTarget.getBoundingClientRect();
-      const offsetX = e.clientX - rect.left;
-      let dropTime = Math.max(0, offsetX / scale);
-      
       const itemData = e.dataTransfer.getData('application/json');
       
       if (!itemData) {
@@ -507,68 +502,32 @@ const Timeline = ({
         return;
       }
       
-      // Calculate item duration
-      const itemDuration = droppedItem.duration || 5;
+      // Calculate item duration - ensure we have a numeric value
+      const itemDuration = droppedItem.duration ? 
+        (typeof droppedItem.duration === 'string' ? 
+          parseInt(droppedItem.duration.split(':')[1]) || 5 : 
+          droppedItem.duration) : 
+        5;
       
       // Find all items in this track and sort them by start time
       const itemsInTrack = items
         .filter(item => item.trackId === trackId)
         .sort((a, b) => a.start - b.start);
       
-      // Determine where to place the new item
-      if (itemsInTrack.length === 0) {
-        // Track is empty, place at the beginning
-        dropTime = 0;
-      } else {
-        // Find the "gap" where the user dropped the item
-        let placed = false;
-        
-        // Try to place at the clicked position if there's a gap
-        if (itemsInTrack.length > 0) {
-          // Find a gap to place the item
-          for (let i = 0; i < itemsInTrack.length; i++) {
-            const currentItem = itemsInTrack[i];
-            const nextItem = itemsInTrack[i + 1];
-            
-            if (i === 0 && dropTime < currentItem.start && dropTime + itemDuration <= currentItem.start) {
-              // There's space before the first item
-              placed = true;
-              break;
-            }
-            
-            if (nextItem) {
-              // Check if there's enough space between current and next item
-              const gapStart = currentItem.start + currentItem.duration;
-              const gapEnd = nextItem.start;
-              
-              if (dropTime >= gapStart && dropTime + itemDuration <= gapEnd) {
-                placed = true;
-                break;
-              }
-            } else {
-              // This is the last item, check if we can place after it
-              const afterLastItem = currentItem.start + currentItem.duration;
-              if (dropTime >= afterLastItem) {
-                dropTime = afterLastItem;
-                placed = true;
-                break;
-              }
-            }
-          }
-        }
-        
-        // If we couldn't place in any gap, place at the end
-        if (!placed) {
-          const lastItem = itemsInTrack[itemsInTrack.length - 1];
-          dropTime = lastItem.start + lastItem.duration;
-        }
+      // Determine drop position - at start if track is empty, or after last item
+      let dropPosition = 0;
+      
+      if (itemsInTrack.length > 0) {
+        // Find the last item in the track and place after it
+        const lastItem = itemsInTrack[itemsInTrack.length - 1];
+        dropPosition = lastItem.start + lastItem.duration;
       }
       
       // Create the new timeline item
       const newItem: TimelineItem = {
         id: `timeline-${Date.now()}`,
         trackId,
-        start: dropTime,
+        start: dropPosition,
         duration: itemDuration,
         type: itemType || 'video',
         name: droppedItem.name,
@@ -578,21 +537,7 @@ const Timeline = ({
         volume: 1.0
       };
       
-      // Final check for overlapping items
-      const overlappingItems = items.filter(item => 
-        item.trackId === trackId &&
-        newItem.start < (item.start + item.duration) &&
-        (newItem.start + newItem.duration) > item.start
-      );
-      
-      if (overlappingItems.length > 0) {
-        toast.error('Cannot place item', {
-          description: 'This position overlaps with existing items on the track'
-        });
-        return;
-      }
-      
-      // Add the new item to the timeline
+      // Dispatch the event to add the new item to the timeline
       const customEvent = new CustomEvent('add-timeline-item', { 
         detail: newItem
       });
@@ -603,7 +548,7 @@ const Timeline = ({
       });
     } catch (error) {
       toast.error('Error dropping item', {
-        description: error.message || 'An unexpected error occurred'
+        description: error instanceof Error ? error.message : 'An unexpected error occurred'
       });
       console.error('Error dropping item:', error);
     }

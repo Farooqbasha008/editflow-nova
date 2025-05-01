@@ -13,7 +13,9 @@ interface GeneratedMedia {
     voice?: string;
     trimSilence?: boolean;
     soundType?: string;
-    aspectRatio?: '16:9' | '9:16';
+    aspectRatio?: '16:9' | '9:16' | '1:1' | '4:5' | '5:4' | '3:2' | '2:3';
+    resolution?: '720p' | '1080p';
+    model?: 'wan-2.1' | 'pika-v2.2';
   };
 }
 

@@ -184,8 +184,20 @@ const MediaLibrary: React.FC<MediaLibraryProps> = ({ onAddToTimeline, mediaType 
   const [activeTab, setActiveTab] = useState<'library' | 'generated'>('library');
   
   const handleDragStart = (e: React.DragEvent, item: typeof MEDIA_ITEMS[number]) => {
+    // Parse duration string "MM:SS" to seconds
+    let durationInSeconds = 5; // Default duration
+    if (item.duration) {
+      const parts = item.duration.split(':');
+      if (parts.length === 2) {
+        const minutes = parseInt(parts[0]);
+        const seconds = parseInt(parts[1]);
+        durationInSeconds = (minutes * 60) + seconds;
+      }
+    }
+    
     e.dataTransfer.setData('application/json', JSON.stringify({
       ...item,
+      duration: durationInSeconds, // Set numeric duration in seconds
       type: item.type,
       color: item.type === 'video' ? 'bg-yellow-400/70' : 'bg-blue-400/70',
       allowedTrack: item.type === 'video' ? 'track1' : 'track2'
@@ -208,7 +220,16 @@ const MediaLibrary: React.FC<MediaLibraryProps> = ({ onAddToTimeline, mediaType 
   };
 
   const handleDoubleClick = (item: typeof MEDIA_ITEMS[number]) => {
-    const durationInSeconds = parseInt(item.duration.split(':')[1]);
+    // Parse duration string "MM:SS" to seconds
+    let durationInSeconds = 5; // Default duration
+    if (item.duration) {
+      const parts = item.duration.split(':');
+      if (parts.length === 2) {
+        const minutes = parseInt(parts[0]);
+        const seconds = parseInt(parts[1]);
+        durationInSeconds = (minutes * 60) + seconds;
+      }
+    }
     
     // Determine which track to add to based on media type
     let trackId = 'track1'; // Default to first video track

@@ -33,6 +33,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   const [showVolumeControl, setShowVolumeControl] = useState(false);
   const [isVideoReady, setIsVideoReady] = useState(false);
   const [currentVideoId, setCurrentVideoId] = useState<string | null>(null);
+  const [initialPlayAttempted, setInitialPlayAttempted] = useState(false);
 
   // Handle video loading and source changes
   useEffect(() => {
@@ -46,15 +47,25 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
         console.log('Loading new video:', activeVideo.src);
         setIsVideoReady(false);
         setLoaded(false);
-        video.src = activeVideo.src;
-        video.load();
-        setCurrentVideoId(activeVideo.id);
+        setInitialPlayAttempted(false);
+        
+        try {
+          video.src = activeVideo.src;
+          video.load();
+          setCurrentVideoId(activeVideo.id);
+        } catch (error) {
+          console.error('Error setting video source:', error);
+          toast.error('Failed to load video', {
+            description: 'Could not set video source. The URL might be invalid.'
+          });
+        }
       } 
     } else {
       // No active video
       video.src = '';
       setIsVideoReady(false);
       setLoaded(false);
+      setInitialPlayAttempted(false);
       setCurrentVideoId(null);
     }
   }, [activeVideo, currentVideoId]);
@@ -71,10 +82,18 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
       setIsVideoReady(true);
       
       // Try to play if currently playing
-      if (isPlaying && video.paused) {
+      if (isPlaying && video.paused && !initialPlayAttempted) {
+        setInitialPlayAttempted(true);
         video.play().catch(error => {
           console.error('Failed to autoplay video:', error);
         });
+      }
+    };
+    
+    const handleCanPlayThrough = () => {
+      if (!isVideoReady) {
+        console.log('Video can play through');
+        setIsVideoReady(true);
       }
     };
     
@@ -95,32 +114,50 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     
     // Add event listeners
     video.addEventListener('loadeddata', handleLoadedData);
+    video.addEventListener('canplaythrough', handleCanPlayThrough);
     video.addEventListener('error', handleError as EventListener);
     video.addEventListener('ended', handleEnded);
     
     // Clean up
     return () => {
       video.removeEventListener('loadeddata', handleLoadedData);
+      video.removeEventListener('canplaythrough', handleCanPlayThrough);
       video.removeEventListener('error', handleError as EventListener);
       video.removeEventListener('ended', handleEnded);
     };
-  }, [isPlaying]);
+  }, [isPlaying, initialPlayAttempted, isVideoReady]);
 
   // Handle video playback and synchronization
   useEffect(() => {
     if (!videoRef.current || !activeVideo || !isVideoReady) return;
 
     const video = videoRef.current;
-    const relativeTime = currentTime - activeVideo.start;
+    
+    // Calculate relative time position in the clip
+    const relativeTime = Math.max(0, currentTime - activeVideo.start);
+    
+    // Apply video trimming if set
+    const trimStart = activeVideo.trimStart || 0;
+    const trimEnd = activeVideo.trimEnd || 0;
+    const maxDuration = activeVideo.duration - trimStart - trimEnd;
+    
+    // Ensure we don't go beyond the trimmed bounds
+    const clampedRelativeTime = Math.min(maxDuration, Math.max(0, relativeTime));
+    const targetTime = trimStart + clampedRelativeTime;
 
-    // Update video position if needed
-    if (Math.abs(video.currentTime - relativeTime) > 0.5) {
-      video.currentTime = Math.max(0, relativeTime);
+    // Update video position if needed - use a larger threshold for seeking to avoid constant small adjustments
+    if (Math.abs(video.currentTime - targetTime) > 0.5) {
+      console.log(`Seeking to ${targetTime} (current: ${video.currentTime})`);
+      try {
+        video.currentTime = targetTime;
+      } catch (error) {
+        console.error('Error seeking video:', error);
+      }
     }
 
     // Update volume
     const clipVolume = (activeVideo.volume || 1) * (muted ? 0 : volume);
-    video.volume = clipVolume;
+    video.volume = Math.max(0, Math.min(1, clipVolume)); // Ensure volume is between 0 and 1
 
     // Handle play/pause
     if (isPlaying) {
@@ -193,6 +230,20 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
                 </div>
               </div>
             )}
+          </div>
+        )}
+        
+        {/* Loading indicator */}
+        {activeVideo && !isVideoReady && (
+          <div className="absolute inset-0 flex items-center justify-center bg-black/50">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#D7F266]"></div>
+          </div>
+        )}
+        
+        {/* No video message */}
+        {!activeVideo && (
+          <div className="absolute inset-0 flex items-center justify-center bg-black/30 text-white/70">
+            <p>Add and select media to preview</p>
           </div>
         )}
       </div>
