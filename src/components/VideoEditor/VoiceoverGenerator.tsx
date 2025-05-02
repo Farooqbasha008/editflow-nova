@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Mic, Play, Pause, Download, Save, Plus } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Mic, Play, Pause, Download, Save, Plus, Info, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -9,40 +9,30 @@ import { TimelineItem } from './VideoEditor';
 import { generateSpeech } from '@/lib/groq';
 import { GripVertical } from 'lucide-react';
 import { generatedMediaDB } from '@/lib/db';
+import { VOICE_DESCRIPTIONS, getFormattedVoiceDescription, getVoiceRecommendations } from '@/lib/voiceDescriptions';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { Badge } from '@/components/ui/badge';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface VoiceoverGeneratorProps {
   onAddToTimeline: (item: TimelineItem) => void;
 }
 
-const GROQ_VOICES = [
-  { id: 'Aaliyah', name: 'Aaliyah' },
-  { id: 'Adelaide', name: 'Adelaide' },
-  { id: 'Angelo', name: 'Angelo' },
-  { id: 'Arista', name: 'Arista' },
-  { id: 'Atlas', name: 'Atlas' },
-  { id: 'Basil', name: 'Basil' },
-  { id: 'Briggs', name: 'Briggs' },
-  { id: 'Calum', name: 'Calum' },
-  { id: 'Celeste', name: 'Celeste' },
-  { id: 'Cheyenne', name: 'Cheyenne' },
-  { id: 'Chip', name: 'Chip' },
-  { id: 'Cillian', name: 'Cillian' },
-  { id: 'Deedee', name: 'Deedee' },
-  { id: 'Eleanor', name: 'Eleanor' },
-  { id: 'Fritz', name: 'Fritz' },
-  { id: 'Gail', name: 'Gail' },
-  { id: 'Indigo', name: 'Indigo' },
-  { id: 'Jennifer', name: 'Jennifer' },
-  { id: 'Judy', name: 'Judy' },
-  { id: 'Mamaw', name: 'Mamaw' },
-  { id: 'Mason', name: 'Mason' },
-  { id: 'Mikail', name: 'Mikail' },
-  { id: 'Mitch', name: 'Mitch' },
-  { id: 'Nia', name: 'Nia' },
-  { id: 'Quinn', name: 'Quinn' },
-  { id: 'Ruby', name: 'Ruby' },
-  { id: 'Thunder', name: 'Thunder' },
-];
+// Use the voice descriptions from the voiceDescriptions.ts file
+const GROQ_VOICES = VOICE_DESCRIPTIONS.map(voice => ({
+  id: voice.id,
+  name: voice.name,
+  description: voice.description,
+  gender: voice.gender,
+  ageGroup: voice.ageGroup,
+  characteristics: voice.characteristics,
+  suitableFor: voice.suitableFor
+}));
 
 // Track constants for better organization
 const TRACK_IDS = {
@@ -60,6 +50,8 @@ const VoiceoverGenerator: React.FC<VoiceoverGeneratorProps> = ({ onAddToTimeline
   const [isPlaying, setIsPlaying] = useState(false);
   const [apiKey, setApiKey] = useState<string>('');
   const [trimSilence, setTrimSilence] = useState<boolean>(true);
+  const [showVoiceInfo, setShowVoiceInfo] = useState(false);
+  const [voiceRecommendations, setVoiceRecommendations] = useState<Array<{voice: typeof GROQ_VOICES[0], reason: string}>>([]);
   const audioRef = React.useRef<HTMLAudioElement | null>(null);
   
   // Load API key from localStorage
@@ -69,6 +61,16 @@ const VoiceoverGenerator: React.FC<VoiceoverGeneratorProps> = ({ onAddToTimeline
       setApiKey(savedApiKey);
     }
   }, []);
+  
+  // Update voice recommendations when text changes
+  useEffect(() => {
+    if (text.trim().length > 10) {
+      const recommendations = getVoiceRecommendations(text);
+      setVoiceRecommendations(recommendations);
+    } else {
+      setVoiceRecommendations([]);
+    }
+  }, [text]);
 
   const handleGenerate = async () => {
     if (!text.trim()) {
@@ -109,6 +111,8 @@ const VoiceoverGenerator: React.FC<VoiceoverGeneratorProps> = ({ onAddToTimeline
         prompt: text,
         metadata: {
           voice,
+          voiceName: GROQ_VOICES.find(v => v.id === voice)?.name,
+          voiceDescription: GROQ_VOICES.find(v => v.id === voice)?.description,
           trimSilence,
         }
       });
@@ -194,7 +198,27 @@ const VoiceoverGenerator: React.FC<VoiceoverGeneratorProps> = ({ onAddToTimeline
       </div>
       
       <div className="space-y-2">
-        <Label htmlFor="voice-select" className="text-xs text-[#F7F8F6]">Voice</Label>
+        <div className="flex items-center justify-between">
+          <Label htmlFor="voice-select" className="text-xs text-[#F7F8F6]">Voice</Label>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="h-5 w-5 rounded-full p-0 text-white/70 hover:text-white hover:bg-white/10"
+                  onClick={() => setShowVoiceInfo(!showVoiceInfo)}
+                >
+                  <Info className="h-3 w-3" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="top">
+                <p className="text-xs">Show voice descriptions</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
+        
         <Select value={voice} onValueChange={setVoice}>
           <SelectTrigger id="voice-select" className="bg-transparent border-white/20 text-white focus:ring-[#D7F266]">
             <SelectValue placeholder="Select a voice" />
@@ -207,6 +231,40 @@ const VoiceoverGenerator: React.FC<VoiceoverGeneratorProps> = ({ onAddToTimeline
             ))}
           </SelectContent>
         </Select>
+        
+        {showVoiceInfo && (
+          <div className="mt-2 p-2 bg-black/30 rounded text-xs text-white/80 border border-white/10">
+            <p className="font-medium text-[#D7F266]">{GROQ_VOICES.find(v => v.id === voice)?.name}</p>
+            <p>{GROQ_VOICES.find(v => v.id === voice)?.description}</p>
+            <p className="mt-1"><span className="text-[#D7F266]">Best for:</span> {GROQ_VOICES.find(v => v.id === voice)?.suitableFor.join(', ')}</p>
+          </div>
+        )}
+        
+        {voiceRecommendations.length > 0 && (
+          <div className="mt-2">
+            <div className="flex items-center gap-1 mb-1">
+              <Sparkles className="h-3 w-3 text-[#D7F266]" />
+              <span className="text-xs text-white/80">Recommended voices for your text:</span>
+            </div>
+            <ScrollArea className="h-[80px] w-full rounded border border-white/10 p-2">
+              <div className="space-y-2">
+                {voiceRecommendations.map((rec, index) => (
+                  <div key={index} className="flex items-start gap-2">
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="h-5 px-2 py-0 text-[10px] bg-[#D7F266]/10 hover:bg-[#D7F266]/20 text-[#D7F266] rounded"
+                      onClick={() => setVoice(rec.voice.id)}
+                    >
+                      {rec.voice.name}
+                    </Button>
+                    <span className="text-[10px] text-white/70">{rec.reason}</span>
+                  </div>
+                ))}
+              </div>
+            </ScrollArea>
+          </div>
+        )}
       </div>
       
       <div className="flex items-center space-x-2">

@@ -341,6 +341,17 @@ AVOID:
 - Unrealistic camera movements
 - Vague or ambiguous terms
 
+VOICEOVER PROMPT GUIDELINES:
+When creating voiceover prompts, include a specific voice recommendation from the Groq Cloud voice library based on the content:
+- For narration or educational content: Recommend Fritz, Jennifer, or Mason (clear, professional voices)
+- For dramatic or intense scenes: Recommend Thunder, Atlas, or Mikail (deep, powerful voices)
+- For warm, friendly content: Recommend Aaliyah, Judy, or Chip (warm, conversational voices)
+- For storytelling: Recommend Basil, Cillian, or Celeste (engaging, expressive voices)
+- For children's content: Recommend Cheyenne, Deedee, or Quinn (energetic, youthful voices)
+- For luxury or sophisticated content: Recommend Adelaide, Eleanor, or Cillian (refined, elegant voices)
+
+Include the voice name in the voiceoverPrompt field like this: "[Voice: NAME] Actual voiceover text here"
+
 OUTPUT FORMAT (STRICT JSON SCHEMA):
 {
   "title": "The title of the video",
@@ -353,7 +364,7 @@ OUTPUT FORMAT (STRICT JSON SCHEMA):
       "sceneNumber": 1,
       "setting": "INT/EXT. LOCATION - TIME",
       "textToVideoPrompt": "Detailed visual prompt following the strict format above",
-      "voiceoverPrompt": "Exact dialogue line or narration with voice style suggestions (if needed)",
+      "voiceoverPrompt": "[Voice: NAME] Exact dialogue line or narration that matches the scene content",
       "backgroundMusicPrompt": "Description of music genre, instruments, intensity, mood, and transition notes"
     }
     // repeat for each scene until sceneNumber == ${scriptParams.numScenes}

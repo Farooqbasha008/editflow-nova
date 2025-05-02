@@ -11,6 +11,8 @@ interface GeneratedMedia {
     thumbnail?: string;
     duration?: number;
     voice?: string;
+    voiceName?: string;
+    voiceDescription?: string;
     trimSilence?: boolean;
     soundType?: string;
     aspectRatio?: '16:9' | '9:16' | '1:1' | '4:5' | '5:4' | '3:2' | '2:3';
@@ -258,4 +260,4 @@ class GeneratedMediaDB {
   }
 }
 
-export const generatedMediaDB = new GeneratedMediaDB(); 
+export const generatedMediaDB = new GeneratedMediaDB();

@@ -21,8 +21,11 @@ const AudioManager: React.FC<AudioManagerProps> = ({
   const [loadedAudios, setLoadedAudios] = useState<Set<string>>(new Set());
   const [audioStates, setAudioStates] = useState<Map<string, 'loading' | 'error' | 'ready'>>(new Map());
 
+  // Import the function to get blobs from IndexedDB
+  const { getBlobFromIndexedDB } = require('@/lib/groqTTS');
+
   // Helper function to create new audio element
-  const createAudioElement = useCallback((audio: TimelineItem) => {
+  const createAudioElement = useCallback(async (audio: TimelineItem) => {
     console.log('Creating new audio element for:', audio.id, audio.src);
     
     if (!audio.src) {
@@ -56,8 +59,31 @@ const AudioManager: React.FC<AudioManagerProps> = ({
       });
     });
     
-    audioElement.addEventListener('error', (e) => {
+    audioElement.addEventListener('error', async (e) => {
       console.error('Audio loading error:', audio.id, e);
+      
+      // Check if this is a blob URL that might have become invalid
+      if (audio.src.startsWith('blob:') && audio.src.includes('#blobId=')) {
+        // Extract the blob ID from the URL
+        const blobId = audio.src.split('#blobId=')[1];
+        if (blobId) {
+          try {
+            // Try to retrieve the blob from IndexedDB
+            const blob = await getBlobFromIndexedDB(blobId);
+            if (blob) {
+              // Create a new blob URL
+              const newUrl = URL.createObjectURL(blob);
+              console.log('Retrieved audio blob from IndexedDB:', blobId);
+              audioElement.src = newUrl;
+              audioElement.load();
+              return;
+            }
+          } catch (retrieveError) {
+            console.error('Failed to retrieve audio from IndexedDB:', retrieveError);
+          }
+        }
+      }
+      
       setAudioStates(prev => new Map(prev).set(audio.id, 'error'));
       toast.error('Error loading audio', {
         description: `Could not load audio: ${audio.name}`,
@@ -68,7 +94,33 @@ const AudioManager: React.FC<AudioManagerProps> = ({
     audioElement.preload = 'auto';
     
     try {
-      audioElement.src = audio.src;
+      // Check if this is a URL with a blobId that we need to handle
+      if (audio.src.includes('#blobId=')) {
+        const [url, blobIdPart] = audio.src.split('#blobId=');
+        if (blobIdPart) {
+          try {
+            // Try to retrieve the blob from IndexedDB
+            const blob = await getBlobFromIndexedDB(blobIdPart);
+            if (blob) {
+              // Create a new blob URL
+              const newUrl = URL.createObjectURL(blob);
+              console.log('Retrieved audio blob from IndexedDB:', blobIdPart);
+              audioElement.src = newUrl;
+            } else {
+              // Fall back to the original URL if blob not found
+              audioElement.src = url;
+            }
+          } catch (retrieveError) {
+            console.error('Failed to retrieve audio from IndexedDB:', retrieveError);
+            audioElement.src = url;
+          }
+        } else {
+          audioElement.src = audio.src;
+        }
+      } else {
+        audioElement.src = audio.src;
+      }
+      
       audioElement.load();
       return audioElement;
     } catch (error) {
@@ -89,12 +141,12 @@ const AudioManager: React.FC<AudioManagerProps> = ({
     const currentAudioIds = new Set<string>();
     
     // Process each active audio
-    activeAudios.forEach(audio => {
+    activeAudios.forEach(async (audio) => {
       currentAudioIds.add(audio.id);
       
       // Create new audio element if it doesn't exist
       if (!audioRefs.current.has(audio.id)) {
-        const newAudio = createAudioElement(audio);
+        const newAudio = await createAudioElement(audio);
         if (newAudio) {
           audioRefs.current.set(audio.id, newAudio);
         }
@@ -106,7 +158,7 @@ const AudioManager: React.FC<AudioManagerProps> = ({
           existingAudio.pause();
           existingAudio.src = '';
           
-          const newAudio = createAudioElement(audio);
+          const newAudio = await createAudioElement(audio);
           if (newAudio) {
             audioRefs.current.set(audio.id, newAudio);
           }

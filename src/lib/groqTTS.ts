@@ -8,6 +8,10 @@ const DEFAULT_TTS_MODEL = 'playai-tts';
 // Default voice ID for TTS (Groq requires '-PlayAI' suffix which is added automatically)
 const DEFAULT_VOICE = 'Fritz'; // Groq supports various voices
 
+// IndexedDB for storing audio blobs
+const DB_NAME = 'audio-blobs';
+const STORE_NAME = 'blobs';
+
 /**
  * Speech generation options
  */
@@ -17,6 +21,103 @@ export interface SpeechGenerationOptions {
   speed?: number;
   stability?: number;
   trimSilence?: boolean; // Option to trim silence from the beginning and end of audio
+}
+
+/**
+ * Initialize the IndexedDB database for storing audio blobs
+ */
+async function initBlobDB(): Promise<IDBDatabase> {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(DB_NAME, 1);
+    
+    request.onerror = () => reject(new Error('Failed to open IndexedDB'));
+    
+    request.onupgradeneeded = (event) => {
+      const db = (event.target as IDBOpenDBRequest).result;
+      if (!db.objectStoreNames.contains(STORE_NAME)) {
+        db.createObjectStore(STORE_NAME, { keyPath: 'id' });
+      }
+    };
+    
+    request.onsuccess = (event) => {
+      resolve((event.target as IDBOpenDBRequest).result);
+    };
+  });
+}
+
+/**
+ * Store an audio blob in IndexedDB for persistence across page refreshes
+ * @param blob The audio blob to store
+ * @param text The text used to generate the audio (for reference)
+ * @returns A Promise that resolves to the blob ID
+ */
+async function storeBlobInIndexedDB(blob: Blob, text: string): Promise<string> {
+  try {
+    const db = await initBlobDB();
+    const id = `audio-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+    
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction(STORE_NAME, 'readwrite');
+      const store = transaction.objectStore(STORE_NAME);
+      
+      const item = {
+        id,
+        blob,
+        text,
+        dateCreated: new Date()
+      };
+      
+      const request = store.add(item);
+      
+      request.onsuccess = () => {
+        resolve(id);
+        db.close();
+      };
+      
+      request.onerror = () => {
+        reject(new Error('Failed to store audio blob in IndexedDB'));
+        db.close();
+      };
+    });
+  } catch (error) {
+    console.error('Error storing blob in IndexedDB:', error);
+    throw error;
+  }
+}
+
+/**
+ * Retrieve an audio blob from IndexedDB by its ID
+ * @param blobId The ID of the blob to retrieve
+ * @returns A Promise that resolves to the audio blob or null if not found
+ */
+export async function getBlobFromIndexedDB(blobId: string): Promise<Blob | null> {
+  try {
+    const db = await initBlobDB();
+    
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction(STORE_NAME, 'readonly');
+      const store = transaction.objectStore(STORE_NAME);
+      const request = store.get(blobId);
+      
+      request.onsuccess = (event) => {
+        const result = (event.target as IDBRequest).result;
+        if (result) {
+          resolve(result.blob);
+        } else {
+          resolve(null);
+        }
+        db.close();
+      };
+      
+      request.onerror = () => {
+        reject(new Error('Failed to retrieve audio blob from IndexedDB'));
+        db.close();
+      };
+    });
+  } catch (error) {
+    console.error('Error retrieving blob from IndexedDB:', error);
+    return null;
+  }
 }
 
 /**
@@ -65,18 +166,23 @@ export async function generateSpeech(
       throw new Error(`Groq API error: ${errorData || response.statusText}`);
     }
 
-    // Convert the audio blob to a URL
+    // Get the audio blob
     const audioBlob = await response.blob();
     
     // Apply silence trimming if enabled
-    if (options.trimSilence) {
-      const trimmedBlob = await trimSilenceFromAudio(audioBlob);
-      const audioUrl = URL.createObjectURL(trimmedBlob);
-      return audioUrl;
-    }
+    const finalBlob = options.trimSilence ? 
+      await trimSilenceFromAudio(audioBlob) : 
+      audioBlob;
     
-    const audioUrl = URL.createObjectURL(audioBlob);
-    return audioUrl;
+    // Store the blob in IndexedDB for persistence across page refreshes
+    const blobId = await storeBlobInIndexedDB(finalBlob, text);
+    
+    // Create a URL for immediate use
+    const audioUrl = URL.createObjectURL(finalBlob);
+    
+    // Return the URL with the blob ID as a query parameter
+    // This allows us to retrieve the blob from IndexedDB when the URL becomes invalid
+    return `${audioUrl}#blobId=${blobId}`;
   } catch (error) {
     console.error('Error generating speech with Groq PlayAI:', error);
     throw error;
@@ -129,7 +235,18 @@ async function trimSilenceFromAudio(audioBlob: Blob): Promise<Blob> {
         // Add a small buffer (100ms) to avoid cutting off speech too abruptly
         const bufferSamples = audioBuffer.sampleRate * 0.1;
         startIndex = Math.max(0, startIndex - bufferSamples);
-        endIndex = Math.min(channelData.length - 1, endIndex + bufferSamples);
+        
+        // Add a larger buffer at the end (200ms) to ensure we don't cut off any trailing audio
+        // This helps prevent the gibberish noise at the end when added to timeline
+        const endBufferSamples = audioBuffer.sampleRate * 0.2;
+        endIndex = Math.min(channelData.length - 1, endIndex + endBufferSamples);
+        
+        // Ensure we have a clean fade out at the end to prevent artifacts
+        const fadeOutSamples = audioBuffer.sampleRate * 0.05; // 50ms fade out
+        for (let i = 0; i < fadeOutSamples && (endIndex - i) > startIndex; i++) {
+          const fadePosition = i / fadeOutSamples;
+          channelData[endIndex - i] *= (1 - fadePosition);
+        }
         
         // Create a new buffer with the trimmed audio
         const trimmedLength = endIndex - startIndex + 1;
@@ -158,7 +275,14 @@ async function trimSilenceFromAudio(audioBlob: Blob): Promise<Blob> {
         
         const source = offlineContext.createBufferSource();
         source.buffer = trimmedBuffer;
-        source.connect(offlineContext.destination);
+        
+        // Add a small fade out at the end to prevent clicks and artifacts
+        const gainNode = offlineContext.createGain();
+        gainNode.gain.setValueAtTime(1.0, offlineContext.currentTime);
+        gainNode.gain.linearRampToValueAtTime(0.001, offlineContext.currentTime + (trimmedBuffer.duration - 0.05));
+        
+        source.connect(gainNode);
+        gainNode.connect(offlineContext.destination);
         source.start(0);
         
         const renderedBuffer = await offlineContext.startRendering();
