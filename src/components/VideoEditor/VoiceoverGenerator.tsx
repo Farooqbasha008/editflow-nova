@@ -102,6 +102,11 @@ const VoiceoverGenerator: React.FC<VoiceoverGeneratorProps> = ({ onAddToTimeline
       
       setGeneratedAudio(audioUrl);
       
+      // Calculate estimated duration based on text length and speaking rate
+      // Average speaking rate is about 150 words per minute or 2.5 words per second
+      const wordCount = text.split(/\s+/).length;
+      const estimatedDuration = Math.max(2, Math.min(30, wordCount / 2.5));
+      
       // Save to IndexedDB
       await generatedMediaDB.addMedia({
         name: `Voiceover: ${text.substring(0, 15)}${text.length > 15 ? '...' : ''}`,
@@ -114,6 +119,8 @@ const VoiceoverGenerator: React.FC<VoiceoverGeneratorProps> = ({ onAddToTimeline
           voiceName: GROQ_VOICES.find(v => v.id === voice)?.name,
           voiceDescription: GROQ_VOICES.find(v => v.id === voice)?.description,
           trimSilence,
+          duration: estimatedDuration,
+          text: text
         }
       });
       
@@ -134,6 +141,9 @@ const VoiceoverGenerator: React.FC<VoiceoverGeneratorProps> = ({ onAddToTimeline
     if (isPlaying) {
       audioRef.current.pause();
     } else {
+      // Pre-load the audio before playing to prevent start-up artifacts
+      audioRef.current.load();
+      
       audioRef.current.play().catch(err => {
         console.error('Failed to play audio:', err);
         toast.error('Failed to play audio');
@@ -145,11 +155,16 @@ const VoiceoverGenerator: React.FC<VoiceoverGeneratorProps> = ({ onAddToTimeline
   const handleAddToTimeline = () => {
     if (!generatedAudio) return;
     
+    // Calculate estimated duration based on text length and speaking rate
+    // Average speaking rate is about 150 words per minute or 2.5 words per second
+    const wordCount = text.split(/\s+/).length;
+    const estimatedDuration = Math.max(2, Math.min(30, wordCount / 2.5));
+    
     const newAudioItem: TimelineItem = {
       id: `voiceover-${Date.now()}`,
       trackId: TRACK_IDS.VOICEOVER,
       start: 0,
-      duration: 5,
+      duration: estimatedDuration,
       type: 'audio',
       name: `Voiceover: ${text.substring(0, 15)}${text.length > 15 ? '...' : ''}`,
       color: 'bg-purple-400/70',

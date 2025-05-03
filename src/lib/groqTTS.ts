@@ -1,3 +1,4 @@
+
 /**
  * Groq PlayAI Text-to-Speech API integration
  */
@@ -169,7 +170,7 @@ export async function generateSpeech(
     // Get the audio blob
     const audioBlob = await response.blob();
     
-    // Apply silence trimming if enabled
+    // Apply silence trimming if enabled - but with improved settings to prevent audio artifacts
     const finalBlob = options.trimSilence ? 
       await trimSilenceFromAudio(audioBlob) : 
       audioBlob;
@@ -216,7 +217,7 @@ async function trimSilenceFromAudio(audioBlob: Blob): Promise<Blob> {
         const channelData = audioBuffer.getChannelData(0); // Use the first channel
         
         // Define the silence threshold (adjust as needed)
-        const silenceThreshold = 0.01; // Values below this are considered silence
+        const silenceThreshold = 0.005; // Lower threshold to keep more audio content
         
         // Find the start and end points (trim silence)
         let startIndex = 0;
@@ -232,21 +233,14 @@ async function trimSilenceFromAudio(audioBlob: Blob): Promise<Blob> {
           endIndex--;
         }
         
-        // Add a small buffer (100ms) to avoid cutting off speech too abruptly
-        const bufferSamples = audioBuffer.sampleRate * 0.1;
+        // Add a small buffer (150ms) to avoid cutting off speech too abruptly
+        const bufferSamples = audioBuffer.sampleRate * 0.15;
         startIndex = Math.max(0, startIndex - bufferSamples);
         
-        // Add a larger buffer at the end (200ms) to ensure we don't cut off any trailing audio
+        // Add a larger buffer at the end (250ms) to ensure we don't cut off any trailing audio
         // This helps prevent the gibberish noise at the end when added to timeline
-        const endBufferSamples = audioBuffer.sampleRate * 0.2;
+        const endBufferSamples = audioBuffer.sampleRate * 0.25;
         endIndex = Math.min(channelData.length - 1, endIndex + endBufferSamples);
-        
-        // Ensure we have a clean fade out at the end to prevent artifacts
-        const fadeOutSamples = audioBuffer.sampleRate * 0.05; // 50ms fade out
-        for (let i = 0; i < fadeOutSamples && (endIndex - i) > startIndex; i++) {
-          const fadePosition = i / fadeOutSamples;
-          channelData[endIndex - i] *= (1 - fadePosition);
-        }
         
         // Create a new buffer with the trimmed audio
         const trimmedLength = endIndex - startIndex + 1;
@@ -276,10 +270,12 @@ async function trimSilenceFromAudio(audioBlob: Blob): Promise<Blob> {
         const source = offlineContext.createBufferSource();
         source.buffer = trimmedBuffer;
         
-        // Add a small fade out at the end to prevent clicks and artifacts
+        // Add gentle fade in and fade out to prevent clicks and pops
         const gainNode = offlineContext.createGain();
-        gainNode.gain.setValueAtTime(1.0, offlineContext.currentTime);
-        gainNode.gain.linearRampToValueAtTime(0.001, offlineContext.currentTime + (trimmedBuffer.duration - 0.05));
+        gainNode.gain.setValueAtTime(0.0, 0);
+        gainNode.gain.linearRampToValueAtTime(1.0, 0.02); // 20ms fade in
+        gainNode.gain.setValueAtTime(1.0, trimmedBuffer.duration - 0.05);
+        gainNode.gain.linearRampToValueAtTime(0.0, trimmedBuffer.duration); // 50ms fade out
         
         source.connect(gainNode);
         gainNode.connect(offlineContext.destination);

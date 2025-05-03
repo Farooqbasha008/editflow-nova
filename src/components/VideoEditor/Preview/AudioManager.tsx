@@ -120,6 +120,18 @@ const AudioManager: React.FC<AudioManagerProps> = ({
         audioElement.src = audio.src;
       }
       
+      // Use crossOrigin for better compatibility
+      audioElement.crossOrigin = 'anonymous';
+      
+      // Add small audio quality improvements
+      audioElement.preservesPitch = true;
+      
+      // Lower latency mode when available
+      if ('mozAutoplayEnabled' in audioElement) {
+        // @ts-ignore - Firefox-specific property
+        audioElement.mozAutoplayEnabled = true;
+      }
+      
       audioElement.load();
       return audioElement;
     } catch (error) {
@@ -220,7 +232,11 @@ const AudioManager: React.FC<AudioManagerProps> = ({
         
         // Set the correct position in the audio file (accounting for trim)
         const audioPosition = relativePosition - trimStart;
-        if (Math.abs(audioElement.currentTime - audioPosition) > 0.5) {
+        
+        // Use a smaller threshold for seeking to avoid artifacts in short audio clips like voiceovers
+        const seekThreshold = audio.type === 'audio' && audio.name.includes('Voiceover') ? 0.1 : 0.5;
+        
+        if (Math.abs(audioElement.currentTime - audioPosition) > seekThreshold) {
           console.log(`Seeking audio ${audio.id} to ${audioPosition}`);
           audioElement.currentTime = Math.max(0, audioPosition);
         }
@@ -231,12 +247,27 @@ const AudioManager: React.FC<AudioManagerProps> = ({
         const clipVolume = (audio.volume || 1) * (isAudioMuted ? 0 : volume);
         audioElement.volume = Math.max(0, Math.min(1, clipVolume)); // Ensure volume is between 0 and 1
         
-        // Handle play/pause
+        // Handle play/pause with improved error handling for voiceovers
         if (isPlaying) {
           if (audioElement.paused) {
             console.log('Playing audio:', audio.id);
+            
+            // Use a promise with proper error handling
             audioElement.play().catch(err => {
               console.error('Failed to play audio:', audio.id, err);
+              
+              // If there's an error, try reloading the audio element
+              if (audio.src.includes('#blobId=')) {
+                console.log('Attempting to reload audio from blob storage:', audio.id);
+                createAudioElement(audio).then(newAudio => {
+                  if (newAudio) {
+                    audioRefs.current.set(audio.id, newAudio);
+                    newAudio.play().catch(err => {
+                      console.error('Still failed to play audio after reload:', err);
+                    });
+                  }
+                });
+              }
             });
           }
         } else {
@@ -248,7 +279,7 @@ const AudioManager: React.FC<AudioManagerProps> = ({
         console.error('Error controlling audio playback:', audio.id, error);
       }
     });
-  }, [activeAudios, currentTime, isPlaying, volume, muted, audioStates]);
+  }, [activeAudios, currentTime, isPlaying, volume, muted, audioStates, createAudioElement]);
 
   // Cleanup on unmount
   useEffect(() => {
