@@ -9,7 +9,7 @@ const LandingPage = () => {
       {/* Navigation Bar */}
       <header className="flex items-center justify-between p-4 md:p-6 border-b border-white/10 animate-fade-in">
         <div className="flex items-center">
-          <h1 className="text-2xl font-bold text-[#D7F266]">EditFlow</h1>
+          <h1 className="text-2xl font-bold text-[#D7F266]">FilmMaestro</h1>
           <nav className="ml-10 hidden md:flex">
             <ul className="flex space-x-8">
               <li><a href="#" className="hover:text-[#D7F266] transition-colors duration-200 font-medium">Home</a></li>
@@ -119,7 +119,7 @@ const LandingPage = () => {
                 </div>
               </div>
               <div className="p-4">
-                <h4 className="font-medium group-hover:text-[#D7F266] transition-colors duration-300">Welcome to EditFlow!</h4>
+                <h4 className="font-medium group-hover:text-[#D7F266] transition-colors duration-300">Welcome to FilmMaestro!</h4>
                 <p className="text-sm text-[#F7F8F6]/60 mt-1">Last edited: Today</p>
               </div>
             </div>
@@ -169,7 +169,7 @@ const LandingPage = () => {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-12">
             {/* Company Info */}
             <div className="col-span-1 md:col-span-1">
-              <h2 className="text-2xl font-bold text-[#D7F266] mb-4">EditFlow</h2>
+              <h2 className="text-2xl font-bold text-[#D7F266] mb-4">FilmMaestro</h2>
               <p className="text-sm text-[#F7F8F6]/70 max-w-md leading-relaxed mb-6">Create professional videos with AI. Generate, edit, and share your content in minutes.</p>
               <div className="flex space-x-4">
                 <a href="#" className="w-9 h-9 rounded-full bg-[#1E1E1E] flex items-center justify-center text-[#F7F8F6]/70 hover:text-[#D7F266] hover:bg-[#1E1E1E]/80 transition-all duration-300">
@@ -220,9 +220,9 @@ const LandingPage = () => {
                 <button className="bg-[#D7F266] hover:bg-[#D7F266]/90 text-[#151514] px-4 py-2 rounded-r-md transition-colors duration-300 font-medium text-sm">Subscribe</button>
               </div>
               <div className="mt-6">
-                <a href="mailto:contact@editflow.ai" className="text-sm text-[#F7F8F6]/70 hover:text-[#D7F266] transition-colors duration-300 flex items-center">
+                <a href="mailto:contact@filmmaestro.ai" className="text-sm text-[#F7F8F6]/70 hover:text-[#D7F266] transition-colors duration-300 flex items-center">
                   <Mail size={16} className="mr-2" />
-                  contact@editflow.ai
+                  contact@filmmaestro.ai
                 </a>
               </div>
             </div>
@@ -230,7 +230,7 @@ const LandingPage = () => {
           
           {/* Bottom Section */}
           <div className="border-t border-white/10 pt-8 flex flex-col md:flex-row justify-between items-center">
-            <p className="text-sm text-[#F7F8F6]/50 mb-4 md:mb-0">© {new Date().getFullYear()} EditFlow. All rights reserved.</p>
+            <p className="text-sm text-[#F7F8F6]/50 mb-4 md:mb-0">© {new Date().getFullYear()} FilmMaestro. All rights reserved.</p>
             <div className="flex flex-wrap justify-center md:justify-end gap-x-6 gap-y-2">
               <a href="#" className="text-sm text-[#F7F8F6]/60 hover:text-[#D7F266] transition-colors">Terms</a>
               <a href="#" className="text-sm text-[#F7F8F6]/60 hover:text-[#D7F266] transition-colors">Privacy</a>
