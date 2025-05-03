@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Mic, Play, Pause, Download, Save, Plus, Info, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -6,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { TimelineItem } from './VideoEditor';
-import { generateSpeech } from '@/lib/groq';
+import { generateSpeech } from '@/lib/groqTTS';
 import { GripVertical } from 'lucide-react';
 import { generatedMediaDB } from '@/lib/db';
 import { VOICE_DESCRIPTIONS, getFormattedVoiceDescription, getVoiceRecommendations } from '@/lib/voiceDescriptions';
@@ -52,6 +53,7 @@ const VoiceoverGenerator: React.FC<VoiceoverGeneratorProps> = ({ onAddToTimeline
   const [trimSilence, setTrimSilence] = useState<boolean>(true);
   const [showVoiceInfo, setShowVoiceInfo] = useState(false);
   const [voiceRecommendations, setVoiceRecommendations] = useState<Array<{voice: typeof GROQ_VOICES[0], reason: string}>>([]);
+  const [audioDuration, setAudioDuration] = useState<number>(0);
   const audioRef = React.useRef<HTMLAudioElement | null>(null);
   
   // Load API key from localStorage
@@ -71,6 +73,32 @@ const VoiceoverGenerator: React.FC<VoiceoverGeneratorProps> = ({ onAddToTimeline
       setVoiceRecommendations([]);
     }
   }, [text]);
+
+  // Calculate more accurate duration when audio loads
+  useEffect(() => {
+    if (generatedAudio && audioRef.current) {
+      const updateDuration = () => {
+        setAudioDuration(audioRef.current?.duration || 0);
+      };
+      
+      audioRef.current.addEventListener('loadedmetadata', updateDuration);
+      audioRef.current.addEventListener('durationchange', updateDuration);
+      
+      // Force load to get duration
+      if (audioRef.current.readyState === 0) {
+        audioRef.current.load();
+      } else {
+        updateDuration();
+      }
+      
+      return () => {
+        if (audioRef.current) {
+          audioRef.current.removeEventListener('loadedmetadata', updateDuration);
+          audioRef.current.removeEventListener('durationchange', updateDuration);
+        }
+      };
+    }
+  }, [generatedAudio]);
 
   const handleGenerate = async () => {
     if (!text.trim()) {
@@ -102,7 +130,12 @@ const VoiceoverGenerator: React.FC<VoiceoverGeneratorProps> = ({ onAddToTimeline
       
       setGeneratedAudio(audioUrl);
       
-      // Save to IndexedDB
+      // Calculate estimated duration based on text length and speaking rate
+      // Average speaking rate is about 150 words per minute or 2.5 words per second
+      const wordCount = text.split(/\s+/).length;
+      const estimatedDuration = Math.max(2, Math.min(30, wordCount / 2.5));
+      
+      // Save to IndexedDB with full text content for reference
       await generatedMediaDB.addMedia({
         name: `Voiceover: ${text.substring(0, 15)}${text.length > 15 ? '...' : ''}`,
         type: 'audio',
@@ -114,6 +147,7 @@ const VoiceoverGenerator: React.FC<VoiceoverGeneratorProps> = ({ onAddToTimeline
           voiceName: GROQ_VOICES.find(v => v.id === voice)?.name,
           voiceDescription: GROQ_VOICES.find(v => v.id === voice)?.description,
           trimSilence,
+          duration: estimatedDuration
         }
       });
       
@@ -134,6 +168,12 @@ const VoiceoverGenerator: React.FC<VoiceoverGeneratorProps> = ({ onAddToTimeline
     if (isPlaying) {
       audioRef.current.pause();
     } else {
+      // Pre-load the audio before playing to prevent start-up artifacts
+      audioRef.current.load();
+      
+      // Set currentTime to 0 to ensure we're playing from the beginning
+      audioRef.current.currentTime = 0;
+      
       audioRef.current.play().catch(err => {
         console.error('Failed to play audio:', err);
         toast.error('Failed to play audio');
@@ -145,11 +185,16 @@ const VoiceoverGenerator: React.FC<VoiceoverGeneratorProps> = ({ onAddToTimeline
   const handleAddToTimeline = () => {
     if (!generatedAudio) return;
     
+    // Use the actual audio duration if available, otherwise use the estimate
+    const finalDuration = audioDuration > 0 ? 
+      audioDuration : 
+      Math.max(2, Math.min(30, text.split(/\s+/).length / 2.5));
+    
     const newAudioItem: TimelineItem = {
       id: `voiceover-${Date.now()}`,
       trackId: TRACK_IDS.VOICEOVER,
       start: 0,
-      duration: 5,
+      duration: finalDuration,
       type: 'audio',
       name: `Voiceover: ${text.substring(0, 15)}${text.length > 15 ? '...' : ''}`,
       color: 'bg-purple-400/70',
@@ -182,6 +227,13 @@ const VoiceoverGenerator: React.FC<VoiceoverGeneratorProps> = ({ onAddToTimeline
       setApiKey(key);
       toast.success('API key saved');
     }
+  };
+
+  // Format duration as MM:SS
+  const formatDuration = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
   return (
@@ -330,7 +382,7 @@ const VoiceoverGenerator: React.FC<VoiceoverGeneratorProps> = ({ onAddToTimeline
                 type: 'audio',
                 name: `Voiceover: ${text.substring(0, 15)}${text.length > 15 ? '...' : ''}`,
                 src: generatedAudio,
-                duration: '5:00'
+                duration: audioDuration > 0 ? formatDuration(audioDuration) : '2:00'
               };
               
               e.dataTransfer.setData('application/json', JSON.stringify(item));
@@ -360,6 +412,11 @@ const VoiceoverGenerator: React.FC<VoiceoverGeneratorProps> = ({ onAddToTimeline
             <div className="text-xs text-[#F7F8F6]/90 truncate flex-1">
               {text.substring(0, 20)}{text.length > 20 ? '...' : ''}
             </div>
+            {audioDuration > 0 && (
+              <span className="text-xs text-white/60 mr-1">
+                {formatDuration(audioDuration)}
+              </span>
+            )}
             <Button
               size="sm"
               variant="outline"
@@ -385,7 +442,18 @@ const VoiceoverGenerator: React.FC<VoiceoverGeneratorProps> = ({ onAddToTimeline
             <Plus size={14} className="mr-1" /> Add to Timeline
           </Button>
           
-          <audio ref={audioRef} src={generatedAudio} onEnded={() => setIsPlaying(false)} className="hidden" />
+          <audio 
+            ref={audioRef} 
+            src={generatedAudio} 
+            onEnded={() => setIsPlaying(false)}
+            preload="auto" 
+            className="hidden"
+            onLoadedMetadata={() => {
+              if (audioRef.current) {
+                setAudioDuration(audioRef.current.duration);
+              }
+            }} 
+          />
         </div>
       )}
     </div>

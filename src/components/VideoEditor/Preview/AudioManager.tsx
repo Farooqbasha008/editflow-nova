@@ -1,6 +1,8 @@
+
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { TimelineItem } from '../VideoEditor';
 import { toast } from 'sonner';
+import { getBlobFromIndexedDB } from '@/lib/groqTTS';
 
 interface AudioManagerProps {
   activeAudios: TimelineItem[];
@@ -20,11 +22,9 @@ const AudioManager: React.FC<AudioManagerProps> = ({
   const audioRefs = useRef<Map<string, HTMLAudioElement>>(new Map());
   const [loadedAudios, setLoadedAudios] = useState<Set<string>>(new Set());
   const [audioStates, setAudioStates] = useState<Map<string, 'loading' | 'error' | 'ready'>>(new Map());
+  const lastPlayPositions = useRef<Map<string, number>>(new Map());
 
-  // Import the function to get blobs from IndexedDB
-  const { getBlobFromIndexedDB } = require('@/lib/groqTTS');
-
-  // Helper function to create new audio element
+  // Helper function to create new audio element with improved error handling
   const createAudioElement = useCallback(async (audio: TimelineItem) => {
     console.log('Creating new audio element for:', audio.id, audio.src);
     
@@ -121,6 +121,21 @@ const AudioManager: React.FC<AudioManagerProps> = ({
         audioElement.src = audio.src;
       }
       
+      // Use crossOrigin for better compatibility
+      audioElement.crossOrigin = 'anonymous';
+      
+      // Add small audio quality improvements
+      audioElement.preservesPitch = true;
+      
+      // Prevent looping - this is crucial to prevent repeating audio
+      audioElement.loop = false;
+      
+      // Lower latency mode when available
+      if ('mozAutoplayEnabled' in audioElement) {
+        // @ts-ignore - Firefox-specific property
+        audioElement.mozAutoplayEnabled = true;
+      }
+      
       audioElement.load();
       return audioElement;
     } catch (error) {
@@ -155,6 +170,11 @@ const AudioManager: React.FC<AudioManagerProps> = ({
         const existingAudio = audioRefs.current.get(audio.id);
         if (existingAudio && existingAudio.src !== audio.src && audio.src) {
           console.log('Audio source changed, recreating element:', audio.id);
+          
+          // Store current position before recreating
+          const currentPos = existingAudio.currentTime;
+          lastPlayPositions.current.set(audio.id, currentPos);
+          
           existingAudio.pause();
           existingAudio.src = '';
           
@@ -186,11 +206,14 @@ const AudioManager: React.FC<AudioManagerProps> = ({
           newMap.delete(id);
           return newMap;
         });
+        
+        // Clean up last play positions
+        lastPlayPositions.current.delete(id);
       }
     });
   }, [activeAudios, createAudioElement]);
 
-  // Handle playback status, position, and volume for each audio
+  // Improved playback handling with better position tracking and precise seeking
   useEffect(() => {
     activeAudios.forEach(audio => {
       const audioElement = audioRefs.current.get(audio.id);
@@ -221,9 +244,23 @@ const AudioManager: React.FC<AudioManagerProps> = ({
         
         // Set the correct position in the audio file (accounting for trim)
         const audioPosition = relativePosition - trimStart;
-        if (Math.abs(audioElement.currentTime - audioPosition) > 0.5) {
+        
+        // Compare with last known position to prevent unnecessary seeking
+        // This helps prevent audio stuttering from too frequent seeking
+        const lastPosition = lastPlayPositions.current.get(audio.id) || 0;
+        
+        // Use an adaptive seek threshold - smaller for voiceovers (more precision needed)
+        // and larger for other audio types (less frequent seeking)
+        let seekThreshold = 0.2; // default
+        if (audio.type === 'audio' && audio.name.includes('Voiceover')) {
+          seekThreshold = 0.08; // More precise for voiceovers
+        }
+        
+        // Only seek if position difference exceeds threshold
+        if (Math.abs(audioElement.currentTime - audioPosition) > seekThreshold) {
           console.log(`Seeking audio ${audio.id} to ${audioPosition}`);
           audioElement.currentTime = Math.max(0, audioPosition);
+          lastPlayPositions.current.set(audio.id, audioPosition);
         }
         
         // Apply volume and mute settings
@@ -232,24 +269,49 @@ const AudioManager: React.FC<AudioManagerProps> = ({
         const clipVolume = (audio.volume || 1) * (isAudioMuted ? 0 : volume);
         audioElement.volume = Math.max(0, Math.min(1, clipVolume)); // Ensure volume is between 0 and 1
         
-        // Handle play/pause
+        // Handle play/pause with improved error handling for voiceovers
         if (isPlaying) {
           if (audioElement.paused) {
             console.log('Playing audio:', audio.id);
+            
+            // First set the currentTime again to ensure we're at the right position
+            // This helps prevent the audio from playing from the wrong position
+            audioElement.currentTime = audioPosition;
+            
+            // Use a promise with proper error handling
             audioElement.play().catch(err => {
               console.error('Failed to play audio:', audio.id, err);
+              
+              // If there's an error, try reloading the audio element
+              if (audio.src.includes('#blobId=')) {
+                console.log('Attempting to reload audio from blob storage:', audio.id);
+                createAudioElement(audio).then(newAudio => {
+                  if (newAudio) {
+                    audioRefs.current.set(audio.id, newAudio);
+                    
+                    // Set the position before playing
+                    newAudio.currentTime = audioPosition;
+                    
+                    newAudio.play().catch(err => {
+                      console.error('Still failed to play audio after reload:', err);
+                    });
+                  }
+                });
+              }
             });
           }
         } else {
           if (!audioElement.paused) {
             audioElement.pause();
+            // Store the current position for resuming later
+            lastPlayPositions.current.set(audio.id, audioElement.currentTime);
           }
         }
       } catch (error) {
         console.error('Error controlling audio playback:', audio.id, error);
       }
     });
-  }, [activeAudios, currentTime, isPlaying, volume, muted, audioStates]);
+  }, [activeAudios, currentTime, isPlaying, volume, muted, audioStates, createAudioElement]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -262,6 +324,7 @@ const AudioManager: React.FC<AudioManagerProps> = ({
       audioRefs.current.clear();
       setLoadedAudios(new Set());
       setAudioStates(new Map());
+      lastPlayPositions.current.clear();
     };
   }, []);
 
