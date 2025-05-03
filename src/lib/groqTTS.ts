@@ -143,6 +143,20 @@ export async function generateSpeech(
   const stability = options.stability || 0.5;
 
   try {
+    // Clean up the text to improve TTS quality
+    // Remove excessive whitespace and normalize punctuation
+    const cleanedText = text
+      .trim()
+      .replace(/\s+/g, ' ')
+      .replace(/\.{2,}/g, '.')
+      .replace(/\!\s*\!/g, '!')
+      .replace(/\?\s*\?/g, '?');
+
+    // Add strategic pauses for better flow by ensuring commas and periods have space after
+    const formattedText = cleanedText
+      .replace(/,([^\s])/g, ', $1')
+      .replace(/\.([^\s])/g, '. $1');
+    
     // Make the API call to Groq PlayAI for text-to-speech
     // Append '-PlayAI' suffix to voice ID as required by Groq API
     const formattedVoiceId = `${voiceId}-PlayAI`;
@@ -155,7 +169,7 @@ export async function generateSpeech(
       },
       body: JSON.stringify({
         model: model,
-        input: text,
+        input: formattedText,
         voice: formattedVoiceId,
         speed: speed,
         // Additional parameters can be added as Groq's API evolves
@@ -170,13 +184,13 @@ export async function generateSpeech(
     // Get the audio blob
     const audioBlob = await response.blob();
     
-    // Apply silence trimming if enabled - but with improved settings to prevent audio artifacts
+    // Apply silence trimming if enabled with improved settings
     const finalBlob = options.trimSilence ? 
       await trimSilenceFromAudio(audioBlob) : 
       audioBlob;
     
     // Store the blob in IndexedDB for persistence across page refreshes
-    const blobId = await storeBlobInIndexedDB(finalBlob, text);
+    const blobId = await storeBlobInIndexedDB(finalBlob, formattedText);
     
     // Create a URL for immediate use
     const audioUrl = URL.createObjectURL(finalBlob);
@@ -191,11 +205,7 @@ export async function generateSpeech(
 }
 
 /**
- * Available voices in Groq PlayAI
- * Note: The '-PlayAI' suffix is automatically appended to these voice IDs when making API requests
- */
-/**
- * Trims silence from the beginning and end of an audio blob
+ * Trims silence from the beginning and end of an audio blob with improved quality
  * @param audioBlob The audio blob to process
  * @returns A Promise that resolves to a processed audio blob with silence removed
  */
@@ -216,8 +226,8 @@ async function trimSilenceFromAudio(audioBlob: Blob): Promise<Blob> {
         // Get the audio data
         const channelData = audioBuffer.getChannelData(0); // Use the first channel
         
-        // Define the silence threshold (adjust as needed)
-        const silenceThreshold = 0.005; // Lower threshold to keep more audio content
+        // Define the silence threshold (adjusted for better results)
+        const silenceThreshold = 0.003; // Lower threshold to keep more audio content
         
         // Find the start and end points (trim silence)
         let startIndex = 0;
@@ -233,13 +243,12 @@ async function trimSilenceFromAudio(audioBlob: Blob): Promise<Blob> {
           endIndex--;
         }
         
-        // Add a small buffer (150ms) to avoid cutting off speech too abruptly
-        const bufferSamples = audioBuffer.sampleRate * 0.15;
-        startIndex = Math.max(0, startIndex - bufferSamples);
+        // Add a buffer (200ms) to avoid cutting off speech too abruptly at the beginning
+        const bufferSamplesStart = audioBuffer.sampleRate * 0.2;
+        startIndex = Math.max(0, startIndex - bufferSamplesStart);
         
-        // Add a larger buffer at the end (250ms) to ensure we don't cut off any trailing audio
-        // This helps prevent the gibberish noise at the end when added to timeline
-        const endBufferSamples = audioBuffer.sampleRate * 0.25;
+        // Add a larger buffer at the end (300ms) to ensure we don't cut off trailing audio
+        const endBufferSamples = audioBuffer.sampleRate * 0.3;
         endIndex = Math.min(channelData.length - 1, endIndex + endBufferSamples);
         
         // Create a new buffer with the trimmed audio
@@ -260,7 +269,7 @@ async function trimSilenceFromAudio(audioBlob: Blob): Promise<Blob> {
           }
         }
         
-        // Convert the trimmed buffer back to a blob
+        // Convert the trimmed buffer back to a blob with enhanced processing
         const offlineContext = new OfflineAudioContext(
           trimmedBuffer.numberOfChannels,
           trimmedBuffer.length,
@@ -272,13 +281,25 @@ async function trimSilenceFromAudio(audioBlob: Blob): Promise<Blob> {
         
         // Add gentle fade in and fade out to prevent clicks and pops
         const gainNode = offlineContext.createGain();
+        
+        // Better fade curve for professional sound
         gainNode.gain.setValueAtTime(0.0, 0);
-        gainNode.gain.linearRampToValueAtTime(1.0, 0.02); // 20ms fade in
-        gainNode.gain.setValueAtTime(1.0, trimmedBuffer.duration - 0.05);
-        gainNode.gain.linearRampToValueAtTime(0.0, trimmedBuffer.duration); // 50ms fade out
+        gainNode.gain.linearRampToValueAtTime(1.0, 0.03); // 30ms fade in
+        gainNode.gain.setValueAtTime(1.0, trimmedBuffer.duration - 0.1);
+        gainNode.gain.linearRampToValueAtTime(0.0, trimmedBuffer.duration); // 100ms fade out
+        
+        // Add a subtle compression for more professional sound
+        const compressor = offlineContext.createDynamicsCompressor();
+        compressor.threshold.value = -20;
+        compressor.knee.value = 10;
+        compressor.ratio.value = 3;
+        compressor.attack.value = 0.02;
+        compressor.release.value = 0.1;
         
         source.connect(gainNode);
-        gainNode.connect(offlineContext.destination);
+        gainNode.connect(compressor);
+        compressor.connect(offlineContext.destination);
+        
         source.start(0);
         
         const renderedBuffer = await offlineContext.startRendering();
