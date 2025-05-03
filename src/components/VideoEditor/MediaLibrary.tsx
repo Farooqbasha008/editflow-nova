@@ -1,9 +1,11 @@
+
 import React, { useState } from 'react';
 import { Upload, Film, Music, Image as ImageIcon, Mic, Video, Search, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { TimelineItem } from './VideoEditor';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+// Fixed import - not using the named import as the component is exported as default
 import GeneratedMediaManager from './GeneratedMediaManager';
 import { Button } from '@/components/ui/button';
 

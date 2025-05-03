@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Video, Music, Trash2 } from 'lucide-react';
 import { TimelineItem } from './VideoEditor';
@@ -104,4 +105,5 @@ const GeneratedMediaManager: React.FC<GeneratedMediaManagerProps> = ({ onAddToTi
   );
 };
 
-export default GeneratedMediaManager; 
+// Adding the default export statement that was missing
+export default GeneratedMediaManager;
