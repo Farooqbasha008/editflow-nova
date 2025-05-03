@@ -1,6 +1,8 @@
+
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { TimelineItem } from '../VideoEditor';
 import { toast } from 'sonner';
+import { getBlobFromIndexedDB } from '@/lib/groqTTS';
 
 interface AudioManagerProps {
   activeAudios: TimelineItem[];
@@ -20,9 +22,6 @@ const AudioManager: React.FC<AudioManagerProps> = ({
   const audioRefs = useRef<Map<string, HTMLAudioElement>>(new Map());
   const [loadedAudios, setLoadedAudios] = useState<Set<string>>(new Set());
   const [audioStates, setAudioStates] = useState<Map<string, 'loading' | 'error' | 'ready'>>(new Map());
-
-  // Import the function to get blobs from IndexedDB
-  const { getBlobFromIndexedDB } = require('@/lib/groqTTS');
 
   // Helper function to create new audio element
   const createAudioElement = useCallback(async (audio: TimelineItem) => {
