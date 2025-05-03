@@ -37,7 +37,7 @@ const LandingPage = () => {
             Generate, edit, and share professional content in minutes with the power of AI.
           </p>
           <div className="flex justify-center max-w-md mx-auto">
-            <Link to="/editor" className="w-full">
+            <Link to="/script-generation" className="w-full">
               <Button className="bg-[#D7F266] hover:bg-[#D7F266]/90 text-[#151514] w-full rounded-full transition-all duration-300 h-12 text-lg font-medium">
                 <Play size={18} className="mr-2" />
                 Get Started
