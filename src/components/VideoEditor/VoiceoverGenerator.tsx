@@ -119,8 +119,7 @@ const VoiceoverGenerator: React.FC<VoiceoverGeneratorProps> = ({ onAddToTimeline
           voiceName: GROQ_VOICES.find(v => v.id === voice)?.name,
           voiceDescription: GROQ_VOICES.find(v => v.id === voice)?.description,
           trimSilence,
-          duration: estimatedDuration,
-          text: text
+          duration: estimatedDuration
         }
       });
       
